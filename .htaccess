@@ -1,0 +1,31 @@
+# scottsub/.htaccess
+
+# 1. Enable Rewrite Engine
+RewriteEngine On
+RewriteBase /scottsub/
+
+# 2. Force HTTPS (Optional - Uncomment if you have SSL)
+# RewriteCond %{HTTPS} off
+# RewriteRule ^(.*)$ https://%{HTTP_HOST}%{REQUEST_URI} [L,R=301]
+
+# 3. Protect Sensitive Directories
+# Prevent direct access to includes, uploads, or sql files
+RewriteRule ^(includes|uploads|sql)/ - [F,L]
+
+# 4. Protect Sensitive Files
+<FilesMatch "\.(sql|log|ini|env)$">
+    Order Allow,Deny
+    Deny from all
+</FilesMatch>
+
+# 5. Disable Directory Browsing
+Options -Indexes
+
+# 6. Clean URL Routing (Optional Enhancement)
+# Turns /product/123 into index.php?module=shop&page=product&id=123
+# RewriteRule ^product/([0-9]+)$ index.php?module=shop&page=product&id=$1 [L,QSA]
+# RewriteRule ^category/([0-9]+)$ index.php?module=shop&page=category&id=$1 [L,QSA]
+
+# 7. Error Handling
+ErrorDocument 404 /scottsub/index.php?module=error&page=404
+ErrorDocument 403 /scottsub/index.php?module=error&page=404
