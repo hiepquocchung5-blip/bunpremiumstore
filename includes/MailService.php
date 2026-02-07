@@ -4,7 +4,7 @@
 use PHPMailer\PHPMailer\PHPMailer;
 use PHPMailer\PHPMailer\Exception;
 
-require 'vendor/autoload.php'; // Ensure Composer autoload is loaded
+require 'vendor/autoload.php';
 
 class MailService {
     
@@ -12,57 +12,93 @@ class MailService {
 
     public function __construct() {
         $this->mail = new PHPMailer(true);
-        // Server settings (Update with your cPanel/Gmail SMTP)
+        // Server settings
         $this->mail->isSMTP();
-        $this->mail->Host       = 'mail.scottsub.com'; // e.g., smtp.gmail.com
+        $this->mail->Host       = 'mail.digitalmarketplacemm.com'; 
         $this->mail->SMTPAuth   = true;
-        $this->mail->Username   = 'noreply@scottsub.com';
-        $this->mail->Password   = 'your_secure_password';
+        $this->mail->Username   = 'noreply@digitalmarketplacemm.com';
+        $this->mail->Password   = 'your_secure_password'; // Update this!
         $this->mail->SMTPSecure = PHPMailer::ENCRYPTION_SMTPS;
         $this->mail->Port       = 465;
-        $this->mail->setFrom('noreply@scottsub.com', 'ScottSub Store');
+        $this->mail->setFrom('noreply@digitalmarketplacemm.com', 'DigitalMarketplaceMM');
         $this->mail->isHTML(true);
     }
 
+    // ... Existing Order methods ...
+
     public function sendOrderConfirmation($userEmail, $userName, $orderId, $productName, $price) {
         try {
+            $this->mail->clearAddresses();
             $this->mail->addAddress($userEmail, $userName);
-            $this->mail->Subject = "Order #$orderId Received - ScottSub";
-            
-            // Nice HTML Template
+            $this->mail->Subject = "Order #$orderId - DigitalMarketplaceMM";
             $body = "
-            <div style='font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; background: #f9f9f9; padding: 20px; border-radius: 10px;'>
-                <h2 style='color: #2563eb;'>Thank You for Your Order!</h2>
-                <p>Hi <strong>$userName</strong>,</p>
-                <p>We have received your order and are currently verifying your payment. Once approved, you will receive your product details immediately.</p>
-                
-                <div style='background: #fff; padding: 15px; border-radius: 5px; border: 1px solid #ddd; margin: 20px 0;'>
-                    <p><strong>Order ID:</strong> #$orderId</p>
-                    <p><strong>Product:</strong> $productName</p>
-                    <p><strong>Amount:</strong> " . number_format($price) . " Ks</p>
-                </div>
-
-                <p>You can track your status here: <a href='".BASE_URL."index.php?module=user&page=orders' style='color: #2563eb;'>My Orders</a></p>
-                <p style='font-size: 12px; color: #888;'>If you have any questions, reply to this email or chat with us on the website.</p>
+            <div style='font-family: Arial, sans-serif; background: #f9f9f9; padding: 20px;'>
+                <h2 style='color: #2563eb;'>Order Received</h2>
+                <p>Hi $userName,</p>
+                <p>We are verifying your payment for <strong>$productName</strong>.</p>
+                <p>Amount: <strong>" . number_format($price) . " Ks</strong></p>
+                <a href='".BASE_URL."index.php?module=user&page=orders'>View Order</a>
             </div>";
-
             $this->mail->Body = $body;
             $this->mail->send();
             return true;
-        } catch (Exception $e) {
-            error_log("Mail Error: {$this->mail->ErrorInfo}");
-            return false;
-        }
+        } catch (Exception $e) { return false; }
     }
 
     public function sendAdminAlert($orderId, $price) {
         try {
             $this->mail->clearAddresses();
-            $this->mail->addAddress('admin@scottsub.com'); // Your Admin Email
-            $this->mail->Subject = "New Order #$orderId ($price Ks)";
-            $this->mail->Body = "<h3>New Order Received</h3><p>Please check the admin panel to verify payment.</p><a href='".BASE_URL."admin/order_detail.php?id=$orderId'>Manage Order</a>";
+            $this->mail->addAddress('admin@digitalmarketplacemm.com');
+            $this->mail->Subject = "New Order #$orderId";
+            $this->mail->Body = "New order received. Value: $price Ks. <a href='".ADMIN_URL."order_detail.php?id=$orderId'>Check Admin</a>";
             $this->mail->send();
         } catch (Exception $e) {}
+    }
+
+    // --- NEW METHODS ---
+
+    public function sendVerificationEmail($email, $token) {
+        try {
+            $this->mail->clearAddresses();
+            $this->mail->addAddress($email);
+            $this->mail->Subject = "Verify your Email - DigitalMarketplaceMM";
+            
+            $link = BASE_URL . "index.php?module=auth&page=verify&token=" . $token;
+            
+            $body = "
+            <div style='font-family: Arial, sans-serif; padding: 20px; text-align: center;'>
+                <h2 style='color: #2563eb;'>Welcome to DMMM!</h2>
+                <p>Please click the button below to verify your email address.</p>
+                <a href='$link' style='background: #2563eb; color: white; padding: 10px 20px; text-decoration: none; border-radius: 5px; display: inline-block; margin: 20px 0;'>Verify Email</a>
+                <p style='color: #888; font-size: 12px;'>Or copy this link: $link</p>
+            </div>";
+
+            $this->mail->Body = $body;
+            $this->mail->send();
+            return true;
+        } catch (Exception $e) { return false; }
+    }
+
+    public function sendPasswordReset($email, $token) {
+        try {
+            $this->mail->clearAddresses();
+            $this->mail->addAddress($email);
+            $this->mail->Subject = "Reset Password Request";
+            
+            $link = BASE_URL . "index.php?module=auth&page=reset_password&token=" . $token;
+            
+            $body = "
+            <div style='font-family: Arial, sans-serif; padding: 20px;'>
+                <h3>Password Reset</h3>
+                <p>Someone requested a password reset for your account. If this was you, click below:</p>
+                <a href='$link' style='color: #2563eb;'>Reset Password</a>
+                <p>If you didn't ask for this, you can ignore this email.</p>
+            </div>";
+
+            $this->mail->Body = $body;
+            $this->mail->send();
+            return true;
+        } catch (Exception $e) { return false; }
     }
 }
 ?>

@@ -8,6 +8,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['add_product'])) {
 
         $name = trim($_POST['name']);
         $price = (float) $_POST['price'];
+        // Sale Price Logic
+        $sale_price = !empty($_POST['sale_price']) ? (float) $_POST['sale_price'] : NULL;
+        
         $cat_id = (int) $_POST['category_id'];
         $region_id = !empty($_POST['region_id']) ? $_POST['region_id'] : NULL;
         $delivery_type = $_POST['delivery_type'];
@@ -28,8 +31,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['add_product'])) {
         }
 
         // Insert Product
-        $stmt = $pdo->prepare("INSERT INTO products (category_id, region_id, name, price, delivery_type, universal_content, form_fields, user_instruction) VALUES (?, ?, ?, ?, ?, ?, ?, ?)");
-        $stmt->execute([$cat_id, $region_id, $name, $price, $delivery_type, $universal_content, $form_fields, $instruction]);
+        $stmt = $pdo->prepare("INSERT INTO products (category_id, region_id, name, price, sale_price, delivery_type, universal_content, form_fields, user_instruction) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)");
+        $stmt->execute([$cat_id, $region_id, $name, $price, $sale_price, $delivery_type, $universal_content, $form_fields, $instruction]);
         $product_id = $pdo->lastInsertId();
 
         // Handle Unique Keys (Bulk Insert - One per line)
@@ -64,9 +67,13 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['add_product'])) {
 // 2. Handle GET: Delete
 if (isset($_GET['delete'])) {
     $id = (int)$_GET['delete'];
-    // Note: Database foreign keys should handle cascading deletes for keys/instructions
-    $pdo->prepare("DELETE FROM products WHERE id = ?")->execute([$id]);
-    redirect(admin_url('products', ['deleted' => 1]));
+    try {
+        // Note: DB foreign keys should handle cascading, but we wrap in try/catch just in case
+        $pdo->prepare("DELETE FROM products WHERE id = ?")->execute([$id]);
+        redirect(admin_url('products', ['deleted' => 1]));
+    } catch (Exception $e) {
+        $error = "Cannot delete product. It might be linked to existing orders.";
+    }
 }
 
 // 3. Fetch Data for View
@@ -84,19 +91,19 @@ $products = $pdo->query("
 <div class="mb-6 flex justify-between items-center">
     <div>
         <h1 class="text-3xl font-bold text-white">Products</h1>
-        <p class="text-slate-400 text-sm mt-1">Manage your inventory and delivery settings.</p>
+        <p class="text-slate-400 text-sm mt-1">Manage your inventory, prices, and delivery settings.</p>
     </div>
 </div>
 
 <?php if(isset($_GET['success'])): ?>
-    <div class="bg-green-500/20 text-green-400 p-4 rounded-xl border border-green-500/50 mb-6 flex items-center gap-3">
+    <div class="bg-green-500/20 text-green-400 p-4 rounded-xl border border-green-500/50 mb-6 flex items-center gap-3 animate-pulse">
         <i class="fas fa-check-circle"></i> Product created successfully.
     </div>
 <?php endif; ?>
 
 <?php if(isset($error)): ?>
-    <div class="bg-red-500/20 text-red-400 p-4 rounded-xl border border-red-500/50 mb-6">
-        <?php echo $error; ?>
+    <div class="bg-red-500/20 text-red-400 p-4 rounded-xl border border-red-500/50 mb-6 flex items-center gap-3">
+        <i class="fas fa-exclamation-triangle"></i> <?php echo $error; ?>
     </div>
 <?php endif; ?>
 
@@ -122,6 +129,13 @@ $products = $pdo->query("
                     <input type="number" name="price" required class="w-full bg-slate-900 border border-slate-600 p-2.5 rounded-lg text-white focus:border-blue-500 outline-none">
                 </div>
                 <div>
+                    <label class="block text-xs font-bold text-yellow-400 mb-1">Sale Price (Optional)</label>
+                    <input type="number" name="sale_price" placeholder="Discounted" class="w-full bg-slate-900 border border-yellow-600/50 p-2.5 rounded-lg text-white focus:border-yellow-500 outline-none">
+                </div>
+            </div>
+
+            <div class="grid grid-cols-2 gap-4">
+                <div>
                     <label class="block text-xs font-bold text-slate-400 mb-1">Category</label>
                     <select name="category_id" required class="w-full bg-slate-900 border border-slate-600 p-2.5 rounded-lg text-white focus:border-blue-500 outline-none">
                         <option value="">Select...</option>
@@ -130,16 +144,15 @@ $products = $pdo->query("
                         <?php endforeach; ?>
                     </select>
                 </div>
-            </div>
-
-            <div>
-                <label class="block text-xs font-bold text-slate-400 mb-1">Region (Optional)</label>
-                <select name="region_id" class="w-full bg-slate-900 border border-slate-600 p-2.5 rounded-lg text-white focus:border-blue-500 outline-none">
-                    <option value="">Global / None</option>
-                    <?php foreach($regions as $r): ?>
-                        <option value="<?php echo $r['id']; ?>"><?php echo htmlspecialchars($r['name']); ?></option>
-                    <?php endforeach; ?>
-                </select>
+                <div>
+                    <label class="block text-xs font-bold text-slate-400 mb-1">Region (Optional)</label>
+                    <select name="region_id" class="w-full bg-slate-900 border border-slate-600 p-2.5 rounded-lg text-white focus:border-blue-500 outline-none">
+                        <option value="">Global / None</option>
+                        <?php foreach($regions as $r): ?>
+                            <option value="<?php echo $r['id']; ?>"><?php echo htmlspecialchars($r['name']); ?></option>
+                        <?php endforeach; ?>
+                    </select>
+                </div>
             </div>
         </div>
 
@@ -187,7 +200,7 @@ $products = $pdo->query("
             </div>
         </div>
 
-        <button type="submit" name="add_product" class="md:col-span-2 bg-blue-600 hover:bg-blue-500 text-white font-bold py-3 rounded-lg shadow-lg transition flex justify-center items-center gap-2">
+        <button type="submit" name="add_product" class="md:col-span-2 bg-blue-600 hover:bg-blue-500 text-white font-bold py-3 rounded-lg shadow-lg transition flex justify-center items-center gap-2 transform active:scale-[0.99]">
             <i class="fas fa-save"></i> Create Product
         </button>
     </form>
@@ -205,6 +218,7 @@ $products = $pdo->query("
                     <th class="p-4">Type</th>
                     <th class="p-4">Stock</th>
                     <th class="p-4 text-right">Price</th>
+                    <th class="p-4 text-right">Sale</th>
                     <th class="p-4 text-right">Action</th>
                 </tr>
             </thead>
@@ -228,7 +242,12 @@ $products = $pdo->query("
                                 <span class="text-slate-500 text-lg">∞</span>
                             <?php endif; ?>
                         </td>
-                        <td class="p-4 text-right font-mono text-green-400"><?php echo format_admin_currency($p['price']); ?></td>
+                        <td class="p-4 text-right font-mono text-slate-300 <?php echo $p['sale_price'] ? 'line-through text-slate-500' : ''; ?>">
+                            <?php echo format_admin_currency($p['price']); ?>
+                        </td>
+                        <td class="p-4 text-right font-mono text-yellow-400 font-bold">
+                            <?php echo $p['sale_price'] ? format_admin_currency($p['sale_price']) : '-'; ?>
+                        </td>
                         <td class="p-4 text-right">
                             <a href="<?php echo admin_url('products', ['delete' => $p['id']]); ?>" 
                                class="text-slate-500 hover:text-red-400 transition"
