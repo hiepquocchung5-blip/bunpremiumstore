@@ -1,11 +1,11 @@
 <?php
 // admin/config/db.php
 
-// DB Credentials
+// Live Database Credentials
 define('DB_HOST', 'localhost');
-define('DB_USER', 'root');
-define('DB_PASS', 'Stephan2k03');
-define('DB_NAME', 'scottsub_db');
+define('DB_USER', 'zpnpszw1_buns_sub_usr');
+define('DB_PASS', '@fekgygn85cCM43');
+define('DB_NAME', 'zpnpszw1_bunspremiumsubshop');
 
 try {
     $pdo = new PDO("mysql:host=".DB_HOST.";dbname=".DB_NAME, DB_USER, DB_PASS);
@@ -15,12 +15,11 @@ try {
     die("Admin DB Connection Failed: " . $e->getMessage());
 }
 
-// Admin Base URL
-define('ADMIN_URL', 'http://localhost:8889/');
+// Admin Base URL (Subdomain)
+define('ADMIN_URL', 'http://bunsadminconfig.digitalmarketplacemm.com/');
 
-// if (!defined('EXCHANGE_RATE')) {
-//     define('EXCHANGE_RATE', 4100); // 1 USD = 4100 MMK
-// }
-
-session_start();
+// Start Session
+if (session_status() === PHP_SESSION_NONE) {
+    session_start();
+}
 ?>
