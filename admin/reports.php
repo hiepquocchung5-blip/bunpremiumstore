@@ -11,8 +11,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['add_expense'])) {
     if ($title && $amount > 0) {
         $stmt = $pdo->prepare("INSERT INTO expenses (title, amount, category, note) VALUES (?, ?, ?, ?)");
         $stmt->execute([$title, $amount, $category, $note]);
-        // Use router helper for redirect
-        redirect(admin_url('reports'));
+        redirect(admin_url('reports', ['success' => 1]));
     }
 }
 
@@ -20,25 +19,27 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['add_expense'])) {
 if (isset($_GET['delete'])) {
     $id = (int)$_GET['delete'];
     $pdo->prepare("DELETE FROM expenses WHERE id = ?")->execute([$id]);
-    redirect(admin_url('reports'));
+    redirect(admin_url('reports', ['deleted' => 1]));
 }
 
-// 3. Stats Calculation (Using helper functions)
+// 3. Stats Calculation
 $revenue = get_total_revenue($pdo);
 $expenses = get_total_expenses($pdo);
 $profit = $revenue - $expenses;
 $profit_color = $profit >= 0 ? 'text-blue-400' : 'text-red-400';
 
-// 4. Fetch History
-$expense_list = $pdo->query("SELECT * FROM expenses ORDER BY created_at DESC LIMIT 20")->fetchAll();
+// 4. Fetch Expense History
+$expense_list = $pdo->query("SELECT * FROM expenses ORDER BY created_at DESC LIMIT 50")->fetchAll();
 ?>
 
-<div class="mb-8">
-    <h1 class="text-3xl font-bold text-white">Financial Reports</h1>
-    <p class="text-slate-400 text-sm mt-1">Revenue, Expenses, and Net Profit tracking.</p>
+<div class="mb-8 flex justify-between items-center">
+    <div>
+        <h1 class="text-3xl font-bold text-white">Financial Reports</h1>
+        <p class="text-slate-400 text-sm mt-1">Track revenue, expenses, and net profit.</p>
+    </div>
 </div>
 
-<!-- Financial Cards -->
+<!-- Financial Summary Cards -->
 <div class="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
     <!-- Revenue -->
     <div class="bg-slate-800 p-6 rounded-xl border border-slate-700 shadow-lg relative overflow-hidden group">
@@ -54,7 +55,7 @@ $expense_list = $pdo->query("SELECT * FROM expenses ORDER BY created_at DESC LIM
         <h3 class="text-2xl font-bold text-red-400 mt-1"><?php echo format_admin_currency($expenses); ?></h3>
     </div>
 
-    <!-- Profit -->
+    <!-- Net Profit -->
     <div class="bg-slate-800 p-6 rounded-xl border border-slate-700 shadow-lg relative overflow-hidden group">
         <div class="absolute right-0 top-0 p-4 opacity-5 group-hover:scale-110 transition"><i class="fas fa-chart-line text-6xl text-blue-500"></i></div>
         <p class="text-xs font-bold text-slate-400 uppercase tracking-wider">Net Profit</p>
@@ -75,16 +76,16 @@ $expense_list = $pdo->query("SELECT * FROM expenses ORDER BY created_at DESC LIM
             <form method="POST" class="space-y-4">
                 <div>
                     <label class="block text-xs font-bold text-slate-400 mb-1">Title</label>
-                    <input type="text" name="title" required placeholder="e.g. Server Cost" class="w-full bg-slate-900 border border-slate-600 rounded p-2.5 text-sm text-white focus:border-blue-500 outline-none placeholder-slate-600">
+                    <input type="text" name="title" required placeholder="e.g. Server Cost" class="w-full bg-slate-900 border border-slate-600 rounded-lg p-2.5 text-sm text-white focus:border-blue-500 outline-none placeholder-slate-600">
                 </div>
                 <div class="grid grid-cols-2 gap-4">
                     <div>
                         <label class="block text-xs font-bold text-slate-400 mb-1">Amount (Ks)</label>
-                        <input type="number" step="0.01" name="amount" required placeholder="0.00" class="w-full bg-slate-900 border border-slate-600 rounded p-2.5 text-sm text-white focus:border-blue-500 outline-none placeholder-slate-600">
+                        <input type="number" step="0.01" name="amount" required placeholder="0.00" class="w-full bg-slate-900 border border-slate-600 rounded-lg p-2.5 text-sm text-white focus:border-blue-500 outline-none placeholder-slate-600">
                     </div>
                     <div>
                         <label class="block text-xs font-bold text-slate-400 mb-1">Category</label>
-                        <select name="category" class="w-full bg-slate-900 border border-slate-600 rounded p-2.5 text-sm text-white focus:border-blue-500 outline-none">
+                        <select name="category" class="w-full bg-slate-900 border border-slate-600 rounded-lg p-2.5 text-sm text-white focus:border-blue-500 outline-none">
                             <option value="General">General</option>
                             <option value="Stock">Stock Purchase</option>
                             <option value="Marketing">Marketing / Ads</option>
@@ -95,7 +96,7 @@ $expense_list = $pdo->query("SELECT * FROM expenses ORDER BY created_at DESC LIM
                 </div>
                 <div>
                     <label class="block text-xs font-bold text-slate-400 mb-1">Note (Optional)</label>
-                    <textarea name="note" rows="2" class="w-full bg-slate-900 border border-slate-600 rounded p-2.5 text-sm text-white focus:border-blue-500 outline-none resize-none placeholder-slate-600"></textarea>
+                    <textarea name="note" rows="2" class="w-full bg-slate-900 border border-slate-600 rounded-lg p-2.5 text-sm text-white focus:border-blue-500 outline-none resize-none placeholder-slate-600"></textarea>
                 </div>
                 <button type="submit" name="add_expense" class="w-full bg-blue-600 hover:bg-blue-500 text-white font-bold py-2.5 rounded-lg transition shadow-lg text-sm flex justify-center items-center gap-2">
                     <i class="fas fa-save"></i> Add Record
@@ -109,7 +110,7 @@ $expense_list = $pdo->query("SELECT * FROM expenses ORDER BY created_at DESC LIM
         <div class="bg-slate-800 rounded-xl border border-slate-700 overflow-hidden shadow-lg">
             <div class="p-4 border-b border-slate-700 font-bold text-sm text-slate-300 flex justify-between items-center">
                 <span>Recent Transactions</span>
-                <span class="text-xs bg-slate-700 px-2 py-1 rounded text-slate-400">Last 20</span>
+                <span class="text-xs bg-slate-700 px-2 py-1 rounded text-slate-400">Last 50</span>
             </div>
             <div class="overflow-x-auto">
                 <table class="w-full text-left text-sm">
