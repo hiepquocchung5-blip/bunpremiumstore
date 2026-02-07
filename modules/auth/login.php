@@ -55,20 +55,22 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
         // Verify Password
         if ($user && password_verify($password, $user['password'])) {
-            // Optional: You can enforce email verification here
-            // if ($user['is_verified'] == 0) { 
-            //     $error = "Please verify your email address first."; 
-            // } else { ... }
             
-            // Set Session
-            $_SESSION['user_id'] = $user['id'];
-            $_SESSION['user_name'] = $user['username'];
-            $_SESSION['user_email'] = $user['email'];
+            // 🔒 Enforce Email Verification
+            if ($user['is_verified'] == 0) {
+                $error = "Please verify your email address before logging in.";
+            } else {
+                // Set Session
+                $_SESSION['user_id'] = $user['id'];
+                $_SESSION['user_name'] = $user['username'];
+                $_SESSION['user_email'] = $user['email'];
+                
+                // Handle Redirect
+                $redirect_url = isset($_GET['redirect']) ? urldecode($_GET['redirect']) : 'index.php';
+                header("Location: " . $redirect_url);
+                exit;
+            }
             
-            // Handle Redirect
-            $redirect_url = isset($_GET['redirect']) ? urldecode($_GET['redirect']) : 'index.php';
-            header("Location: " . $redirect_url);
-            exit;
         } else {
             $error = "Invalid email or password.";
         }
