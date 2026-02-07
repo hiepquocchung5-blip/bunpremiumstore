@@ -1,13 +1,17 @@
 {
-  "name": "scottsub/store",
-  "description": "Premium Digital Store",
-  "require": {
-    "phpmailer/phpmailer": "^6.8",
-    "vlucas/phpdotenv": "^5.5"
-  },
-  "autoload": {
-    "psr-4": {
-      "ScottSub\\": "includes/"
+    "name": "digitalmarketplacemm/store",
+    "description": "Digital Marketplace MM - Premium Digital Store",
+    "require": {
+        "phpmailer/phpmailer": "^6.8",
+        "vlucas/phpdotenv": "^5.5",
+        "guzzlehttp/guzzle": "^7.8"
+    },
+    "autoload": {
+        "psr-4": {
+            "DigitalMarketplace\\": "includes/"
+        }
+    },
+    "config": {
+        "optimize-autoloader": true
     }
-  }
 }
