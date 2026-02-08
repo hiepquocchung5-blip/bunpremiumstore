@@ -46,14 +46,20 @@ function get_admin_view() {
     // Whitelist of allowed pages => filename
     // Note: You must ensure these files exist in the admin root folder
     $routes = [
-        'dashboard'    => 'dashboard.php',    // Renamed from index.php content
+        'dashboard'    => 'dashboard.php',
         'orders'       => 'orders.php',
         'order_detail' => 'order_detail.php',
         'products'     => 'products.php',
-        'users'        => 'users.php',
+        'product_edit' => 'product_edit.php', 
+        'categories'   => 'categories.php',
+        'category_edit' => 'category_edit.php', 
         'keys'         => 'keys.php',
+        'users'        => 'users.php',
+        'user_detail'  => 'user_detail.php',
+        'reviews'      => 'reviews.php',
         'reports'      => 'reports.php',
         'banners'      => 'banners.php',
+        'payments'     => 'payments.php',
         'settings'     => 'settings.php'
     ];
 

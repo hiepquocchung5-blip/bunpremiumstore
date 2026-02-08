@@ -17,6 +17,7 @@ try {
 
 // Admin Base URL (Subdomain)
 define('ADMIN_URL', 'http://bunsadminconfig.digitalmarketplacemm.com/');
+define('MAIN_SITE_URL', 'http://digitalmarketplacemm.com/'); // Point to where uploads folder lives
 
 // Start Session
 if (session_status() === PHP_SESSION_NONE) {

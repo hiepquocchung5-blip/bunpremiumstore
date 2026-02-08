@@ -7,7 +7,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['add_product'])) {
         $pdo->beginTransaction();
 
         $name = trim($_POST['name']);
+        $description = trim($_POST['description']);
         $price = (float) $_POST['price'];
+        
         // Sale Price Logic
         $sale_price = !empty($_POST['sale_price']) ? (float) $_POST['sale_price'] : NULL;
         
@@ -31,8 +33,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['add_product'])) {
         }
 
         // Insert Product
-        $stmt = $pdo->prepare("INSERT INTO products (category_id, region_id, name, price, sale_price, delivery_type, universal_content, form_fields, user_instruction) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)");
-        $stmt->execute([$cat_id, $region_id, $name, $price, $sale_price, $delivery_type, $universal_content, $form_fields, $instruction]);
+        $stmt = $pdo->prepare("INSERT INTO products (category_id, region_id, name, description, price, sale_price, delivery_type, universal_content, form_fields, user_instruction) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)");
+        $stmt->execute([$cat_id, $region_id, $name, $description, $price, $sale_price, $delivery_type, $universal_content, $form_fields, $instruction]);
         $product_id = $pdo->lastInsertId();
 
         // Handle Unique Keys (Bulk Insert - One per line)
@@ -122,6 +124,11 @@ $products = $pdo->query("
                 <label class="block text-xs font-bold text-slate-400 mb-1">Product Name</label>
                 <input type="text" name="name" required class="w-full bg-slate-900 border border-slate-600 p-2.5 rounded-lg text-white focus:border-blue-500 outline-none placeholder-slate-600">
             </div>
+
+            <div>
+                <label class="block text-xs font-bold text-slate-400 mb-1">Description</label>
+                <textarea name="description" rows="2" class="w-full bg-slate-900 border border-slate-600 p-2.5 rounded-lg text-white text-sm focus:border-blue-500 outline-none placeholder-slate-500" placeholder="Product details..."></textarea>
+            </div>
             
             <div class="grid grid-cols-2 gap-4">
                 <div>
@@ -208,58 +215,56 @@ $products = $pdo->query("
 
 <!-- Product Table -->
 <div class="bg-slate-800 rounded-xl border border-slate-700 overflow-hidden shadow-lg">
-    <div class="p-4 border-b border-slate-700 font-bold text-sm text-slate-300">Inventory List</div>
-    <div class="overflow-x-auto">
-        <table class="w-full text-left text-sm">
-            <thead class="bg-slate-700/50 text-slate-400 uppercase text-xs">
-                <tr>
-                    <th class="p-4">Name</th>
-                    <th class="p-4">Category</th>
-                    <th class="p-4">Type</th>
-                    <th class="p-4">Stock</th>
-                    <th class="p-4 text-right">Price</th>
-                    <th class="p-4 text-right">Sale</th>
-                    <th class="p-4 text-right">Action</th>
-                </tr>
-            </thead>
-            <tbody class="divide-y divide-slate-700">
-                <?php foreach($products as $p): ?>
-                    <tr class="hover:bg-slate-700/30 transition group">
-                        <td class="p-4 font-bold text-white"><?php echo htmlspecialchars($p['name']); ?></td>
-                        <td class="p-4 text-slate-400"><?php echo htmlspecialchars($p['cat_name']); ?></td>
-                        <td class="p-4">
-                            <span class="px-2 py-1 rounded text-xs font-bold uppercase 
-                                <?php echo $p['delivery_type'] == 'unique' ? 'bg-yellow-500/20 text-yellow-400' : ($p['delivery_type'] == 'form' ? 'bg-blue-500/20 text-blue-400' : 'bg-green-500/20 text-green-400'); ?>">
-                                <?php echo $p['delivery_type']; ?>
+    <table class="w-full text-left text-sm">
+        <thead class="bg-slate-700/50 text-slate-400 uppercase text-xs">
+            <tr>
+                <th class="p-4">Name</th>
+                <th class="p-4">Category</th>
+                <th class="p-4">Type</th>
+                <th class="p-4">Stock</th>
+                <th class="p-4 text-right">Price</th>
+                <th class="p-4 text-right">Sale</th>
+                <th class="p-4 text-right">Action</th>
+            </tr>
+        </thead>
+        <tbody class="divide-y divide-slate-700">
+            <?php foreach($products as $p): ?>
+                <tr class="hover:bg-slate-700/30 transition group">
+                    <td class="p-4 font-bold text-white"><?php echo htmlspecialchars($p['name']); ?></td>
+                    <td class="p-4 text-slate-400"><?php echo htmlspecialchars($p['cat_name']); ?></td>
+                    <td class="p-4">
+                        <span class="px-2 py-1 rounded text-xs font-bold uppercase 
+                            <?php echo $p['delivery_type'] == 'unique' ? 'bg-yellow-500/20 text-yellow-400' : ($p['delivery_type'] == 'form' ? 'bg-blue-500/20 text-blue-400' : 'bg-green-500/20 text-green-400'); ?>">
+                            <?php echo $p['delivery_type']; ?>
+                        </span>
+                    </td>
+                    <td class="p-4">
+                        <?php if($p['delivery_type'] == 'unique'): ?>
+                            <span class="font-mono px-2 py-1 rounded <?php echo $p['stock_count'] > 0 ? 'bg-slate-900 text-green-400' : 'bg-red-900/30 text-red-400'; ?>">
+                                <?php echo $p['stock_count']; ?>
                             </span>
-                        </td>
-                        <td class="p-4">
-                            <?php if($p['delivery_type'] == 'unique'): ?>
-                                <span class="font-mono px-2 py-1 rounded <?php echo $p['stock_count'] > 0 ? 'bg-slate-900 text-green-400' : 'bg-red-900/30 text-red-400'; ?>">
-                                    <?php echo $p['stock_count']; ?>
-                                </span>
-                            <?php else: ?>
-                                <span class="text-slate-500 text-lg">∞</span>
-                            <?php endif; ?>
-                        </td>
-                        <td class="p-4 text-right font-mono text-slate-300 <?php echo $p['sale_price'] ? 'line-through text-slate-500' : ''; ?>">
-                            <?php echo format_admin_currency($p['price']); ?>
-                        </td>
-                        <td class="p-4 text-right font-mono text-yellow-400 font-bold">
-                            <?php echo $p['sale_price'] ? format_admin_currency($p['sale_price']) : '-'; ?>
-                        </td>
-                        <td class="p-4 text-right">
-                            <a href="<?php echo admin_url('products', ['delete' => $p['id']]); ?>" 
-                               class="text-slate-500 hover:text-red-400 transition"
-                               onclick="return confirm('Delete this product? Orders linked to it will remain in history.')">
-                               <i class="fas fa-trash"></i>
-                            </a>
-                        </td>
-                    </tr>
-                <?php endforeach; ?>
-            </tbody>
-        </table>
-    </div>
+                        <?php else: ?>
+                            <span class="text-slate-500 text-lg">∞</span>
+                        <?php endif; ?>
+                    </td>
+                    <td class="p-4 text-right font-mono text-slate-300 <?php echo $p['sale_price'] ? 'line-through text-slate-500' : ''; ?>">
+                        <?php echo format_admin_currency($p['price']); ?>
+                    </td>
+                    <td class="p-4 text-right font-mono text-yellow-400 font-bold">
+                        <?php echo $p['sale_price'] ? format_admin_currency($p['sale_price']) : '-'; ?>
+                    </td>
+                    <td class="p-4 text-right">
+                        <a href="<?php echo admin_url('product_edit', ['id' => $p['id']]); ?>" class="text-blue-400 hover:text-white mr-3 transition"><i class="fas fa-edit"></i></a>
+                        <a href="<?php echo admin_url('products', ['delete' => $p['id']]); ?>" 
+                           class="text-red-400 hover:text-white transition"
+                           onclick="return confirm('Delete this product? Orders linked to it will remain in history.')">
+                           <i class="fas fa-trash"></i>
+                        </a>
+                    </td>
+                </tr>
+            <?php endforeach; ?>
+        </tbody>
+    </table>
 </div>
 
 <script>
@@ -268,7 +273,8 @@ $products = $pdo->query("
         const types = ['unique', 'universal', 'form'];
         
         types.forEach(t => {
-            document.getElementById('field_' + t).classList.add('hidden');
+            const el = document.getElementById('field_' + t);
+            if(el) el.classList.add('hidden');
         });
 
         const activeField = document.getElementById('field_' + type);

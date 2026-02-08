@@ -1,0 +1,16 @@
+# admin/.htaccess
+
+# Prevent directory browsing
+Options -Indexes
+
+# Protect Include files from direct access
+<FilesMatch "^(header|footer|functions)\.php$">
+    Order Allow,Deny
+    Deny from all
+</FilesMatch>
+
+# Allow access only to main entry points
+<FilesMatch "^(index|login|logout)\.php$">
+    Order Allow,Deny
+    Allow from all
+</FilesMatch>
