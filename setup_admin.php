@@ -3,8 +3,8 @@
 require_once 'includes/config.php';
 
 // Configuration
-$username = 'admin';
-$password = 'admin123'; // Default password (CHANGE THIS LATER)
+$username = 'admin1'; // Default username
+$password = 'admin123@!'; // Default password (CHANGE THIS LATER)
 $role = 'super_admin';
 
 // Hash the password
