@@ -78,15 +78,19 @@ document.addEventListener('DOMContentLoaded', () => {
     
     if (bellIcon) {
         const parent = bellIcon.closest('.relative');
-        const badge = parent.querySelector('span'); 
-        const dropdown = parent.querySelector('div.absolute'); // The dropdown container
+        const badge = parent ? parent.querySelector('span') : null;
+        const dropdown = parent ? parent.querySelector('div.absolute') : null;
 
         function checkNotifications() {
             fetch('api/notifications.php')
-                .then(response => response.json())
+                .then(response => {
+                    // Check if response is valid JSON
+                    if (!response.ok) throw new Error('Network response was not ok');
+                    return response.json();
+                })
                 .then(data => {
-                    // Safety check: ensure data exists
-                    if (!data) return;
+                    // Safety check: ensure data is an object
+                    if (!data || typeof data !== 'object') return;
 
                     // Update Badge Visibility
                     if (data.count > 0) {
@@ -102,7 +106,7 @@ document.addEventListener('DOMContentLoaded', () => {
                         
                         let contentHtml = '';
                         
-                        // FIX: Check if data.notifications exists before checking length
+                        // FIX: Strict check for array existence before length access
                         if (data.notifications && Array.isArray(data.notifications) && data.notifications.length > 0) {
                              contentHtml = data.notifications.map(n => `
                                 <a href="${n.link}" class="block px-4 py-3 text-xs text-gray-300 hover:bg-gray-700 hover:text-white transition border-b border-gray-700 last:border-0 flex items-start gap-2">
@@ -121,8 +125,7 @@ document.addEventListener('DOMContentLoaded', () => {
                     }
                 })
                 .catch(err => {
-                    // Suppress network errors in console to avoid clutter
-                    // console.error('Notify Poll Error:', err);
+                    // console.error('Notify Poll Error:', err); // Suppress errors to keep console clean
                 });
         }
 
@@ -175,14 +178,19 @@ document.addEventListener('DOMContentLoaded', () => {
         fileInput.addEventListener('change', function(e) {
             const file = e.target.files[0];
             const wrapper = fileInput.closest('div');
-            const label = wrapper.querySelector('p') || wrapper.querySelector('span'); 
+            // Try to find label in siblings or children
+            let label = wrapper.querySelector('p') || wrapper.querySelector('span');
+            // Fallback for different HTML structures
+            if(!label && fileInput.nextElementSibling) label = fileInput.nextElementSibling;
             
             if (file) {
                 if (label) {
                     label.innerHTML = `<span class="text-green-400 font-bold flex items-center justify-center gap-2"><i class="fas fa-check-circle"></i> ${file.name}</span>`;
                 }
-                wrapper.classList.add('border-green-500/50', 'bg-green-500/10');
-                wrapper.classList.remove('border-gray-600');
+                if (wrapper) {
+                    wrapper.classList.add('border-green-500/50', 'bg-green-500/10');
+                    wrapper.classList.remove('border-gray-600');
+                }
             }
         });
     }
@@ -228,14 +236,13 @@ document.addEventListener('DOMContentLoaded', () => {
         pushBtn.addEventListener('click', (e) => {
             e.preventDefault();
             const icon = pushBtn.querySelector('i');
-            const originalIconClass = icon.className;
             
-            icon.className = "fas fa-spinner fa-spin w-5 text-center text-yellow-400";
+            if (icon) icon.className = "fas fa-spinner fa-spin w-5 text-center text-yellow-400";
             
             window.registerServiceWorker()
                 .then(() => {
                     alert('✅ Notifications Enabled Successfully!');
-                    icon.className = "fas fa-check w-5 text-center text-green-400";
+                    if (icon) icon.className = "fas fa-check w-5 text-center text-green-400";
                     pushBtn.innerHTML = '<i class="fas fa-check-circle w-5 text-center text-green-400"></i> Alerts Active';
                     pushBtn.disabled = true;
                     pushBtn.classList.add('opacity-50', 'cursor-default');
@@ -243,7 +250,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 .catch(err => {
                     console.error(err);
                     alert('❌ Could not enable notifications. Please check your browser settings.');
-                    icon.className = "fas fa-bell-slash w-5 text-center text-red-400";
+                    if (icon) icon.className = "fas fa-bell-slash w-5 text-center text-red-400";
                 });
         });
     }
