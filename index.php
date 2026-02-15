@@ -22,7 +22,7 @@ $allowed_routes = [
     'shop' => ['category', 'checkout', 'search' , 'product'],
     
     // User Account
-    'user' => ['orders', 'agent', 'profile' , 'invoice' , 'wishlist'],
+    'user' => ['orders', 'agent', 'profile' , 'invoice' , 'wishlist' , 'dashboard'],
     
     // Information Pages
     'info' => ['support', 'terms', 'privacy', 'tutorial'],
