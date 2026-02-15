@@ -6,7 +6,6 @@
  * --------------------------------------------------------------------------
  */
 // Public VAPID Key for Web Push (Injected from server .env via window.AppConfig)
-// This keeps secrets out of the static JS file.
 const PUBLIC_VAPID_KEY = window.AppConfig?.vapidPublicKey || '';
 
 /**
@@ -15,7 +14,6 @@ const PUBLIC_VAPID_KEY = window.AppConfig?.vapidPublicKey || '';
  * --------------------------------------------------------------------------
  */
 
-// Convert VAPID key for browser compatibility
 function urlBase64ToUint8Array(base64String) {
     const padding = '='.repeat((4 - base64String.length % 4) % 4);
     const base64 = (base64String + padding)
@@ -31,7 +29,6 @@ function urlBase64ToUint8Array(base64String) {
     return outputArray;
 }
 
-// Global function to trigger permission prompt (Called from Header)
 window.registerServiceWorker = async function() {
     if (!('serviceWorker' in navigator)) {
         console.error('Service Worker not supported');
@@ -52,7 +49,6 @@ window.registerServiceWorker = async function() {
             applicationServerKey: urlBase64ToUint8Array(PUBLIC_VAPID_KEY)
         });
 
-        // Send subscription to backend
         await fetch('api/push_subscribe.php', {
             method: 'POST',
             body: JSON.stringify(subscription),
@@ -89,7 +85,10 @@ document.addEventListener('DOMContentLoaded', () => {
             fetch('api/notifications.php')
                 .then(response => response.json())
                 .then(data => {
-                    // Badge Visibility
+                    // Safety check: ensure data exists
+                    if (!data) return;
+
+                    // Update Badge Visibility
                     if (data.count > 0) {
                         if (badge) badge.classList.remove('hidden');
                     } else {
@@ -98,12 +97,13 @@ document.addEventListener('DOMContentLoaded', () => {
 
                     // Update Dropdown List
                     if (dropdown) {
-                        // Preserve header if exists
                         const headerEl = dropdown.querySelector('div.border-b');
                         const headerHtml = headerEl ? headerEl.outerHTML : '';
                         
                         let contentHtml = '';
-                        if (data.notifications && data.notifications.length > 0) {
+                        
+                        // FIX: Check if data.notifications exists before checking length
+                        if (data.notifications && Array.isArray(data.notifications) && data.notifications.length > 0) {
                              contentHtml = data.notifications.map(n => `
                                 <a href="${n.link}" class="block px-4 py-3 text-xs text-gray-300 hover:bg-gray-700 hover:text-white transition border-b border-gray-700 last:border-0 flex items-start gap-2">
                                     <i class="fas fa-circle text-[6px] text-blue-500 mt-1.5 shrink-0"></i>
@@ -114,24 +114,24 @@ document.addEventListener('DOMContentLoaded', () => {
                             contentHtml = '<div class="text-xs text-center py-6 text-gray-500">No new notifications</div>';
                         }
                         
-                        // We target the scrollable container inside the dropdown if it exists
                         const listContainer = dropdown.querySelector('.custom-scrollbar');
                         if (listContainer) {
                              listContainer.innerHTML = contentHtml;
                         }
                     }
                 })
-                .catch(err => console.error('Notify Poll Error:', err));
+                .catch(err => {
+                    // Suppress network errors in console to avoid clutter
+                    // console.error('Notify Poll Error:', err);
+                });
         }
 
-        // Poll every 30s
         setInterval(checkNotifications, 30000);
-        checkNotifications(); // Initial check
+        checkNotifications(); 
     }
 
     /**
      * 2. Checkout Countdown Timer
-     * Creates urgency on the payment page
      */
     const timerDisplay = document.getElementById('timer-display');
     if (timerDisplay) {
@@ -154,7 +154,6 @@ document.addEventListener('DOMContentLoaded', () => {
 
     /**
      * 3. Chat Auto-Scroll & Resizing
-     * Keeps conversation view at the bottom
      */
     const chatBox = document.getElementById('chatBox');
     if (chatBox) {
@@ -162,30 +161,26 @@ document.addEventListener('DOMContentLoaded', () => {
             chatBox.scrollTop = chatBox.scrollHeight;
         }
         scrollToBottom();
-        window.addEventListener('resize', scrollToBottom); // Handle mobile keyboard
+        window.addEventListener('resize', scrollToBottom);
         
-        // Watch for new messages if dynamically added
         const observer = new MutationObserver(scrollToBottom);
         observer.observe(chatBox, { childList: true });
     }
 
     /**
      * 4. File Upload Preview
-     * Updates the ugly file input label with the filename
      */
     const fileInput = document.querySelector('input[type="file"]');
     if (fileInput) {
         fileInput.addEventListener('change', function(e) {
             const file = e.target.files[0];
             const wrapper = fileInput.closest('div');
-            // Try finding a text label to update
             const label = wrapper.querySelector('p') || wrapper.querySelector('span'); 
             
             if (file) {
                 if (label) {
                     label.innerHTML = `<span class="text-green-400 font-bold flex items-center justify-center gap-2"><i class="fas fa-check-circle"></i> ${file.name}</span>`;
                 }
-                // Visual feedback on container
                 wrapper.classList.add('border-green-500/50', 'bg-green-500/10');
                 wrapper.classList.remove('border-gray-600');
             }
@@ -194,7 +189,6 @@ document.addEventListener('DOMContentLoaded', () => {
 
     /**
      * 5. Flash Message Auto-Dismiss
-     * Fades out success/error banners after 4 seconds
      */
     const flashMessages = document.querySelectorAll('.bg-green-500\\/20, .bg-red-500\\/20, .bg-green-500\\/10, .bg-red-500\\/10');
     if (flashMessages.length > 0) {
@@ -228,16 +222,14 @@ document.addEventListener('DOMContentLoaded', () => {
 
     /**
      * 7. Push Permission Button Hook
-     * Handles the "Enable Alerts" button in the User Menu
      */
     const pushBtn = document.getElementById('enable-push');
     if(pushBtn) {
         pushBtn.addEventListener('click', (e) => {
             e.preventDefault();
             const icon = pushBtn.querySelector('i');
-            
-            // Loading state UI
             const originalIconClass = icon.className;
+            
             icon.className = "fas fa-spinner fa-spin w-5 text-center text-yellow-400";
             
             window.registerServiceWorker()
@@ -255,5 +247,4 @@ document.addEventListener('DOMContentLoaded', () => {
                 });
         });
     }
-
 });
