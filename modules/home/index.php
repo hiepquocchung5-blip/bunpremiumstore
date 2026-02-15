@@ -119,7 +119,46 @@ $discount = is_logged_in() ? get_user_discount($_SESSION['user_id']) : 0;
     </div>
 <?php endif; ?>
 
-<!-- SECTION 2: Feature Strip & Telegram Ad -->
+
+<!-- SECTION 2: Categories -->
+<div class="mb-16">
+    <h2 class="text-2xl font-bold text-white mb-6">Explore Categories</h2>
+    <div class="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-4">
+        <?php foreach($categories as $cat): ?>
+            <a href="index.php?module=shop&page=category&id=<?php echo $cat['id']; ?>" class="glass-card p-5 rounded-2xl text-center group block border border-gray-700 hover:border-blue-500/50 relative overflow-hidden">
+                <div class="absolute inset-0 bg-blue-600/5 opacity-0 group-hover:opacity-100 transition"></div>
+                <div class="w-12 h-12 mx-auto bg-gray-900 rounded-xl flex items-center justify-center mb-3 group-hover:scale-110 transition border border-gray-700 group-hover:border-blue-500 shadow-lg relative z-10">
+                    <i class="fas <?php echo $cat['icon_class']; ?> text-xl text-gray-400 group-hover:text-blue-400 transition-colors"></i>
+                </div>
+                <h3 class="text-xs font-bold text-gray-300 group-hover:text-white transition-colors relative z-10 uppercase tracking-wide"><?php echo htmlspecialchars($cat['name']); ?></h3>
+            </a>
+        <?php endforeach; ?>
+    </div>
+</div>
+
+<!-- SECTION 3: Hot Deals (Flash Sales) -->
+<?php if(!empty($flash_sales)): ?>
+<div class="mb-16">
+    <div class="flex items-center justify-between mb-6">
+        <div class="flex items-center gap-2">
+            <span class="relative flex h-3 w-3">
+              <span class="animate-ping absolute inline-flex h-full w-full rounded-full bg-red-400 opacity-75"></span>
+              <span class="relative inline-flex rounded-full h-3 w-3 bg-red-500"></span>
+            </span>
+            <h2 class="text-2xl font-bold text-white">Flash Sales</h2>
+        </div>
+        <div class="text-xs font-mono text-red-400 bg-red-900/20 px-2 py-1 rounded border border-red-900/30">Limited Time Offer</div>
+    </div>
+    <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+        <?php foreach($flash_sales as $product): 
+            include __DIR__ . '/product_card.php'; 
+        endforeach; ?>
+    </div>
+</div>
+<?php endif; ?>
+
+
+ <!-- SECTION 4: Feature Strip & Telegram Ad -->
 <div class="grid grid-cols-1 md:grid-cols-4 gap-4 mb-16">
     
     <!-- Telegram Ad Card -->
@@ -153,42 +192,6 @@ $discount = is_logged_in() ? get_user_discount($_SESSION['user_id']) : 0;
     </div>
 </div>
 
-<!-- SECTION 3: Hot Deals (Flash Sales) -->
-<?php if(!empty($flash_sales)): ?>
-<div class="mb-16">
-    <div class="flex items-center justify-between mb-6">
-        <div class="flex items-center gap-2">
-            <span class="relative flex h-3 w-3">
-              <span class="animate-ping absolute inline-flex h-full w-full rounded-full bg-red-400 opacity-75"></span>
-              <span class="relative inline-flex rounded-full h-3 w-3 bg-red-500"></span>
-            </span>
-            <h2 class="text-2xl font-bold text-white">Flash Sales</h2>
-        </div>
-        <div class="text-xs font-mono text-red-400 bg-red-900/20 px-2 py-1 rounded border border-red-900/30">Limited Time Offer</div>
-    </div>
-    <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-        <?php foreach($flash_sales as $product): 
-            include __DIR__ . '/product_card.php'; 
-        endforeach; ?>
-    </div>
-</div>
-<?php endif; ?>
-
-<!-- SECTION 4: Categories -->
-<div class="mb-16">
-    <h2 class="text-2xl font-bold text-white mb-6">Explore Categories</h2>
-    <div class="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-4">
-        <?php foreach($categories as $cat): ?>
-            <a href="index.php?module=shop&page=category&id=<?php echo $cat['id']; ?>" class="glass-card p-5 rounded-2xl text-center group block border border-gray-700 hover:border-blue-500/50 relative overflow-hidden">
-                <div class="absolute inset-0 bg-blue-600/5 opacity-0 group-hover:opacity-100 transition"></div>
-                <div class="w-12 h-12 mx-auto bg-gray-900 rounded-xl flex items-center justify-center mb-3 group-hover:scale-110 transition border border-gray-700 group-hover:border-blue-500 shadow-lg relative z-10">
-                    <i class="fas <?php echo $cat['icon_class']; ?> text-xl text-gray-400 group-hover:text-blue-400 transition-colors"></i>
-                </div>
-                <h3 class="text-xs font-bold text-gray-300 group-hover:text-white transition-colors relative z-10 uppercase tracking-wide"><?php echo htmlspecialchars($cat['name']); ?></h3>
-            </a>
-        <?php endforeach; ?>
-    </div>
-</div>
 
 <!-- SECTION 5: Main Hub (Sidebar + Grid) -->
 <div class="grid grid-cols-1 lg:grid-cols-4 gap-8 mb-16">
