@@ -6,8 +6,6 @@ $id = isset($_GET['id']) ? (int)$_GET['id'] : 0;
 // 1. Handle Update
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['update_product'])) {
     try {
-        $pdo->beginTransaction();
-
         $name = trim($_POST['name']);
         $description = trim($_POST['description']);
         $price = (float) $_POST['price'];
@@ -30,15 +28,45 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['update_product'])) {
             $form_fields = !empty($form_schema) ? json_encode($form_schema) : NULL;
         }
 
+        // Handle Image Update
+        $image_sql_part = "";
+        $params = [$cat_id, $region_id, $name, $description, $price, $sale_price, $delivery_type, $universal_content, $form_fields, $instruction];
+
+        if (!empty($_FILES['image']['name'])) {
+            // 1. Get old image path to delete later
+            $stmt = $pdo->prepare("SELECT image_path FROM products WHERE id = ?");
+            $stmt->execute([$id]);
+            $old_img = $stmt->fetchColumn();
+
+            // 2. Upload new image
+            $target_dir = "../uploads/products/";
+            $ext = strtolower(pathinfo($_FILES['image']['name'], PATHINFO_EXTENSION));
+            $filename = uniqid('prod_') . '.' . $ext;
+            
+            if (move_uploaded_file($_FILES['image']['tmp_name'], $target_dir . $filename)) {
+                $image_sql_part = ", image_path = ?";
+                $params[] = "uploads/products/" . $filename;
+
+                // 3. Delete old image if exists
+                if ($old_img && file_exists("../" . $old_img)) {
+                    unlink("../" . $old_img);
+                }
+            }
+        }
+
+        // Finalize Params
+        $params[] = $id; 
+
         // Update Product Table
         $stmt = $pdo->prepare("
             UPDATE products SET 
             category_id = ?, region_id = ?, name = ?, description = ?, 
             price = ?, sale_price = ?, delivery_type = ?, 
             universal_content = ?, form_fields = ?, user_instruction = ?
+            $image_sql_part
             WHERE id = ?
         ");
-        $stmt->execute([$cat_id, $region_id, $name, $description, $price, $sale_price, $delivery_type, $universal_content, $form_fields, $instruction, $id]);
+        $stmt->execute($params);
 
         // Update Instructions: Delete old, Insert new
         $pdo->prepare("DELETE FROM product_instructions WHERE product_id = ?")->execute([$id]);
@@ -51,11 +79,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['update_product'])) {
             }
         }
 
-        $pdo->commit();
         redirect(admin_url('products', ['success' => 'updated']));
 
     } catch (Exception $e) {
-        $pdo->rollBack();
         $error = "Error updating product: " . $e->getMessage();
     }
 }
@@ -99,7 +125,7 @@ $regions = $pdo->query("SELECT * FROM regions ORDER BY name ASC")->fetchAll();
     <?php if(isset($error)) echo "<div class='bg-red-500/20 text-red-400 p-4 rounded-xl border border-red-500/50 mb-6'>$error</div>"; ?>
 
     <div class="bg-slate-800 p-6 rounded-xl border border-slate-700 shadow-lg">
-        <form method="POST" class="grid grid-cols-1 md:grid-cols-2 gap-6">
+        <form method="POST" enctype="multipart/form-data" class="grid grid-cols-1 md:grid-cols-2 gap-6">
             
             <!-- LEFT COLUMN: Basic Info -->
             <div class="space-y-4">
@@ -141,6 +167,21 @@ $regions = $pdo->query("SELECT * FROM regions ORDER BY name ASC")->fetchAll();
                                 <option value="<?php echo $r['id']; ?>" <?php echo $r['id'] == $product['region_id'] ? 'selected' : ''; ?>><?php echo htmlspecialchars($r['name']); ?></option>
                             <?php endforeach; ?>
                         </select>
+                    </div>
+                </div>
+
+                <div>
+                    <label class="block text-xs font-bold text-slate-400 mb-2">Cover Image</label>
+                    <div class="flex items-start gap-4">
+                        <?php if($product['image_path']): ?>
+                            <img src="<?php echo MAIN_SITE_URL . $product['image_path']; ?>" class="w-20 h-20 object-cover rounded-lg border border-slate-600 bg-black">
+                        <?php else: ?>
+                            <div class="w-20 h-20 rounded-lg bg-slate-700 flex items-center justify-center text-slate-500"><i class="fas fa-image"></i></div>
+                        <?php endif; ?>
+                        <div class="flex-1">
+                            <input type="file" name="image" accept="image/*" class="w-full text-sm text-slate-400 file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-xs file:font-semibold file:bg-slate-700 file:text-white hover:file:bg-slate-600">
+                            <p class="text-[10px] text-slate-500 mt-1">Upload new image to replace current.</p>
+                        </div>
                     </div>
                 </div>
             </div>
@@ -186,7 +227,7 @@ $regions = $pdo->query("SELECT * FROM regions ORDER BY name ASC")->fetchAll();
                     </div>
                     <div>
                         <label class="block text-xs font-bold text-red-400 mb-1">Mandatory Checkboxes (One per line)</label>
-                        <textarea name="checkbox_instructions" rows="2" class="w-full bg-slate-900 border border-slate-600 p-2.5 rounded-lg text-white text-sm"><?php echo htmlspecialchars($current_instructions); ?></textarea>
+                        <textarea name="checkbox_instructions" rows="3" class="w-full bg-slate-900 border border-slate-600 p-2.5 rounded-lg text-white text-sm"><?php echo htmlspecialchars($current_instructions); ?></textarea>
                     </div>
                 </div>
             </div>

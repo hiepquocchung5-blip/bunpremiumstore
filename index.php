@@ -19,10 +19,10 @@ $allowed_routes = [
     'auth' => ['login', 'register', 'logout'],
     
     // Shopping Logic
-    'shop' => ['category', 'checkout', 'search'],
+    'shop' => ['category', 'checkout', 'search' , 'product'],
     
     // User Account
-    'user' => ['orders', 'agent', 'profile'],
+    'user' => ['orders', 'agent', 'profile' , 'invoice' , 'wishlist'],
     
     // Information Pages
     'info' => ['support', 'terms', 'privacy', 'tutorial'],

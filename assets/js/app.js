@@ -1,76 +1,144 @@
 // assets/js/app.js
 
+/**
+ * --------------------------------------------------------------------------
+ * CONFIGURATION
+ * --------------------------------------------------------------------------
+ */
+// Public VAPID Key for Web Push (Injected from server .env via window.AppConfig)
+// This keeps secrets out of the static JS file.
+const PUBLIC_VAPID_KEY = window.AppConfig?.vapidPublicKey || '';
+
+/**
+ * --------------------------------------------------------------------------
+ * PUSH NOTIFICATION HELPERS
+ * --------------------------------------------------------------------------
+ */
+
+// Convert VAPID key for browser compatibility
+function urlBase64ToUint8Array(base64String) {
+    const padding = '='.repeat((4 - base64String.length % 4) % 4);
+    const base64 = (base64String + padding)
+        .replace(/\-/g, '+')
+        .replace(/_/g, '/');
+
+    const rawData = window.atob(base64);
+    const outputArray = new Uint8Array(rawData.length);
+
+    for (let i = 0; i < rawData.length; ++i) {
+        outputArray[i] = rawData.charCodeAt(i);
+    }
+    return outputArray;
+}
+
+// Global function to trigger permission prompt (Called from Header)
+window.registerServiceWorker = async function() {
+    if (!('serviceWorker' in navigator)) {
+        console.error('Service Worker not supported');
+        return;
+    }
+
+    if (!PUBLIC_VAPID_KEY) {
+        console.error('VAPID Public Key is missing. Check .env configuration.');
+        return;
+    }
+
+    try {
+        const register = await navigator.serviceWorker.register('assets/sw.js');
+        await navigator.serviceWorker.ready;
+
+        const subscription = await register.pushManager.subscribe({
+            userVisibleOnly: true,
+            applicationServerKey: urlBase64ToUint8Array(PUBLIC_VAPID_KEY)
+        });
+
+        // Send subscription to backend
+        await fetch('api/push_subscribe.php', {
+            method: 'POST',
+            body: JSON.stringify(subscription),
+            headers: { 'Content-Type': 'application/json' }
+        });
+
+        console.log('Push Notification Subscribed');
+        return true;
+    } catch (err) {
+        console.error('Service Worker Error:', err);
+        throw err;
+    }
+};
+
+/**
+ * --------------------------------------------------------------------------
+ * DOM READY LOGIC
+ * --------------------------------------------------------------------------
+ */
 document.addEventListener('DOMContentLoaded', () => {
-    
+
     /**
      * 1. Notification Polling System
-     * Fetches unread count and latest updates from api/notifications.php
+     * Checks for internal notifications every 30s via AJAX
      */
     const bellIcon = document.querySelector('.fa-bell');
     
     if (bellIcon) {
-        // Locate the badge (span) and dropdown container relative to the icon
-        // Structure assumption: parent -> icon + span + div(dropdown)
         const parent = bellIcon.closest('.relative');
         const badge = parent.querySelector('span'); 
-        const dropdown = parent.querySelector('div'); 
-        
+        const dropdown = parent.querySelector('div.absolute'); // The dropdown container
+
         function checkNotifications() {
             fetch('api/notifications.php')
                 .then(response => response.json())
                 .then(data => {
-                    // Update Red Badge Visibility
+                    // Badge Visibility
                     if (data.count > 0) {
                         if (badge) badge.classList.remove('hidden');
                     } else {
                         if (badge) badge.classList.add('hidden');
                     }
 
-                    // Update Dropdown Content
-                    if (dropdown && data.notifications.length > 0) {
-                        // Create HTML for new notifications
-                        const listHtml = data.notifications.map(n => `
-                            <a href="${n.link}" class="block px-4 py-2 text-xs text-gray-300 hover:bg-gray-700 hover:text-white transition border-b border-gray-700 last:border-0">
-                                ${n.text}
-                            </a>
-                        `).join('');
+                    // Update Dropdown List
+                    if (dropdown) {
+                        // Preserve header if exists
+                        const headerEl = dropdown.querySelector('div.border-b');
+                        const headerHtml = headerEl ? headerEl.outerHTML : '';
                         
-                        // Preserve the header ("Notifications") and update the list
-                        const headerElement = dropdown.querySelector('h4');
-                        const headerHtml = headerElement ? headerElement.outerHTML : '<h4 class="text-sm font-bold border-b border-gray-700 pb-2 mb-2">Notifications</h4>';
+                        let contentHtml = '';
+                        if (data.notifications && data.notifications.length > 0) {
+                             contentHtml = data.notifications.map(n => `
+                                <a href="${n.link}" class="block px-4 py-3 text-xs text-gray-300 hover:bg-gray-700 hover:text-white transition border-b border-gray-700 last:border-0 flex items-start gap-2">
+                                    <i class="fas fa-circle text-[6px] text-blue-500 mt-1.5 shrink-0"></i>
+                                    <span>${n.text}</span>
+                                </a>
+                            `).join('');
+                        } else {
+                            contentHtml = '<div class="text-xs text-center py-6 text-gray-500">No new notifications</div>';
+                        }
                         
-                        dropdown.innerHTML = headerHtml + listHtml;
-                    } else if (dropdown) {
-                        // Empty state
-                        const headerElement = dropdown.querySelector('h4');
-                        const headerHtml = headerElement ? headerElement.outerHTML : '<h4 class="text-sm font-bold border-b border-gray-700 pb-2 mb-2">Notifications</h4>';
-                        dropdown.innerHTML = headerHtml + '<div class="text-xs text-gray-400 text-center py-2">No new notifications</div>';
+                        // We target the scrollable container inside the dropdown if it exists
+                        const listContainer = dropdown.querySelector('.custom-scrollbar');
+                        if (listContainer) {
+                             listContainer.innerHTML = contentHtml;
+                        }
                     }
                 })
-                .catch(err => console.error('Notify Error:', err));
+                .catch(err => console.error('Notify Poll Error:', err));
         }
 
-        // Poll every 30 seconds
+        // Poll every 30s
         setInterval(checkNotifications, 30000);
-        
-        // Initial check on load
-        checkNotifications(); 
+        checkNotifications(); // Initial check
     }
 
     /**
      * 2. Checkout Countdown Timer
-     * Used in modules/shop/checkout.php to show urgency
+     * Creates urgency on the payment page
      */
     const timerDisplay = document.getElementById('timer-display');
     if (timerDisplay) {
-        // Set duration in seconds (10 minutes)
-        let duration = 600; 
-        
+        let duration = 600; // 10 minutes
         const timer = setInterval(() => {
             const minutes = Math.floor(duration / 60);
             const seconds = duration % 60;
-            
-            // Format time as MM:SS (e.g., 09:05)
             const fmtMin = minutes < 10 ? '0' + minutes : minutes;
             const fmtSec = seconds < 10 ? '0' + seconds : seconds;
             
@@ -78,46 +146,47 @@ document.addEventListener('DOMContentLoaded', () => {
             
             if (--duration < 0) {
                 clearInterval(timer);
-                alert("Session Expired. Please refresh the page to continue.");
+                alert("Session Expired. Please refresh the page.");
                 window.location.reload();
             }
         }, 1000);
     }
 
     /**
-     * 3. Chat Auto-Scroll
-     * Used in modules/user/orders.php and admin chat
-     * Keeps the scrollbar at the bottom when page loads or new message arrives
+     * 3. Chat Auto-Scroll & Resizing
+     * Keeps conversation view at the bottom
      */
     const chatBox = document.getElementById('chatBox');
     if (chatBox) {
-        // Scroll to bottom immediately
-        chatBox.scrollTop = chatBox.scrollHeight;
-        
-        // Optional: Re-scroll on window resize (mobile keyboard appearance)
-        window.addEventListener('resize', () => {
+        const scrollToBottom = () => {
             chatBox.scrollTop = chatBox.scrollHeight;
-        });
+        }
+        scrollToBottom();
+        window.addEventListener('resize', scrollToBottom); // Handle mobile keyboard
+        
+        // Watch for new messages if dynamically added
+        const observer = new MutationObserver(scrollToBottom);
+        observer.observe(chatBox, { childList: true });
     }
 
     /**
      * 4. File Upload Preview
-     * Used in Checkout to show filename after selection
+     * Updates the ugly file input label with the filename
      */
     const fileInput = document.querySelector('input[type="file"]');
     if (fileInput) {
         fileInput.addEventListener('change', function(e) {
             const file = e.target.files[0];
-            // Find the sibling element or parent text container to update
-            // Assumption: Input is inside a wrapper, and text is a sibling or parent's child
             const wrapper = fileInput.closest('div');
-            const textLabel = wrapper.querySelector('p') || wrapper.querySelector('span') || fileInput.nextElementSibling;
+            // Try finding a text label to update
+            const label = wrapper.querySelector('p') || wrapper.querySelector('span'); 
             
-            if (file && textLabel) {
-                // Update text with filename and success icon
-                textLabel.innerHTML = `<span class="text-green-400 font-bold"><i class="fas fa-check-circle"></i> ${file.name}</span>`;
-                // Add a border highlight to the container
-                wrapper.classList.add('border-green-500', 'bg-green-500/10');
+            if (file) {
+                if (label) {
+                    label.innerHTML = `<span class="text-green-400 font-bold flex items-center justify-center gap-2"><i class="fas fa-check-circle"></i> ${file.name}</span>`;
+                }
+                // Visual feedback on container
+                wrapper.classList.add('border-green-500/50', 'bg-green-500/10');
                 wrapper.classList.remove('border-gray-600');
             }
         });
@@ -125,21 +194,66 @@ document.addEventListener('DOMContentLoaded', () => {
 
     /**
      * 5. Flash Message Auto-Dismiss
-     * Automatically hides success/error alerts after 4 seconds
+     * Fades out success/error banners after 4 seconds
      */
     const flashMessages = document.querySelectorAll('.bg-green-500\\/20, .bg-red-500\\/20, .bg-green-500\\/10, .bg-red-500\\/10');
     if (flashMessages.length > 0) {
         setTimeout(() => {
             flashMessages.forEach(msg => {
-                // Add transition for smooth fade out
                 msg.style.transition = "opacity 0.5s ease, transform 0.5s ease";
                 msg.style.opacity = "0";
                 msg.style.transform = "translateY(-10px)";
-                
-                // Remove from DOM after transition
                 setTimeout(() => msg.remove(), 500);
             });
         }, 4000);
+    }
+    
+    /**
+     * 6. Scroll To Top Logic
+     */
+    const scrollBtn = document.getElementById('scrollToTop');
+    if (scrollBtn) {
+        window.addEventListener('scroll', () => {
+            if (window.scrollY > 300) {
+                scrollBtn.classList.remove('opacity-0', 'invisible', 'translate-y-10');
+            } else {
+                scrollBtn.classList.add('opacity-0', 'invisible', 'translate-y-10');
+            }
+        });
+
+        scrollBtn.addEventListener('click', () => {
+            window.scrollTo({ top: 0, behavior: 'smooth' });
+        });
+    }
+
+    /**
+     * 7. Push Permission Button Hook
+     * Handles the "Enable Alerts" button in the User Menu
+     */
+    const pushBtn = document.getElementById('enable-push');
+    if(pushBtn) {
+        pushBtn.addEventListener('click', (e) => {
+            e.preventDefault();
+            const icon = pushBtn.querySelector('i');
+            
+            // Loading state UI
+            const originalIconClass = icon.className;
+            icon.className = "fas fa-spinner fa-spin w-5 text-center text-yellow-400";
+            
+            window.registerServiceWorker()
+                .then(() => {
+                    alert('✅ Notifications Enabled Successfully!');
+                    icon.className = "fas fa-check w-5 text-center text-green-400";
+                    pushBtn.innerHTML = '<i class="fas fa-check-circle w-5 text-center text-green-400"></i> Alerts Active';
+                    pushBtn.disabled = true;
+                    pushBtn.classList.add('opacity-50', 'cursor-default');
+                })
+                .catch(err => {
+                    console.error(err);
+                    alert('❌ Could not enable notifications. Please check your browser settings.');
+                    icon.className = "fas fa-bell-slash w-5 text-center text-red-400";
+                });
+        });
     }
 
 });

@@ -40,6 +40,24 @@ $payments = $pdo->query("SELECT * FROM payment_methods ORDER BY id DESC")->fetch
     </div>
 </div>
 
+<?php if(isset($_GET['success'])): ?>
+    <div class="bg-green-500/20 text-green-400 p-4 rounded-xl border border-green-500/50 mb-6 flex items-center gap-3">
+        <i class="fas fa-check-circle"></i> Payment method added.
+    </div>
+<?php endif; ?>
+
+<?php if(isset($_GET['deleted'])): ?>
+    <div class="bg-red-500/20 text-red-400 p-4 rounded-xl border border-red-500/50 mb-6 flex items-center gap-3">
+        <i class="fas fa-trash-alt"></i> Payment method deleted.
+    </div>
+<?php endif; ?>
+
+<?php if(isset($_GET['updated'])): ?>
+    <div class="bg-blue-500/20 text-blue-400 p-4 rounded-xl border border-blue-500/50 mb-6 flex items-center gap-3">
+        <i class="fas fa-save"></i> Payment method updated.
+    </div>
+<?php endif; ?>
+
 <div class="grid grid-cols-1 lg:grid-cols-3 gap-8">
     
     <!-- Add Form -->
@@ -70,8 +88,8 @@ $payments = $pdo->query("SELECT * FROM payment_methods ORDER BY id DESC")->fetch
                         <option value="fab fa-bitcoin">Crypto</option>
                     </select>
                 </div>
-                <button type="submit" name="add_payment" class="w-full bg-blue-600 hover:bg-blue-500 text-white font-bold py-2.5 rounded-lg transition shadow-lg text-sm">
-                    Add Method
+                <button type="submit" name="add_payment" class="w-full bg-blue-600 hover:bg-blue-500 text-white font-bold py-2.5 rounded-lg transition shadow-lg text-sm flex justify-center items-center gap-2">
+                    <i class="fas fa-plus"></i> Add Method
                 </button>
             </form>
         </div>
@@ -80,34 +98,56 @@ $payments = $pdo->query("SELECT * FROM payment_methods ORDER BY id DESC")->fetch
     <!-- List -->
     <div class="lg:col-span-2 grid grid-cols-1 md:grid-cols-2 gap-4">
         <?php foreach($payments as $pm): ?>
-            <div class="bg-slate-800 p-5 rounded-xl border <?php echo $pm['is_active'] ? 'border-slate-700' : 'border-red-900/50 opacity-75'; ?> relative group hover:border-blue-500/50 transition">
+            <div class="bg-slate-800 p-5 rounded-xl border <?php echo $pm['is_active'] ? 'border-slate-700' : 'border-red-900/50 opacity-75'; ?> relative group hover:border-blue-500/50 transition shadow-md">
                 
-                <div class="absolute top-4 right-4 flex gap-2 opacity-0 group-hover:opacity-100 transition">
-                    <a href="<?php echo admin_url('payments', ['toggle' => $pm['id']]); ?>" class="text-xs bg-slate-700 hover:bg-slate-600 text-white px-2 py-1 rounded" title="Toggle Status">
+                <div class="absolute top-4 right-4 flex gap-2 opacity-0 group-hover:opacity-100 transition duration-200">
+                    <!-- Toggle Status -->
+                    <a href="<?php echo admin_url('payments', ['toggle' => $pm['id']]); ?>" 
+                       class="text-xs bg-slate-700 hover:bg-slate-600 text-white px-2 py-1 rounded transition" 
+                       title="<?php echo $pm['is_active'] ? 'Disable' : 'Enable'; ?>">
                         <i class="fas <?php echo $pm['is_active'] ? 'fa-toggle-on text-green-400' : 'fa-toggle-off text-gray-400'; ?>"></i>
                     </a>
-                    <a href="<?php echo admin_url('payments', ['delete' => $pm['id']]); ?>" class="text-xs bg-slate-700 hover:bg-red-600 text-white px-2 py-1 rounded" onclick="return confirm('Delete?')" title="Delete">
+                    
+                    <!-- Edit Button (Updated) -->
+                    <a href="<?php echo admin_url('payment_edit', ['id' => $pm['id']]); ?>" 
+                       class="text-xs bg-slate-700 hover:bg-blue-600 text-white px-2 py-1 rounded transition" 
+                       title="Edit">
+                        <i class="fas fa-edit"></i>
+                    </a>
+                    
+                    <!-- Delete Button -->
+                    <a href="<?php echo admin_url('payments', ['delete' => $pm['id']]); ?>" 
+                       class="text-xs bg-slate-700 hover:bg-red-600 text-white px-2 py-1 rounded transition" 
+                       onclick="return confirm('Delete this payment method?')" 
+                       title="Delete">
                         <i class="fas fa-trash"></i>
                     </a>
                 </div>
 
                 <div class="flex items-center gap-4">
-                    <div class="w-12 h-12 rounded-full bg-slate-900 flex items-center justify-center text-blue-400 text-xl border border-slate-700">
+                    <div class="w-12 h-12 rounded-full bg-slate-900 flex items-center justify-center text-blue-400 text-xl border border-slate-700 shrink-0">
                         <i class="<?php echo $pm['logo_class']; ?>"></i>
                     </div>
-                    <div>
-                        <h4 class="font-bold text-white"><?php echo htmlspecialchars($pm['bank_name']); ?></h4>
-                        <p class="text-xs text-slate-400"><?php echo htmlspecialchars($pm['account_name']); ?></p>
+                    <div class="min-w-0">
+                        <h4 class="font-bold text-white truncate"><?php echo htmlspecialchars($pm['bank_name']); ?></h4>
+                        <p class="text-xs text-slate-400 truncate"><?php echo htmlspecialchars($pm['account_name']); ?></p>
                         <p class="text-sm font-mono text-green-400 mt-1 select-all"><?php echo htmlspecialchars($pm['account_number']); ?></p>
                     </div>
                 </div>
                 
                 <?php if(!$pm['is_active']): ?>
-                    <div class="absolute inset-0 bg-black/10 flex items-center justify-center pointer-events-none">
-                        <span class="bg-red-600 text-white text-[10px] font-bold px-2 py-1 rounded uppercase">Disabled</span>
+                    <div class="absolute inset-0 bg-black/40 flex items-center justify-center pointer-events-none rounded-xl">
+                        <span class="bg-red-600 text-white text-[10px] font-bold px-2 py-1 rounded uppercase tracking-wider shadow-lg">Disabled</span>
                     </div>
                 <?php endif; ?>
             </div>
         <?php endforeach; ?>
+        
+        <?php if(empty($payments)): ?>
+            <div class="col-span-1 md:col-span-2 text-center py-10 border-2 border-dashed border-slate-700 rounded-xl text-slate-500">
+                <i class="fas fa-wallet text-4xl mb-3 opacity-30"></i>
+                <p class="text-sm">No payment methods added yet.</p>
+            </div>
+        <?php endif; ?>
     </div>
 </div>

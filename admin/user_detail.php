@@ -1,12 +1,15 @@
 <?php
 // admin/user_detail.php
 
+// Include Push Service
+require_once dirname(__DIR__) . '/includes/PushService.php';
+
 $user_id = isset($_GET['id']) ? (int)$_GET['id'] : 0;
 
 // 1. Handle POST Actions
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     
-    // Toggle Verification Status
+    // Action: Update Verification Status
     if (isset($_POST['toggle_status'])) {
         $status = $_POST['is_verified']; // 1 or 0
         $stmt = $pdo->prepare("UPDATE users SET is_verified = ? WHERE id = ?");
@@ -14,7 +17,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $success = "User status updated.";
     }
 
-    // Admin Reset Password
+    // Action: Reset Password
     if (isset($_POST['reset_password'])) {
         $new_pass = $_POST['new_password'];
         if (strlen($new_pass) >= 6) {
@@ -26,13 +29,32 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             $error = "Password must be at least 6 characters.";
         }
     }
+
+    // Action: Send Custom Push Notification
+    if (isset($_POST['send_push'])) {
+        $title = trim($_POST['push_title']);
+        $body = trim($_POST['push_body']);
+        $url = trim($_POST['push_url']);
+
+        if ($title && $body) {
+            $push = new PushService($pdo);
+            if ($push->sendToUser($user_id, $title, $body, $url)) {
+                $success = "Push notification sent to user devices.";
+            } else {
+                $error = "Failed to send. User might not have enabled notifications.";
+            }
+        } else {
+            $error = "Title and Body are required for notifications.";
+        }
+    }
 }
 
 // 2. Fetch User Data
 $stmt = $pdo->prepare("
     SELECT u.*, 
     (SELECT COUNT(*) FROM orders WHERE user_id = u.id) as total_orders,
-    (SELECT SUM(total_price_paid) FROM orders WHERE user_id = u.id AND status = 'active') as total_spent
+    (SELECT SUM(total_price_paid) FROM orders WHERE user_id = u.id AND status = 'active') as total_spent,
+    (SELECT COUNT(*) FROM push_subscriptions WHERE user_id = u.id) as device_count
     FROM users u 
     WHERE u.id = ?
 ");
@@ -46,11 +68,11 @@ if (!$user) {
 
 // 3. Fetch User Orders
 $stmt = $pdo->prepare("
-    SELECT o.*, p.name as product_name 
+    SELECT o.*, p.name as product_name, p.delivery_type 
     FROM orders o 
     JOIN products p ON o.product_id = p.id 
     WHERE o.user_id = ? 
-    ORDER BY o.created_at DESC LIMIT 50
+    ORDER BY o.created_at DESC LIMIT 20
 ");
 $stmt->execute([$user_id]);
 $orders = $stmt->fetchAll();
@@ -82,14 +104,18 @@ $orders = $stmt->fetchAll();
                     </span>
                 </div>
 
-                <div class="grid grid-cols-2 gap-4 border-t border-slate-700 pt-4">
+                <div class="grid grid-cols-3 gap-2 border-t border-slate-700 pt-4 text-center">
                     <div>
                         <span class="block text-slate-500 text-[10px] uppercase font-bold tracking-wider">Spent</span>
-                        <span class="block text-green-400 font-mono text-lg font-bold"><?php echo format_admin_currency($user['total_spent'] ?: 0); ?></span>
+                        <span class="block text-green-400 font-mono text-sm font-bold"><?php echo format_admin_currency($user['total_spent'] ?: 0); ?></span>
                     </div>
                     <div>
                         <span class="block text-slate-500 text-[10px] uppercase font-bold tracking-wider">Orders</span>
-                        <span class="block text-white font-mono text-lg font-bold"><?php echo $user['total_orders']; ?></span>
+                        <span class="block text-white font-mono text-sm font-bold"><?php echo $user['total_orders']; ?></span>
+                    </div>
+                    <div>
+                        <span class="block text-slate-500 text-[10px] uppercase font-bold tracking-wider">Devices</span>
+                        <span class="block text-blue-400 font-mono text-sm font-bold"><i class="fas fa-mobile-alt mr-1"></i><?php echo $user['device_count']; ?></span>
                     </div>
                 </div>
             </div>
@@ -99,10 +125,31 @@ $orders = $stmt->fetchAll();
         <?php if(isset($success)) echo "<div class='bg-green-500/20 text-green-400 p-3 rounded-lg border border-green-500/50 text-sm flex items-center gap-2'><i class='fas fa-check-circle'></i> $success</div>"; ?>
         <?php if(isset($error)) echo "<div class='bg-red-500/20 text-red-400 p-3 rounded-lg border border-red-500/50 text-sm flex items-center gap-2'><i class='fas fa-exclamation-triangle'></i> $error</div>"; ?>
 
-        <!-- Edit Status -->
+        <!-- Send Push Notification -->
         <div class="bg-slate-800 p-6 rounded-xl border border-slate-700 shadow-lg">
             <h3 class="font-bold text-white mb-4 text-sm uppercase flex items-center gap-2">
-                <i class="fas fa-user-cog text-blue-500"></i> Account Status
+                <i class="fas fa-bell text-blue-500"></i> Send Push Alert
+            </h3>
+            <form method="POST" class="space-y-3">
+                <div>
+                    <input type="text" name="push_title" placeholder="Title (e.g. Special Offer)" class="w-full bg-slate-900 border border-slate-600 rounded p-2 text-white text-xs focus:border-blue-500 outline-none">
+                </div>
+                <div>
+                    <textarea name="push_body" rows="2" placeholder="Message body..." class="w-full bg-slate-900 border border-slate-600 rounded p-2 text-white text-xs focus:border-blue-500 outline-none resize-none"></textarea>
+                </div>
+                <div>
+                    <input type="text" name="push_url" placeholder="URL (Optional)" class="w-full bg-slate-900 border border-slate-600 rounded p-2 text-white text-xs focus:border-blue-500 outline-none">
+                </div>
+                <button type="submit" name="send_push" class="w-full bg-blue-600 hover:bg-blue-700 text-white font-bold py-2 rounded text-xs transition <?php echo $user['device_count'] == 0 ? 'opacity-50 cursor-not-allowed' : ''; ?>" <?php echo $user['device_count'] == 0 ? 'disabled' : ''; ?>>
+                    <?php echo $user['device_count'] > 0 ? 'Send Notification' : 'User Not Subscribed'; ?>
+                </button>
+            </form>
+        </div>
+
+        <!-- Edit Status -->
+        <div class="bg-slate-800 p-6 rounded-xl border border-slate-700">
+            <h3 class="font-bold text-white mb-4 text-sm uppercase flex items-center gap-2">
+                <i class="fas fa-user-cog text-gray-400"></i> Account Status
             </h3>
             <form method="POST" class="space-y-4">
                 <div>
@@ -112,46 +159,25 @@ $orders = $stmt->fetchAll();
                         <option value="0" <?php echo !$user['is_verified'] ? 'selected' : ''; ?>>Unverified (Locked)</option>
                     </select>
                 </div>
-                <button type="submit" name="toggle_status" class="w-full bg-blue-600 hover:bg-blue-700 text-white font-bold py-2.5 rounded-lg text-sm transition shadow-lg">
+                <button type="submit" name="toggle_status" class="w-full bg-slate-700 hover:bg-slate-600 text-white font-bold py-2 rounded-lg text-sm transition">
                     Update Status
                 </button>
             </form>
         </div>
 
         <!-- Admin Reset Password -->
-        <div class="bg-slate-800 p-6 rounded-xl border border-slate-700 shadow-lg">
+        <div class="bg-slate-800 p-6 rounded-xl border border-slate-700">
             <h3 class="font-bold text-white mb-4 text-sm uppercase flex items-center gap-2">
                 <i class="fas fa-key text-red-500"></i> Force Reset Password
             </h3>
             <form method="POST" class="space-y-4">
                 <div>
-                    <label class="block text-xs font-bold text-slate-400 mb-1">New Password</label>
-                    <input type="text" name="new_password" placeholder="Enter new password" class="w-full bg-slate-900 border border-slate-600 rounded-lg p-2.5 text-white text-sm focus:border-red-500 outline-none placeholder-slate-600">
-                    <p class="text-[10px] text-slate-500 mt-1">Only use if user cannot recover account via email.</p>
+                    <input type="text" name="new_password" placeholder="Enter new password" class="w-full bg-slate-900 border border-slate-600 rounded-lg p-2.5 text-white text-sm focus:border-red-500 outline-none">
                 </div>
-                <button type="submit" name="reset_password" class="w-full bg-slate-700 hover:bg-red-600 text-white font-bold py-2.5 rounded-lg text-sm transition border border-slate-600 hover:border-red-500" onclick="return confirm('Are you sure you want to change this user\'s password?')">
+                <button type="submit" name="reset_password" class="w-full bg-red-600/20 text-red-400 hover:bg-red-600 hover:text-white border border-red-600/50 font-bold py-2 rounded-lg text-sm transition" onclick="return confirm('Are you sure you want to change this user\'s password?')">
                     Reset Password
                 </button>
             </form>
-        </div>
-
-        <!-- Contact Info -->
-        <div class="bg-slate-800 p-6 rounded-xl border border-slate-700 space-y-4 text-sm shadow-lg">
-            <h3 class="font-bold text-white mb-2 text-sm uppercase flex items-center gap-2">
-                <i class="fas fa-address-card text-gray-400"></i> Contact Details
-            </h3>
-            <div class="flex justify-between border-b border-slate-700 pb-2">
-                <span class="text-slate-500">Email</span>
-                <span class="text-blue-400 truncate max-w-[150px]" title="<?php echo htmlspecialchars($user['email']); ?>"><?php echo htmlspecialchars($user['email']); ?></span>
-            </div>
-            <div class="flex justify-between border-b border-slate-700 pb-2">
-                <span class="text-slate-500">Phone</span>
-                <span class="text-slate-300"><?php echo htmlspecialchars($user['phone'] ?: 'N/A'); ?></span>
-            </div>
-            <div class="flex justify-between">
-                <span class="text-slate-500">Joined</span>
-                <span class="text-slate-300"><?php echo date('M d, Y', strtotime($user['created_at'])); ?></span>
-            </div>
         </div>
 
     </div>
@@ -161,7 +187,7 @@ $orders = $stmt->fetchAll();
         <div class="bg-slate-800 rounded-xl border border-slate-700 overflow-hidden shadow-lg h-full flex flex-col">
             <div class="p-6 border-b border-slate-700 flex justify-between items-center bg-slate-800/50 backdrop-blur shrink-0">
                 <h3 class="font-bold text-white text-lg">Order History</h3>
-                <span class="bg-slate-700 text-slate-300 text-xs px-2.5 py-1 rounded-full font-medium">Last 50</span>
+                <span class="bg-slate-700 text-slate-300 text-xs px-2.5 py-1 rounded-full font-medium">Last 20</span>
             </div>
             
             <div class="overflow-x-auto flex-grow custom-scrollbar">
@@ -180,7 +206,10 @@ $orders = $stmt->fetchAll();
                         <?php foreach($orders as $o): ?>
                         <tr class="hover:bg-slate-700/30 transition group">
                             <td class="p-4 pl-6 font-mono text-slate-500 group-hover:text-slate-300 transition">#<?php echo $o['id']; ?></td>
-                            <td class="p-4 font-medium text-white"><?php echo htmlspecialchars($o['product_name']); ?></td>
+                            <td class="p-4">
+                                <div class="font-medium text-white"><?php echo htmlspecialchars($o['product_name']); ?></div>
+                                <div class="text-[10px] text-slate-500 uppercase"><?php echo $o['delivery_type']; ?></div>
+                            </td>
                             <td class="p-4 text-right font-mono text-green-400 font-bold"><?php echo format_admin_currency($o['total_price_paid']); ?></td>
                             <td class="p-4 text-center"><?php echo format_status_badge($o['status']); ?></td>
                             <td class="p-4 text-right text-slate-500 text-xs"><?php echo date('M d, Y', strtotime($o['created_at'])); ?></td>
