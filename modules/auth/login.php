@@ -10,6 +10,7 @@ $error = '';
 $success = '';
 $show_verify_modal = false;
 $user_email = '';
+$unverified_email_attempt = ''; // Stores email if login fails due to verification status
 
 // 2. Handle Registration Success (Trigger Modal)
 if (isset($_GET['registered']) && $_GET['registered'] == 1) {
@@ -18,7 +19,7 @@ if (isset($_GET['registered']) && $_GET['registered'] == 1) {
     $user_email = isset($_GET['email']) ? htmlspecialchars(urldecode($_GET['email'])) : '';
 }
 
-// 3. Smart Email Provider Detection
+// 3. Smart Email Provider Detection (For Modal Button)
 $email_domain = substr(strrchr($user_email, "@"), 1);
 $email_link = "mailto:"; 
 $email_btn_text = "Open Email App";
@@ -28,18 +29,10 @@ if (strpos($email_domain, 'gmail') !== false) {
     $email_link = "https://mail.google.com/";
     $email_btn_text = "Open Gmail";
     $email_icon = "fab fa-google";
-} elseif (strpos($email_domain, 'outlook') !== false || strpos($email_domain, 'hotmail') !== false || strpos($email_domain, 'live') !== false) {
+} elseif (strpos($email_domain, 'outlook') !== false || strpos($email_domain, 'hotmail') !== false) {
     $email_link = "https://outlook.live.com/";
     $email_btn_text = "Open Outlook";
     $email_icon = "fab fa-microsoft";
-} elseif (strpos($email_domain, 'yahoo') !== false) {
-    $email_link = "https://mail.yahoo.com/";
-    $email_btn_text = "Open Yahoo Mail";
-    $email_icon = "fab fa-yahoo";
-} elseif (strpos($email_domain, 'icloud') !== false) {
-    $email_link = "https://www.icloud.com/mail";
-    $email_btn_text = "Open iCloud Mail";
-    $email_icon = "fab fa-apple";
 }
 
 // 4. Rate Limiting Logic
@@ -77,7 +70,6 @@ if ($_SESSION['login_attempts'] >= 5 && time() < $_SESSION['login_lockout']) {
         $token_data = json_decode($response, true);
 
         if (isset($token_data['access_token'])) {
-            // Get User Info
             $info_url = 'https://www.googleapis.com/oauth2/v3/userinfo';
             $ch = curl_init();
             curl_setopt($ch, CURLOPT_URL, $info_url);
@@ -90,27 +82,23 @@ if ($_SESSION['login_attempts'] >= 5 && time() < $_SESSION['login_lockout']) {
                 $g_email = $user_info['email'];
                 $g_name = $user_info['name'];
                 
-                // Check DB
                 $stmt = $pdo->prepare("SELECT * FROM users WHERE email = ?");
                 $stmt->execute([$g_email]);
                 $user = $stmt->fetch();
 
                 if ($user) {
-                    // Login Existing User & Auto-Verify
                     if ($user['is_verified'] == 0) {
                         $pdo->prepare("UPDATE users SET is_verified = 1 WHERE id = ?")->execute([$user['id']]);
                     }
-                    
                     $_SESSION['user_id'] = $user['id'];
                     $_SESSION['user_name'] = $user['username'];
                     $_SESSION['user_email'] = $user['email'];
                     redirect('index.php');
                 } else {
-                    // Register New User
+                    // Register New User (Google)
                     $username = strtolower(str_replace(' ', '', $g_name)) . rand(100, 999);
                     $random_pass = bin2hex(random_bytes(10));
                     $hashed = password_hash($random_pass, PASSWORD_DEFAULT);
-                    
                     $stmt = $pdo->prepare("INSERT INTO users (full_name, username, email, password, is_verified) VALUES (?, ?, ?, ?, 1)");
                     if ($stmt->execute([$g_name, $username, $g_email, $hashed])) {
                         $_SESSION['user_id'] = $pdo->lastInsertId();
@@ -122,8 +110,6 @@ if ($_SESSION['login_attempts'] >= 5 && time() < $_SESSION['login_lockout']) {
                     }
                 }
             }
-        } else {
-            if(isset($_GET['code'])) $error = "Google Login failed. Please try again.";
         }
     }
 
@@ -133,7 +119,7 @@ if ($_SESSION['login_attempts'] >= 5 && time() < $_SESSION['login_lockout']) {
         $post_token = $_POST['csrf_token'] ?? '';
         
         if (empty($session_token) || !hash_equals($session_token, $post_token)) {
-            $error = "Security token expired. Please refresh the page.";
+            $error = "Security token expired. Please refresh.";
         } else {
             $email = trim($_POST['email']);
             $password = $_POST['password'];
@@ -144,12 +130,13 @@ if ($_SESSION['login_attempts'] >= 5 && time() < $_SESSION['login_lockout']) {
             $user = $stmt->fetch();
 
             if ($user && password_verify($password, $user['password'])) {
+                
+                // 🔒 Check Verification
                 if ($user['is_verified'] == 0) {
-                    $error = "Please verify your email address before logging in.";
-                    $show_verify_modal = true;
-                    $user_email = $email;
+                    $error = "Email not verified.";
+                    $unverified_email_attempt = $email; // Enable Resend Button
                 } else {
-                    // Login Success
+                    // Success
                     $_SESSION['login_attempts'] = 0;
                     $_SESSION['login_lockout'] = 0;
 
@@ -173,9 +160,6 @@ if ($_SESSION['login_attempts'] >= 5 && time() < $_SESSION['login_lockout']) {
         }
     }
 }
-
-// Build Google Login Link
-$google_login_url = "https://accounts.google.com/o/oauth2/v2/auth?response_type=code&client_id=" . GOOGLE_CLIENT_ID . "&redirect_uri=" . urlencode(GOOGLE_REDIRECT_URL) . "&scope=email%20profile";
 ?>
 <!DOCTYPE html>
 <html lang="en">
@@ -187,10 +171,28 @@ $google_login_url = "https://accounts.google.com/o/oauth2/v2/auth?response_type=
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
     <style>
         body { background: #0f172a; color: white; font-family: 'Inter', sans-serif; }
-        .glass { background: rgba(30, 41, 59, 0.7); backdrop-filter: blur(16px); border: 1px solid rgba(255, 255, 255, 0.08); box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.5); }
-        .input-icon { position: absolute; left: 1rem; top: 50%; transform: translateY(-50%); color: #94a3b8; transition: color 0.2s; }
-        .input-field { padding-left: 2.75rem; transition: all 0.2s ease; }
-        .input-field:focus + .input-icon { color: #60a5fa; }
+        .glass { 
+            background: rgba(30, 41, 59, 0.7); 
+            backdrop-filter: blur(20px); 
+            -webkit-backdrop-filter: blur(20px);
+            border: 1px solid rgba(255, 255, 255, 0.08); 
+            box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.5); 
+        }
+        .input-group { position: relative; }
+        .input-icon { 
+            position: absolute; 
+            left: 1rem; 
+            top: 50%; 
+            transform: translateY(-50%); 
+            color: #64748b; 
+            transition: color 0.3s; 
+        }
+        .input-field { 
+            padding-left: 2.75rem; 
+            transition: all 0.3s ease; 
+        }
+        .input-field:focus + .input-icon { color: #3b82f6; }
+        .input-field:focus { border-color: #3b82f6; box-shadow: 0 0 0 4px rgba(59, 130, 246, 0.1); }
     </style>
 </head>
 <body class="flex items-center justify-center min-h-screen p-4 bg-[url('https://images.unsplash.com/photo-1620641788421-7a1c342ea42e?q=80&w=1974&auto=format&fit=crop')] bg-cover bg-center">
@@ -199,50 +201,66 @@ $google_login_url = "https://accounts.google.com/o/oauth2/v2/auth?response_type=
 
     <div class="w-full max-w-md glass p-8 rounded-2xl relative z-10 animate-fade-in-down border-t border-gray-700/50">
         
-        <div class="text-center mb-6">
+        <div class="text-center mb-8">
             <div class="inline-flex items-center justify-center w-14 h-14 rounded-2xl bg-gradient-to-br from-blue-600 to-indigo-600 mb-4 shadow-lg shadow-blue-500/20">
                 <i class="fas fa-fingerprint text-2xl text-white"></i>
             </div>
-            <h2 class="text-2xl font-bold tracking-tight text-white">Welcome Back</h2>
-            <p class="text-slate-400 mt-2 text-sm">Enter your credentials to continue</p>
+            <h2 class="text-3xl font-bold tracking-tight text-white">Welcome Back</h2>
+            <p class="text-slate-400 mt-2 text-sm">Sign in to manage your orders</p>
         </div>
         
+        <!-- Error Alert with Resend Button -->
         <?php if($error): ?>
-            <div class="bg-red-500/10 border border-red-500/20 text-red-400 px-4 py-3 rounded-xl mb-6 text-sm flex items-center gap-3">
-                <i class="fas fa-exclamation-triangle"></i> <span><?php echo $error; ?></span>
+            <div class="bg-red-500/10 border border-red-500/20 text-red-400 p-4 rounded-xl mb-6 text-sm">
+                <div class="flex items-center gap-3">
+                    <i class="fas fa-exclamation-circle text-lg"></i>
+                    <span class="font-medium"><?php echo $error; ?></span>
+                </div>
+                
+                <?php if($unverified_email_attempt): ?>
+                    <div class="mt-3 pt-3 border-t border-red-500/20">
+                        <p class="text-xs text-red-300 mb-2">Did not receive the code?</p>
+                        <a href="index.php?module=auth&page=verify_resend&email=<?php echo urlencode($unverified_email_attempt); ?>" 
+                           class="block w-full bg-red-500/20 hover:bg-red-500/30 text-white text-center py-2 rounded-lg text-xs font-bold transition border border-red-500/30">
+                           <i class="fas fa-paper-plane mr-1"></i> Resend Verification Email
+                        </a>
+                    </div>
+                <?php endif; ?>
             </div>
         <?php endif; ?>
 
         <?php if($success && !$show_verify_modal): ?>
-            <div class="bg-green-500/10 border border-green-500/20 text-green-400 px-4 py-3 rounded-xl mb-6 text-sm flex items-center gap-3">
-                <i class="fas fa-check-circle"></i> <span><?php echo $success; ?></span>
+            <div class="bg-green-500/10 border border-green-500/20 text-green-400 p-4 rounded-xl mb-6 text-sm flex items-center gap-3">
+                <i class="fas fa-check-circle text-lg"></i>
+                <span><?php echo $success; ?></span>
             </div>
         <?php endif; ?>
 
-        <a href="<?php echo $google_login_url; ?>" class="w-full bg-white text-gray-900 font-bold py-3 rounded-xl shadow hover:bg-gray-100 transition flex items-center justify-center gap-3 mb-6 transform hover:scale-[1.01] duration-200">
+        <!-- Google Login -->
+        <a href="<?php echo $google_login_url; ?>" class="w-full bg-white text-slate-900 font-bold py-3 rounded-xl shadow hover:bg-slate-100 transition flex items-center justify-center gap-3 mb-6 transform hover:scale-[1.01] duration-200">
             <img src="https://www.svgrepo.com/show/475656/google-color.svg" class="w-5 h-5" alt="Google">
             <span>Sign in with Google</span>
         </a>
 
         <div class="flex items-center gap-4 mb-6">
             <div class="h-px bg-slate-700 flex-1"></div>
-            <span class="text-xs text-slate-500 uppercase font-bold">Or continue with</span>
+            <span class="text-xs text-slate-500 uppercase font-bold tracking-wider">Or continue with</span>
             <div class="h-px bg-slate-700 flex-1"></div>
         </div>
 
         <form method="POST" class="space-y-5">
             <input type="hidden" name="csrf_token" value="<?php echo generate_csrf_token(); ?>">
             
-            <div class="relative">
+            <div class="input-group">
                 <input type="email" name="email" placeholder="Email Address" required 
                        class="input-field w-full bg-slate-900/50 border border-slate-600 rounded-xl p-3.5 text-white focus:border-blue-500 focus:ring-1 focus:ring-blue-500 outline-none placeholder-slate-500 shadow-inner text-sm">
-                <i class="fas fa-envelope input-icon text-sm"></i>
+                <i class="fas fa-envelope input-icon"></i>
             </div>
 
-            <div class="relative">
+            <div class="input-group">
                 <input type="password" name="password" placeholder="Password" required 
                        class="input-field w-full bg-slate-900/50 border border-slate-600 rounded-xl p-3.5 text-white focus:border-blue-500 focus:ring-1 focus:ring-blue-500 outline-none placeholder-slate-500 shadow-inner text-sm">
-                <i class="fas fa-lock input-icon text-sm"></i>
+                <i class="fas fa-lock input-icon"></i>
             </div>
 
             <div class="flex justify-between items-center text-xs text-slate-400 px-1">
@@ -258,17 +276,17 @@ $google_login_url = "https://accounts.google.com/o/oauth2/v2/auth?response_type=
             </button>
         </form>
 
-        <div class="mt-8 text-center space-y-4">
+        <div class="mt-8 text-center space-y-4 pt-6 border-t border-slate-700/50">
             <p class="text-sm text-slate-400">
-                New here? <a href="index.php?module=auth&page=register" class="text-blue-400 font-bold hover:text-blue-300 transition">Create an account</a>
+                New here? <a href="index.php?module=auth&page=register" class="text-blue-400 font-bold hover:text-blue-300 transition hover:underline">Create an account</a>
             </p>
-            <a href="index.php" class="inline-flex items-center gap-2 text-xs text-slate-500 hover:text-white transition">
-                <i class="fas fa-arrow-left"></i> Return to Store
+            <a href="index.php" class="inline-flex items-center gap-2 text-xs text-slate-500 hover:text-white transition group">
+                <i class="fas fa-arrow-left group-hover:-translate-x-1 transition-transform"></i> Return to Store
             </a>
         </div>
     </div>
 
-    <!-- EMAIL VERIFICATION MODAL -->
+    <!-- Verification Modal (Success State) -->
     <?php if($show_verify_modal): ?>
     <div class="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-md animate-fade-in">
         <div class="bg-slate-800 rounded-2xl max-w-sm w-full p-6 text-center border border-slate-700 shadow-2xl transform scale-100 transition-all">
@@ -277,13 +295,15 @@ $google_login_url = "https://accounts.google.com/o/oauth2/v2/auth?response_type=
             </div>
             <h3 class="text-xl font-bold text-white mb-2">Check your Email</h3>
             <p class="text-slate-400 text-sm mb-6 leading-relaxed">
-                We've sent a secure link to <br> <strong class="text-white"><?php echo $user_email; ?></strong>. <br>Click it to activate your account.
+                We sent a link to <strong class="text-white"><?php echo $user_email; ?></strong>.<br>Please check your inbox.
             </p>
             <div class="space-y-3">
                 <a href="<?php echo $email_link; ?>" target="_blank" class="flex items-center justify-center gap-2 w-full bg-blue-600 hover:bg-blue-500 text-white font-bold py-3 rounded-xl transition shadow-lg text-sm">
                     <i class="<?php echo $email_icon; ?>"></i> <?php echo $email_btn_text; ?>
                 </a>
-                <button onclick="this.closest('.fixed').remove()" class="block w-full bg-transparent hover:bg-slate-700 text-slate-400 hover:text-white font-medium py-3 rounded-xl transition text-sm">Close</button>
+                <button onclick="this.closest('.fixed').remove()" class="block w-full bg-transparent hover:bg-slate-700 text-slate-400 hover:text-white font-medium py-3 rounded-xl transition text-sm">
+                    Close
+                </button>
             </div>
         </div>
     </div>
