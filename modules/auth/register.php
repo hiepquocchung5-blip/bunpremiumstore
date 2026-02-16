@@ -12,26 +12,54 @@ require_once 'includes/MailService.php';
 $error = '';
 $success = '';
 
-// 2. Handle Form Submission
-if ($_SERVER['REQUEST_METHOD'] === 'POST') {
-    // CSRF Check (Safe against null types)
+// ==========================================================================
+// SECURITY: RATE LIMITING (Brute Force Protection)
+// ==========================================================================
+if (!isset($_SESSION['reg_attempts'])) $_SESSION['reg_attempts'] = 0;
+if (!isset($_SESSION['reg_lockout'])) $_SESSION['reg_lockout'] = 0;
+
+// Block if too many attempts
+if ($_SESSION['reg_attempts'] >= 3 && time() < $_SESSION['reg_lockout']) {
+    $remaining = ceil(($_SESSION['reg_lockout'] - time()) / 60);
+    $error = "Too many attempts. Please wait $remaining minutes.";
+} 
+
+// ==========================================================================
+// HANDLE FORM SUBMISSION
+// ==========================================================================
+elseif ($_SERVER['REQUEST_METHOD'] === 'POST') {
+    
+    // 2. SECURITY: CSRF Check
     $session_token = $_SESSION['csrf_token'] ?? '';
     $post_token = $_POST['csrf_token'] ?? '';
+
+    // 3. SECURITY: Honeypot Trap (Anti-Bot)
+    // 'fax' field is hidden via CSS. If filled, it's a bot.
+    $honeypot = $_POST['fax'] ?? '';
+
+    if (!empty($honeypot)) {
+        // Silent failure for bots (don't tell them they failed)
+        die("System error. Please contact support.");
+    }
 
     if (empty($session_token) || !hash_equals($session_token, $post_token)) {
         $error = "Security token expired. Please refresh the page.";
     } else {
-        // Sanitize Inputs
-        $fullname = trim($_POST['full_name']);
-        $username = trim($_POST['username']);
-        $email = trim($_POST['email']);
-        $phone = trim($_POST['phone']);
+        // 4. SECURITY: Input Sanitization
+        // Remove HTML tags and special chars to prevent XSS
+        $fullname = htmlspecialchars(trim($_POST['full_name']), ENT_QUOTES, 'UTF-8');
+        $username = htmlspecialchars(trim($_POST['username']), ENT_QUOTES, 'UTF-8');
+        // Remove illegal characters from email
+        $email = filter_var(trim($_POST['email']), FILTER_SANITIZE_EMAIL);
+        $phone = htmlspecialchars(trim($_POST['phone']), ENT_QUOTES, 'UTF-8');
         $password = $_POST['password'];
         $confirm = $_POST['confirm_password'];
         $terms = isset($_POST['terms']);
 
-        // Validation Rules
-        if (!$terms) {
+        // 5. SECURITY: Input Validation
+        if (!filter_var($email, FILTER_VALIDATE_EMAIL)) {
+            $error = "Invalid email format.";
+        } elseif (!$terms) {
             $error = "You must agree to the Terms of Service.";
         } elseif ($password !== $confirm) {
             $error = "Passwords do not match.";
@@ -40,41 +68,55 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         } elseif (!preg_match("/[A-Z]/", $password) || !preg_match("/[0-9]/", $password)) {
             $error = "Password must contain at least 1 Capital letter and 1 Number.";
         } else {
-            // Check Database for duplicates
+            // Check Database for duplicates (Using Prepared Statement)
             $stmt = $pdo->prepare("SELECT id FROM users WHERE email = ? OR username = ?");
             $stmt->execute([$email, $username]);
             
             if ($stmt->rowCount() > 0) {
                 $error = "Username or Email is already registered.";
             } else {
-                // Create User
                 try {
+                    // 6. SECURITY: Password Hashing (Bcrypt)
                     $hashed = password_hash($password, PASSWORD_DEFAULT);
-                    $token = bin2hex(random_bytes(32)); // Email Verification Token
+                    $token = bin2hex(random_bytes(32)); // Cryptographically secure token
                     $phoneVal = empty($phone) ? null : $phone;
 
+                    // 7. SECURITY: Prepared Statement (Prevents SQL Injection)
                     $stmt = $pdo->prepare("INSERT INTO users (full_name, username, email, phone, password, verify_token, is_verified) VALUES (?, ?, ?, ?, ?, ?, 0)");
                     
                     if ($stmt->execute([$fullname, $username, $email, $phoneVal, $hashed, $token])) {
-                        // Send Verification Email
+                        // Success - Send Verification Email
                         $mailer = new MailService();
                         $mailer->sendVerificationEmail($email, $token);
 
-                        // Redirect to Login to show Verification Modal
+                        // Reset rate limit on success
+                        $_SESSION['reg_attempts'] = 0;
+
+                        // Redirect to Login
                         header("Location: index.php?module=auth&page=login&registered=1&email=" . urlencode($email));
                         exit;
                     } else {
-                        $error = "Registration failed due to a system error. Please try again.";
+                        $error = "Registration failed due to a system error.";
                     }
                 } catch (Exception $e) {
-                    $error = "Database Error: " . $e->getMessage();
+                    // Don't show raw DB errors in production
+                    error_log($e->getMessage()); 
+                    $error = "An error occurred. Please try again.";
                 }
+            }
+        }
+        
+        // Increment rate limit counter on failure
+        if ($error) {
+            $_SESSION['reg_attempts']++;
+            if ($_SESSION['reg_attempts'] >= 3) {
+                $_SESSION['reg_lockout'] = time() + (10 * 60); // 10 min lock
             }
         }
     }
 }
 
-// Google Auth Link (Reusing Config from config.php)
+// Google Auth Link
 $google_login_url = "https://accounts.google.com/o/oauth2/v2/auth?response_type=code&client_id=" . GOOGLE_CLIENT_ID . "&redirect_uri=" . urlencode(GOOGLE_REDIRECT_URL) . "&scope=email%20profile";
 ?>
 <!DOCTYPE html>
@@ -93,6 +135,8 @@ $google_login_url = "https://accounts.google.com/o/oauth2/v2/auth?response_type=
         .input-field:focus + .input-icon { color: #60a5fa; }
         /* Custom Checkbox */
         .custom-checkbox:checked { background-color: #2563eb; border-color: #2563eb; }
+        /* Hide Honeypot */
+        .visually-hidden { position: absolute; left: -9999px; top: -9999px; visibility: hidden; }
     </style>
 </head>
 <body class="flex items-center justify-center min-h-screen p-4 bg-[url('https://images.unsplash.com/photo-1550745165-9bc0b252726f?q=80&w=2070&auto=format&fit=crop')] bg-cover bg-center">
@@ -133,16 +177,19 @@ $google_login_url = "https://accounts.google.com/o/oauth2/v2/auth?response_type=
         <form method="POST" class="space-y-4" onsubmit="return validateForm()">
             <input type="hidden" name="csrf_token" value="<?php echo generate_csrf_token(); ?>">
             
+            <!-- Honeypot Field (Hidden) -->
+            <input type="text" name="fax" class="visually-hidden" tabindex="-1" autocomplete="off">
+            
             <!-- Row 1: Name & Username -->
             <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div class="relative">
                     <input type="text" name="full_name" placeholder="Full Name" required 
-                           class="input-field w-full bg-slate-900/50 border border-slate-600 rounded-xl p-3.5 text-white focus:border-blue-500 focus:ring-1 focus:ring-blue-500 outline-none placeholder-slate-500 text-sm">
+                           class="input-field w-full bg-slate-900/50 border border-slate-600 rounded-xl p-3 text-white focus:border-blue-500 focus:ring-1 focus:ring-blue-500 outline-none text-sm shadow-inner">
                     <i class="fas fa-user input-icon text-sm"></i>
                 </div>
                 <div class="relative">
                     <input type="text" name="username" placeholder="Username" required 
-                           class="input-field w-full bg-slate-900/50 border border-slate-600 rounded-xl p-3.5 text-white focus:border-blue-500 focus:ring-1 focus:ring-blue-500 outline-none placeholder-slate-500 text-sm">
+                           class="input-field w-full bg-slate-900/50 border border-slate-600 rounded-xl p-3 text-white focus:border-blue-500 focus:ring-1 focus:ring-blue-500 outline-none text-sm shadow-inner">
                     <i class="fas fa-at input-icon text-sm"></i>
                 </div>
             </div>
@@ -150,13 +197,13 @@ $google_login_url = "https://accounts.google.com/o/oauth2/v2/auth?response_type=
             <!-- Row 2: Contact -->
             <div class="relative">
                 <input type="email" name="email" placeholder="Email Address" required 
-                       class="input-field w-full bg-slate-900/50 border border-slate-600 rounded-xl p-3.5 text-white focus:border-blue-500 focus:ring-1 focus:ring-blue-500 outline-none placeholder-slate-500 text-sm">
+                       class="input-field w-full bg-slate-900/50 border border-slate-600 rounded-xl p-3 text-white focus:border-blue-500 focus:ring-1 focus:ring-blue-500 outline-none text-sm shadow-inner">
                 <i class="fas fa-envelope input-icon text-sm"></i>
             </div>
 
             <div class="relative">
                 <input type="tel" name="phone" placeholder="Phone Number (Optional)" 
-                       class="input-field w-full bg-slate-900/50 border border-slate-600 rounded-xl p-3.5 text-white focus:border-blue-500 focus:ring-1 focus:ring-blue-500 outline-none placeholder-slate-500 text-sm">
+                       class="input-field w-full bg-slate-900/50 border border-slate-600 rounded-xl p-3 text-white focus:border-blue-500 focus:ring-1 focus:ring-blue-500 outline-none text-sm shadow-inner">
                 <i class="fas fa-phone input-icon text-sm"></i>
             </div>
 
@@ -164,12 +211,12 @@ $google_login_url = "https://accounts.google.com/o/oauth2/v2/auth?response_type=
             <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div class="relative">
                     <input type="password" name="password" id="password" placeholder="Password" required 
-                           class="input-field w-full bg-slate-900/50 border border-slate-600 rounded-xl p-3.5 text-white focus:border-blue-500 focus:ring-1 focus:ring-blue-500 outline-none placeholder-slate-500 text-sm">
+                           class="input-field w-full bg-slate-900/50 border border-slate-600 rounded-xl p-3 text-white focus:border-blue-500 focus:ring-1 focus:ring-blue-500 outline-none text-sm shadow-inner">
                     <i class="fas fa-lock input-icon text-sm"></i>
                 </div>
                 <div class="relative">
                     <input type="password" name="confirm_password" id="confirm_password" placeholder="Confirm" required 
-                           class="input-field w-full bg-slate-900/50 border border-slate-600 rounded-xl p-3.5 text-white focus:border-blue-500 focus:ring-1 focus:ring-blue-500 outline-none placeholder-slate-500 text-sm">
+                           class="input-field w-full bg-slate-900/50 border border-slate-600 rounded-xl p-3 text-white focus:border-blue-500 focus:ring-1 focus:ring-blue-500 outline-none text-sm shadow-inner">
                     <i class="fas fa-check-double input-icon text-sm"></i>
                 </div>
             </div>
