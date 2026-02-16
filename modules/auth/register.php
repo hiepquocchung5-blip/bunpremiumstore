@@ -46,12 +46,14 @@ elseif ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $error = "Security token expired. Please refresh the page.";
     } else {
         // 4. SECURITY: Input Sanitization
-        // Remove HTML tags and special chars to prevent XSS
-        $fullname = htmlspecialchars(trim($_POST['full_name']), ENT_QUOTES, 'UTF-8');
-        $username = htmlspecialchars(trim($_POST['username']), ENT_QUOTES, 'UTF-8');
+        // FIX: Store raw UTF-8 in DB to prevent encoding errors (Error 1366). Escape on output instead.
+        // We ensure the connection is UTF-8mb4 before query execution.
+        $fullname = trim($_POST['full_name']);
+        $username = trim($_POST['username']);
+        
         // Remove illegal characters from email
         $email = filter_var(trim($_POST['email']), FILTER_SANITIZE_EMAIL);
-        $phone = htmlspecialchars(trim($_POST['phone']), ENT_QUOTES, 'UTF-8');
+        $phone = trim($_POST['phone']);
         $password = $_POST['password'];
         $confirm = $_POST['confirm_password'];
         $terms = isset($_POST['terms']);
@@ -68,6 +70,9 @@ elseif ($_SERVER['REQUEST_METHOD'] === 'POST') {
         } elseif (!preg_match("/[A-Z]/", $password) || !preg_match("/[0-9]/", $password)) {
             $error = "Password must contain at least 1 Capital letter and 1 Number.";
         } else {
+            // Force UTF-8MB4 connection for Emoji/Special char support
+            $pdo->exec("SET NAMES 'utf8mb4'");
+
             // Check Database for duplicates (Using Prepared Statement)
             $stmt = $pdo->prepare("SELECT id FROM users WHERE email = ? OR username = ?");
             $stmt->execute([$email, $username]);
@@ -98,8 +103,20 @@ elseif ($_SERVER['REQUEST_METHOD'] === 'POST') {
                     } else {
                         $error = "Registration failed due to a system error.";
                     }
+                } catch (PDOException $e) {
+                    // Catch SQL errors specifically
+                    if ($e->getCode() == 23000) { // Integrity constraint violation
+                        $error = "Username or Email already exists.";
+                    } elseif ($e->getCode() == 'HY000' && strpos($e->getMessage(), '1366') !== false) {
+                        // Catch Error 1366 (Incorrect string value) explicitly
+                        $error = "Your name contains characters not supported by the database. Please use standard characters.";
+                        // Admin Note: Run 'ALTER TABLE users CONVERT TO CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;' on DB
+                    } else {
+                         // Don't show raw DB errors in production
+                        error_log($e->getMessage()); 
+                        $error = "An error occurred. Please try again.";
+                    }
                 } catch (Exception $e) {
-                    // Don't show raw DB errors in production
                     error_log($e->getMessage()); 
                     $error = "An error occurred. Please try again.";
                 }
