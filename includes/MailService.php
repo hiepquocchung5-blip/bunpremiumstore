@@ -3,7 +3,7 @@
 
 use PHPMailer\PHPMailer\PHPMailer;
 use PHPMailer\PHPMailer\Exception;
-// use PHPMailer\PHPMailer\SMTP;
+use PHPMailer\PHPMailer\SMTP;
 
 // Ensure Composer autoloader is loaded
 require_once __DIR__ . '/../vendor/autoload.php';
