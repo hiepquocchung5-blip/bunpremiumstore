@@ -1,78 +1,137 @@
 <?php
 // index.php
+// PRODUCTION ROUTER v1.0
 
-// 1. Load Core System
+/**
+ * --------------------------------------------------------------------------
+ * 1. INITIALIZATION
+ * --------------------------------------------------------------------------
+ */
+
+// Load Configuration & Core Functions
 require_once 'includes/config.php';
 require_once 'includes/functions.php';
 
-// 2. Get Request Params
+// Get Request Parameters (Default to Home)
 $module = isset($_GET['module']) ? $_GET['module'] : 'home';
 $page   = isset($_GET['page'])   ? $_GET['page']   : 'index';
 
-// 3. Define Allowed Routes (Whitelist)
-// This strictly controls which files can be loaded for security.
+/**
+ * --------------------------------------------------------------------------
+ * 2. ROUTE WHITELIST (SECURITY)
+ * Defines exactly which files are allowed to be loaded.
+ * --------------------------------------------------------------------------
+ */
 $allowed_routes = [
     // Landing & Dashboard
     'home' => ['index'],
     
-    // Authentication
-    'auth' => ['login', 'register', 'logout'],
+    // Authentication & Security
+    'auth' => [
+        'login', 
+        'register', 
+        'logout', 
+        'verify',           // New
+        'verify_resend',    // New
+        'forgot_password',  // New
+        'reset_password'    // New
+    ],
     
-    // Shopping Logic
-    'shop' => ['category', 'checkout', 'search' , 'product'],
+    // Shopping & Products
+    'shop' => [
+        'category', 
+        'product',          // New (Details)
+        'checkout', 
+        'search'            // New
+    ],
     
-    // User Account
-    'user' => ['orders', 'agent', 'profile' , 'invoice' , 'wishlist' , 'dashboard'],
+    // User Account Management
+    'user' => [
+        'dashboard',        // New (Hub)
+        'orders', 
+        'profile', 
+        'agent', 
+        'wishlist',         // New
+        'invoice'           // New (Printable)
+    ],
     
-    // Information Pages
-    'info' => ['support', 'terms', 'privacy', 'tutorial'],
+    // Static Information
+    'info' => [
+        'support', 
+        'terms', 
+        'privacy', 
+        'tutorial'          // New
+    ],
     
-    // Error Pages
+    // System
     'error' => ['404']
 ];
 
-// 4. Validate Route
+// Validate Request against Whitelist
 if (!array_key_exists($module, $allowed_routes) || !in_array($page, $allowed_routes[$module])) {
     // Force 404 if route doesn't exist
     $module = 'error';
     $page = '404';
 }
 
-// 5. Auth Middleware (Protect specific pages)
-// These pages require the user to be logged in.
+/**
+ * --------------------------------------------------------------------------
+ * 3. MIDDLEWARE (AUTH GUARD)
+ * Protects pages that require login.
+ * --------------------------------------------------------------------------
+ */
 $protected_pages = [
-    'user' => ['orders', 'agent', 'profile'],
+    'user' => ['dashboard', 'orders', 'profile', 'agent', 'wishlist', 'invoice'],
     'shop' => ['checkout']
 ];
 
 if (isset($protected_pages[$module]) && in_array($page, $protected_pages[$module])) {
     if (!is_logged_in()) {
-        // Redirect to login with "redirect" param to return here after login
-        $current_url = urlencode("index.php?module=$module&page=$page" . (isset($_GET['id']) ? "&id=".$_GET['id'] : ""));
-        redirect("index.php?module=auth&page=login&redirect=$current_url");
+        // Construct return URL so user is sent back after login
+        $current_url = "index.php?module=$module&page=$page";
+        if (!empty($_GET['id'])) $current_url .= "&id=" . (int)$_GET['id'];
+        
+        redirect("index.php?module=auth&page=login&redirect=" . urlencode($current_url));
     }
 }
 
-// 6. Output Buffering (To capture header/footer logic cleanly)
+/**
+ * --------------------------------------------------------------------------
+ * 4. VIEW RENDERING
+ * Handles Layouts (Header/Footer) vs Standalone Pages
+ * --------------------------------------------------------------------------
+ */
+
+// Define Standalone Pages (No Header/Footer)
+// Auth pages have their own glass layout. Invoice is printable.
+$standalone_views = [
+    'auth' => ['login', 'register', 'verify', 'verify_resend', 'forgot_password', 'reset_password'],
+    'user' => ['invoice'],
+    'error' => ['404'] // Optional: You might want header on 404, but keeping clean for now
+];
+
+$is_standalone = (isset($standalone_views[$module]) && in_array($page, $standalone_views[$module]));
+
+// Buffer Output to prevent header errors
 ob_start();
 
-// Include Header (Skip for Auth pages to allow custom layouts)
-if ($module !== 'auth' && $module !== 'error') {
+// A. Load Header (If not standalone)
+if (!$is_standalone) {
     include 'includes/header.php';
 }
 
-// 7. Load the Module File
+// B. Load Module Content
 $file_path = "modules/{$module}/{$page}.php";
 
 if (file_exists($file_path)) {
     include $file_path;
 } else {
-    // Fallback if file is missing despite being in whitelist
+    // Fallback if file missing physically
     include 'modules/error/404.php';
 }
 
-// Include Footer
-if ($module !== 'auth' && $module !== 'error') {
+// C. Load Footer (If not standalone)
+if (!$is_standalone) {
     include 'includes/footer.php';
 }
 
