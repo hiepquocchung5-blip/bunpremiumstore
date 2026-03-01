@@ -43,24 +43,26 @@ function get_admin_view() {
     // Default page is dashboard
     $page = isset($_GET['page']) ? $_GET['page'] : 'dashboard';
     
-    // Whitelist of allowed pages => filename
-    // Note: You must ensure these files exist in the admin root folder
+    // Whitelist of allowed pages => filenameS
     $routes = [
         'dashboard'    => 'dashboard.php',
         'orders'       => 'orders.php',
         'order_detail' => 'order_detail.php',
         'products'     => 'products.php',
-        'product_edit' => 'product_edit.php', 
+        'product_edit' => 'product_edit.php',
         'categories'   => 'categories.php',
-        'category_edit' => 'category_edit.php', 
+        'category_edit'=> 'category_edit.php',
         'keys'         => 'keys.php',
         'users'        => 'users.php',
         'user_detail'  => 'user_detail.php',
         'reviews'      => 'reviews.php',
         'reports'      => 'reports.php',
         'banners'      => 'banners.php',
+        'banner_edit'  => 'banner_edit.php',   // NEW
         'payments'     => 'payments.php',
-        'settings'     => 'settings.php'
+        'payment_edit' => 'payment_edit.php',  // NEW
+        'settings'     => 'settings.php',
+        'admins'       => 'admins.php'        
     ];
 
     // Check if page exists in whitelist
