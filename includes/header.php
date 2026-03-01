@@ -84,8 +84,9 @@ function isActive($module, $page = null) {
                 
                 <!-- 1. Logo Area -->
                 <a href="index.php" class="flex items-center gap-3 group relative z-10">
-                    <div class="w-10 h-10 bg-slate-800 rounded-xl flex items-center justify-center shadow-[0_0_15px_rgba(0,240,255,0.1)] group-hover:shadow-[0_0_25px_rgba(0,240,255,0.3)] transition duration-300 border border-[#00f0ff]/30 group-hover:border-[#00f0ff]">
-                        <i class="fas fa-bolt text-[#00f0ff] text-lg animate-pulse-glow"></i>
+                    <div class="w-12 h-12 bg-slate-800 rounded-xl flex items-center justify-center shadow-[0_0_15px_rgba(0,240,255,0.1)] group-hover:shadow-[0_0_25px_rgba(0,240,255,0.3)] transition duration-300 border border-[#00f0ff]/30 group-hover:border-[#00f0ff] overflow-hidden">
+                        <!-- Make sure to place your logo.png in the assets/images folder -->
+                        <img src="assets/images/logo.png" alt="DMMM Logo" class="w-full h-full object-contain p-1 transform group-hover:scale-110 transition-transform duration-300">
                     </div>
                     <div class="flex flex-col">
                         <span class="font-bold text-xl leading-none tracking-tight text-white group-hover:text-[#00f0ff] transition">Digital<span class="text-[#00f0ff]">MM</span></span>
