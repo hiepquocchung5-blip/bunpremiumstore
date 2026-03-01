@@ -8,10 +8,20 @@ if (!is_logged_in()) {
 
 $user_id = $_SESSION['user_id'];
 
-// 2. Fetch User Data & Wallet
-$stmt = $pdo->prepare("SELECT full_name, email, wallet_balance, created_at FROM users WHERE id = ?");
+// 2. Fetch User Data (Checking if wallet exists, falling back to 0 if not)
+$stmt = $pdo->prepare("SELECT full_name, email, created_at FROM users WHERE id = ?");
 $stmt->execute([$user_id]);
 $user = $stmt->fetch();
+
+// Fetch Wallet Balance if it exists (from the referral system update)
+$wallet_balance = 0;
+try {
+    $stmt = $pdo->prepare("SELECT wallet_balance FROM users WHERE id = ?");
+    $stmt->execute([$user_id]);
+    $wallet_balance = $stmt->fetchColumn() ?: 0;
+} catch(PDOException $e) {
+    // Ignore if wallet column isn't created yet
+}
 
 // 3. Fetch Quick Stats
 // Order Count
@@ -19,14 +29,19 @@ $stmt = $pdo->prepare("SELECT COUNT(*) FROM orders WHERE user_id = ?");
 $stmt->execute([$user_id]);
 $order_count = $stmt->fetchColumn();
 
-// Referral Count
-$stmt = $pdo->prepare("SELECT COUNT(*) FROM users WHERE referred_by = ?");
-$stmt->execute([$user_id]);
-$referral_count = $stmt->fetchColumn();
+// Referral Count (Try catch in case referred_by doesn't exist yet)
+$referral_count = 0;
+try {
+    $stmt = $pdo->prepare("SELECT COUNT(*) FROM users WHERE referred_by = ?");
+    $stmt->execute([$user_id]);
+    $referral_count = $stmt->fetchColumn();
+} catch (PDOException $e) {}
 
 // 4. Fetch Recent Orders (Limit 5)
+// FIXED: Changed 'o.total_amount' to 'o.total_price_paid'
+// FIXED: Changed 'p.title' to 'p.name'
 $stmt = $pdo->prepare("
-    SELECT o.id, o.total_amount, o.status, o.created_at, p.title 
+    SELECT o.id, o.total_price_paid, o.status, o.created_at, p.name 
     FROM orders o 
     JOIN products p ON o.product_id = p.id 
     WHERE o.user_id = ? 
@@ -65,7 +80,7 @@ $recent_orders = $stmt->fetchAll();
                 </div>
                 <span class="text-xs font-bold text-slate-400 uppercase tracking-wider bg-slate-800 px-2 py-1 rounded-md">Wallet</span>
             </div>
-            <h3 class="text-3xl font-black text-white"><?php echo number_format($user['wallet_balance']); ?> <span class="text-sm text-[#00f0ff]">MMK</span></h3>
+            <h3 class="text-3xl font-black text-white"><?php echo number_format($wallet_balance); ?> <span class="text-sm text-[#00f0ff]">MMK</span></h3>
             <p class="text-xs text-slate-400 mt-2 flex items-center gap-1">
                 <i class="fas fa-arrow-up text-green-400"></i> Available for purchases
             </p>
@@ -130,13 +145,16 @@ $recent_orders = $stmt->fetchAll();
                             <?php foreach($recent_orders as $order): ?>
                                 <tr class="hover:bg-slate-800/50 transition cursor-pointer" onclick="window.location='index.php?module=user&page=orders&view_chat=<?php echo $order['id']; ?>'">
                                     <td class="p-4 pl-6 font-mono text-slate-300">#<?php echo $order['id']; ?></td>
-                                    <td class="p-4 text-white font-medium truncate max-w-[200px]"><?php echo htmlspecialchars($order['title']); ?></td>
+                                    
+                                    <!-- FIXED: Uses $order['name'] instead of $order['title'] -->
+                                    <td class="p-4 text-white font-medium truncate max-w-[200px]"><?php echo htmlspecialchars($order['name']); ?></td>
+                                    
                                     <td class="p-4">
                                         <?php 
                                             $statusColor = match($order['status']) {
-                                                'completed' => 'bg-green-500/10 text-green-400 border-green-500/20',
+                                                'completed', 'active' => 'bg-green-500/10 text-green-400 border-green-500/20',
                                                 'pending' => 'bg-yellow-500/10 text-yellow-400 border-yellow-500/20',
-                                                'cancelled' => 'bg-red-500/10 text-red-400 border-red-500/20',
+                                                'cancelled', 'rejected' => 'bg-red-500/10 text-red-400 border-red-500/20',
                                                 default => 'bg-slate-500/10 text-slate-400 border-slate-500/20'
                                             };
                                         ?>
@@ -144,8 +162,10 @@ $recent_orders = $stmt->fetchAll();
                                             <?php echo $order['status']; ?>
                                         </span>
                                     </td>
+                                    
+                                    <!-- FIXED: Uses $order['total_price_paid'] instead of $order['total_amount'] -->
                                     <td class="p-4 text-right text-slate-300 font-mono pr-6">
-                                        <?php echo number_format($order['total_amount']); ?> Ks
+                                        <?php echo number_format($order['total_price_paid']); ?> Ks
                                     </td>
                                 </tr>
                             <?php endforeach; ?>
