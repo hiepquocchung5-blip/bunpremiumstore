@@ -12,6 +12,11 @@ $active_chat_id = isset($_GET['view_chat']) ? (int)$_GET['view_chat'] : 0;
 // 1. AJAX ENDPOINT FOR LIVE CHAT POLLING
 // =====================================================================================
 if (isset($_GET['ajax']) && $_GET['ajax'] == 1 && $active_chat_id > 0) {
+    // Prevent AJAX caching for real-time updates
+    header("Cache-Control: no-store, no-cache, must-revalidate, max-age=0");
+    header("Cache-Control: post-check=0, pre-check=0", false);
+    header("Pragma: no-cache");
+
     // Verify ownership
     $stmt = $pdo->prepare("SELECT id FROM orders WHERE id = ? AND user_id = ?");
     $stmt->execute([$active_chat_id, $user_id]);
@@ -192,12 +197,6 @@ $main_display = $active_chat_id ? 'flex' : 'hidden md:flex';
                             <span class="text-xs text-slate-400"><i class="far fa-clock"></i> <?php echo date('M d, Y', strtotime($active_order['created_at'])); ?></span>
                         </div>
                     </div>
-                    <div class="text-right shrink-0">
-                        <p class="text-lg font-black text-green-400 tracking-tight"><?php echo number_format($active_order['total_price_paid']); ?> Ks</p>
-                        <a href="index.php?module=user&page=invoice&id=<?php echo $active_order['id']; ?>" class="text-[10px] text-slate-400 hover:text-[#00f0ff] uppercase font-bold tracking-wider transition inline-flex items-center gap-1 mt-1">
-                            <i class="fas fa-receipt"></i> Receipt
-                        </a>
-                    </div>
                 </div>
 
                 <!-- Progress Tracker -->
@@ -334,7 +333,8 @@ $main_display = $active_chat_id ? 'flex' : 'hidden md:flex';
                     function fetchChat() {
                         if(!orderId) return;
                         
-                        fetch(`index.php?module=user&page=orders&view_chat=${orderId}&ajax=1`)
+                        // Added timestamp to prevent browser caching the request
+                        fetch(`index.php?module=user&page=orders&view_chat=${orderId}&ajax=1&_=${Date.now()}`)
                             .then(response => {
                                 if(!response.ok) throw new Error('Network response error');
                                 return response.text();
