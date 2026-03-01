@@ -9,8 +9,12 @@ RewriteBase /scottsub/
 # RewriteRule ^(.*)$ https://%{HTTP_HOST}%{REQUEST_URI} [L,R=301]
 
 # 3. Protect Sensitive Directories
-# Prevent direct access to includes, uploads, or sql files
-RewriteRule ^(includes|uploads|sql)/ - [F,L]
+# FIXED: Removed 'uploads' from the forbidden list so images can be served
+RewriteRule ^(includes|sql)/ - [F,L]
+
+# 3.1 Security: Prevent PHP execution inside the uploads folder
+# This ensures that even if a hacker uploads a .php file disguised as an image, it won't run.
+RewriteRule ^uploads/.*\.(php|phtml|php[0-9])$ - [F,L]
 
 # 4. Protect Sensitive Files
 <FilesMatch "\.(sql|log|ini|env)$">
