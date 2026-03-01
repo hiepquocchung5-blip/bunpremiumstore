@@ -66,27 +66,41 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $is_cred = isset($_POST['is_credential']) ? 1 : 0;
         
         if (!empty($msg)) {
-            $stmt = $pdo->prepare("INSERT INTO order_messages (order_id, sender_type, message, is_credential) VALUES (?, 'admin', ?, ?)");
-            $stmt->execute([$order_id, $msg, $is_cred]);
-
-            $stmt = $pdo->prepare("SELECT user_id FROM orders WHERE id = ?");
-            $stmt->execute([$order_id]);
-            $uid = $stmt->fetchColumn();
-            
-            // Safe Execution for Push
             try {
+                // FIX for Error 1366: Force connection charset to utf8mb4 for emojis
+                $pdo->exec("SET NAMES 'utf8mb4'");
+                
+                $stmt = $pdo->prepare("INSERT INTO order_messages (order_id, sender_type, message, is_credential) VALUES (?, 'admin', ?, ?)");
+                $stmt->execute([$order_id, $msg, $is_cred]);
+
+                $stmt = $pdo->prepare("SELECT user_id FROM orders WHERE id = ?");
+                $stmt->execute([$order_id]);
+                $uid = $stmt->fetchColumn();
+                
+                // Safe Execution for Push
                 if (class_exists('PushService')) {
                     $push = new PushService($pdo);
                     $push->sendToUser($uid, "New Message 💬", "Support replied to Order #$order_id");
                 }
-            } catch (Exception $e) {}
+            } catch (PDOException $e) {
+                // If it STILL fails after forcing charset, strip emojis as a last resort fallback
+                if ($e->getCode() == 'HY000' && strpos($e->getMessage(), '1366') !== false) {
+                    $safe_msg = preg_replace('/[\x{10000}-\x{10FFFF}]/u', '', $msg);
+                    $stmt = $pdo->prepare("INSERT INTO order_messages (order_id, sender_type, message, is_credential) VALUES (?, 'admin', ?, ?)");
+                    $stmt->execute([$order_id, $safe_msg, $is_cred]);
+                } else {
+                    error_log("Chat Insert Error: " . $e->getMessage());
+                }
+            } catch (Exception $e) {
+                 error_log("Chat Insert Error: " . $e->getMessage());
+            }
         }
         echo "<script>window.location.href='index.php?page=order_detail&id=$order_id';</script>";
         exit;
     }
 }
 
-// 2. Fetch Full Order Data (FIXED: Removed missing image_path, added c.icon_class fallback)
+// 2. Fetch Full Order Data
 $stmt = $pdo->prepare("
     SELECT o.*, u.username, u.email as user_account_email, u.phone, 
            p.name as product_name, p.price, p.delivery_type, p.universal_content, p.id as product_id,
