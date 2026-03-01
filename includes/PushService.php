@@ -4,7 +4,7 @@
 use Minishlink\WebPush\WebPush;
 use Minishlink\WebPush\Subscription;
 
-require 'vendor/autoload.php';
+require '/../vendor/autoload.php';
 
 class PushService {
     
