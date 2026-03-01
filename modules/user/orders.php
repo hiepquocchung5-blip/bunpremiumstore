@@ -12,6 +12,11 @@ $active_chat_id = isset($_GET['view_chat']) ? (int)$_GET['view_chat'] : 0;
 // 1. AJAX ENDPOINT FOR LIVE CHAT POLLING
 // =====================================================================================
 if (isset($_GET['ajax']) && $_GET['ajax'] == 1 && $active_chat_id > 0) {
+    // FIX: Clear the output buffer to remove the site header that was already loaded by index.php
+    if (ob_get_length()) {
+        ob_clean();
+    }
+
     // Prevent AJAX caching for real-time updates
     header("Cache-Control: no-store, no-cache, must-revalidate, max-age=0");
     header("Cache-Control: post-check=0, pre-check=0", false);
@@ -49,6 +54,7 @@ if (isset($_GET['ajax']) && $_GET['ajax'] == 1 && $active_chat_id > 0) {
         echo "<span class='text-[10px] text-slate-500 mt-1.5 px-1 font-medium'>{$time}</span>";
         echo "</div></div>";
     }
+    // Stop script execution so the footer isn't loaded either
     exit;
 }
 
