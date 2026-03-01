@@ -1,9 +1,9 @@
 <?php
 // admin/order_detail.php
 
-// Include Notification Services
-require_once dirname(__DIR__) . '/includes/MailService.php';
-require_once dirname(__DIR__) . '/includes/PushService.php';
+// Include Notification Services (Suppress warnings if files are missing)
+@include_once dirname(__DIR__) . '/includes/MailService.php';
+@include_once dirname(__DIR__) . '/includes/PushService.php';
 
 $order_id = isset($_GET['id']) ? (int)$_GET['id'] : 0;
 
@@ -35,9 +35,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $ord_meta = $stmt->fetch();
         
         if ($ord_meta) {
-            $push = new PushService($pdo);
-            $mail = new MailService(); 
-            
             $status_title = "Order Updated";
             $status_msg = "Your order #$order_id status is now: " . ucfirst($status);
             $url = BASE_URL . "index.php?module=user&page=orders&view_chat=$order_id";
@@ -49,9 +46,18 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 $status_title = "Order Rejected ❌";
                 $status_msg = "There was an issue with order #$order_id. Please check support chat.";
             }
-            $push->sendToUser($ord_meta['user_id'], $status_title, $status_msg, $url);
+
+            // Safe Execution: Prevent crashes if Push/Mail tables or classes are missing
+            try {
+                if (class_exists('PushService')) {
+                    $push = new PushService($pdo);
+                    $push->sendToUser($ord_meta['user_id'], $status_title, $status_msg, $url);
+                }
+            } catch (Exception $e) { error_log("Push Error: " . $e->getMessage()); }
         }
-        redirect(admin_url('order_detail', ['id' => $order_id]));
+        // Redirect to refresh page state
+        echo "<script>window.location.href='index.php?page=order_detail&id=$order_id';</script>";
+        exit;
     }
     
     // ACTION: SEND CHAT MESSAGE
@@ -67,20 +73,28 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             $stmt->execute([$order_id]);
             $uid = $stmt->fetchColumn();
             
-            $push = new PushService($pdo);
-            $push->sendToUser($uid, "New Message 💬", "Support replied to Order #$order_id");
+            // Safe Execution for Push
+            try {
+                if (class_exists('PushService')) {
+                    $push = new PushService($pdo);
+                    $push->sendToUser($uid, "New Message 💬", "Support replied to Order #$order_id");
+                }
+            } catch (Exception $e) {}
         }
-        redirect(admin_url('order_detail', ['id' => $order_id]));
+        echo "<script>window.location.href='index.php?page=order_detail&id=$order_id';</script>";
+        exit;
     }
 }
 
-// 2. Fetch Full Order Data
+// 2. Fetch Full Order Data (FIXED: Removed missing image_path, added c.icon_class fallback)
 $stmt = $pdo->prepare("
     SELECT o.*, u.username, u.email as user_account_email, u.phone, 
-           p.name as product_name, p.price, p.delivery_type, p.universal_content, p.id as product_id, p.image_path as product_image
+           p.name as product_name, p.price, p.delivery_type, p.universal_content, p.id as product_id,
+           c.icon_class
     FROM orders o 
     JOIN users u ON o.user_id = u.id 
     JOIN products p ON o.product_id = p.id 
+    LEFT JOIN categories c ON p.category_id = c.id
     WHERE o.id = ?
 ");
 $stmt->execute([$order_id]);
@@ -130,25 +144,27 @@ if ($order['delivery_type'] === 'unique') {
                         <i class="far fa-clock"></i> <?php echo date('M j, H:i', strtotime($order['created_at'])); ?>
                     </p>
                 </div>
-                <a href="<?php echo admin_url('orders'); ?>" class="text-xs bg-slate-800 hover:bg-slate-700 px-3 py-1.5 rounded-lg text-white transition border border-slate-600 shadow-sm">
+                <a href="index.php?page=orders" class="text-xs bg-slate-800 hover:bg-slate-700 px-3 py-1.5 rounded-lg text-white transition border border-slate-600 shadow-sm">
                     <i class="fas fa-arrow-left"></i>
                 </a>
             </div>
 
             <!-- Product Mini Info -->
             <div class="flex items-center gap-4 mb-6 p-3 bg-slate-800/50 rounded-lg border border-slate-700 relative z-10">
-                <div class="w-12 h-12 bg-slate-900 rounded-lg flex items-center justify-center shrink-0 overflow-hidden border border-slate-700">
-                    <?php if($order['product_image']): ?>
-                        <img src="<?php echo MAIN_SITE_URL . $order['product_image']; ?>" class="w-full h-full object-cover">
+                <div class="w-12 h-12 bg-slate-900 rounded-lg flex items-center justify-center shrink-0 overflow-hidden border border-slate-700 shadow-inner">
+                    <?php if(!empty($order['image_path'])): ?>
+                        <img src="<?php echo MAIN_SITE_URL . $order['image_path']; ?>" class="w-full h-full object-cover">
                     <?php else: ?>
-                        <i class="fas fa-cube text-[#00f0ff]"></i>
+                        <i class="fas <?php echo htmlspecialchars($order['icon_class'] ?? 'fa-cube'); ?> text-[#00f0ff] text-xl"></i>
                     <?php endif; ?>
                 </div>
                 <div class="min-w-0">
                     <div class="text-white font-bold text-sm truncate"><?php echo htmlspecialchars($order['product_name']); ?></div>
                     <div class="flex gap-2 mt-1">
                         <span class="text-[10px] text-slate-300 uppercase bg-slate-700 px-1.5 py-0.5 rounded"><?php echo $order['delivery_type']; ?></span>
-                        <span class="text-[10px] text-green-400 font-mono font-bold bg-green-900/20 px-1.5 py-0.5 rounded border border-green-900/30"><?php echo format_admin_currency($order['total_price_paid']); ?></span>
+                        <span class="text-[10px] text-green-400 font-mono font-bold bg-green-900/20 px-1.5 py-0.5 rounded border border-green-900/30">
+                            <?php echo number_format($order['total_price_paid']); ?> Ks
+                        </span>
                     </div>
                 </div>
             </div>
@@ -184,19 +200,23 @@ if ($order['delivery_type'] === 'unique') {
                 </div>
             </div>
 
-            <?php if($order['form_data']): ?>
+            <?php if(!empty($order['form_data'])): ?>
                 <div class="mt-4 pt-4 border-t border-slate-700">
                     <span class="block text-[#00f0ff] text-xs font-bold uppercase mb-2">Form Data (User Input)</span>
                     <div class="space-y-2">
                     <?php 
                         $formData = json_decode($order['form_data'], true);
-                        foreach($formData as $key => $val): 
+                        if(is_array($formData)) {
+                            foreach($formData as $key => $val): 
                     ?>
                         <div class="bg-slate-900 p-2 rounded border border-slate-700/50">
                             <div class="text-xs text-slate-500 mb-1"><?php echo htmlspecialchars($key); ?>:</div>
                             <div class="text-sm text-white font-mono select-all"><?php echo htmlspecialchars($val); ?></div>
                         </div>
-                    <?php endforeach; ?>
+                    <?php 
+                            endforeach; 
+                        } 
+                    ?>
                     </div>
                 </div>
             <?php endif; ?>
@@ -205,7 +225,7 @@ if ($order['delivery_type'] === 'unique') {
         <!-- Payment Proof -->
         <div class="bg-slate-800 p-4 rounded-xl border border-slate-700 shadow-lg">
             <h3 class="font-bold text-slate-300 mb-3 text-sm">Transfer Screenshot</h3>
-            <?php if($order['proof_image_path']): ?>
+            <?php if(!empty($order['proof_image_path'])): ?>
                 <div class="relative group overflow-hidden rounded-lg border border-slate-600 cursor-zoom-in" onclick="openLightbox('<?php echo MAIN_SITE_URL . $order['proof_image_path']; ?>')">
                     <img src="<?php echo MAIN_SITE_URL . $order['proof_image_path']; ?>" class="w-full h-auto max-h-60 object-contain bg-slate-900">
                     <div class="absolute inset-0 bg-[#00f0ff]/10 backdrop-blur-sm flex items-center justify-center opacity-0 group-hover:opacity-100 transition duration-300">
@@ -237,7 +257,7 @@ if ($order['delivery_type'] === 'unique') {
                     <div class="flex gap-3 overflow-x-auto pb-2 no-scrollbar">
                         <?php if(empty($available_keys)): ?>
                             <div class="w-full p-3 bg-red-900/20 border border-red-500/30 rounded-lg text-red-400 text-sm flex items-center gap-2">
-                                <i class="fas fa-exclamation-circle"></i> Out of Stock! <a href="<?php echo admin_url('keys', ['product_id' => $order['product_id']]); ?>" class="underline font-bold text-white">Add Keys</a>
+                                <i class="fas fa-exclamation-circle"></i> Out of Stock! <a href="index.php?page=keys&product_id=<?php echo $order['product_id']; ?>" class="underline font-bold text-white">Add Keys</a>
                             </div>
                         <?php else: ?>
                             <?php foreach($available_keys as $k): ?>
