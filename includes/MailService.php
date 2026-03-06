@@ -21,6 +21,8 @@ class MailService {
             $this->mail->isSMTP();
             $this->mail->Host       = $_ENV['MAIL_HOST'] ?? 'ps10.zwhhosting.com';
             $this->mail->SMTPAuth   = true;
+            
+            // Explicitly map your new variables
             $this->mail->Username   = $_ENV['MAIL_USER'] ?? 'no-reply@digitalmarketplacemm.com';
             $this->mail->Password   = $_ENV['MAIL_PASS'] ?? '';
             
@@ -169,6 +171,45 @@ class MailService {
             $this->mail->send();
             return true;
         } catch (Exception $e) { return false; }
+    }
+
+    /**
+     * 5. Send Google Auth Generated Password
+     */
+    public function sendGoogleAuthPassword($email, $name, $password) {
+        try {
+            $this->mail->clearAddresses();
+            $this->mail->addAddress($email, $name);
+            $this->mail->Subject = "Your New Account Details - DigitalMarketplaceMM";
+            
+            $login_url = BASE_URL . "index.php?module=auth&page=login";
+            
+            $content = "
+                <h2 style='color: #1e293b;'>Welcome, $name! 🚀</h2>
+                <p style='color: #64748b;'>An account has been automatically created for you using Google Sign-In.</p>
+                
+                <div style='background-color: #f1f5f9; padding: 20px; border-radius: 8px; border-left: 4px solid #0ea5e9; margin: 20px 0;'>
+                    <p style='margin: 0 0 10px 0; color: #334155;'><strong>Login Details:</strong></p>
+                    <p style='margin: 0; font-family: monospace; color: #0f172a; font-size: 14px;'>
+                        Email: $email<br>
+                        Generated Password: <strong>$password</strong>
+                    </p>
+                </div>
+                
+                <p style='color: #64748b; font-size: 14px;'>You can continue logging in with Google, or use these credentials to sign in normally. We highly recommend changing this password in your Account Settings.</p>
+                
+                <div style='text-align: center; margin-top: 30px;'>
+                    <a href='$login_url' style='background-color: #2563eb; color: #ffffff; padding: 12px 24px; border-radius: 6px; text-decoration: none; font-weight: bold;'>Go to Login</a>
+                </div>
+            ";
+
+            $this->mail->Body = $this->getHtmlTemplate($content);
+            $this->mail->send();
+            return true;
+        } catch (Exception $e) {
+            error_log("Send Google Auth Password Error: " . $this->mail->ErrorInfo);
+            return false;
+        }
     }
 
     /**
