@@ -1,6 +1,6 @@
 <?php
 // index.php
-// PRODUCTION ROUTER v1.0
+// PRODUCTION ROUTER v1.2 - AJAX Support & New Routes added
 
 /**
  * --------------------------------------------------------------------------
@@ -31,28 +31,30 @@ $allowed_routes = [
         'login', 
         'register', 
         'logout', 
-        'verify',           // New
-        'verify_resend',    // New
-        'forgot_password',  // New
-        'reset_password'    // New
+        'verify', 
+        'verify_resend',
+        'forgot_password',
+        'reset_password'
     ],
     
     // Shopping & Products
     'shop' => [
         'category', 
-        'product',          // New (Details)
+        'product', 
         'checkout', 
-        'search'            // New
+        'search'
     ],
     
     // User Account Management
     'user' => [
-        'dashboard',        // New (Hub)
+        'dashboard',
         'orders', 
         'profile', 
         'agent', 
-        'wishlist',         // New
-        'invoice'           // New (Printable)
+        'wishlist',
+        'wallet',           // Added Wallet
+        'referrals',        // Added Referrals
+        'invoice'
     ],
     
     // Static Information
@@ -60,7 +62,7 @@ $allowed_routes = [
         'support', 
         'terms', 
         'privacy', 
-        'tutorial'          // New
+        'tutorial'
     ],
     
     // System
@@ -81,7 +83,7 @@ if (!array_key_exists($module, $allowed_routes) || !in_array($page, $allowed_rou
  * --------------------------------------------------------------------------
  */
 $protected_pages = [
-    'user' => ['dashboard', 'orders', 'profile', 'agent', 'wishlist', 'invoice'],
+    'user' => ['dashboard', 'orders', 'profile', 'agent', 'wishlist', 'wallet', 'referrals', 'invoice'],
     'shop' => ['checkout']
 ];
 
@@ -103,14 +105,18 @@ if (isset($protected_pages[$module]) && in_array($page, $protected_pages[$module
  */
 
 // Define Standalone Pages (No Header/Footer)
-// Auth pages have their own glass layout. Invoice is printable.
 $standalone_views = [
     'auth' => ['login', 'register', 'verify', 'verify_resend', 'forgot_password', 'reset_password'],
     'user' => ['invoice'],
-    'error' => ['404'] // Optional: You might want header on 404, but keeping clean for now
+    'error' => ['404'] 
 ];
 
 $is_standalone = (isset($standalone_views[$module]) && in_array($page, $standalone_views[$module]));
+
+// FIX: If this is an AJAX request (like the Live Chat polling), do NOT load the header/footer
+if (isset($_GET['ajax']) && $_GET['ajax'] == 1) {
+    $is_standalone = true;
+}
 
 // Buffer Output to prevent header errors
 ob_start();

@@ -10,7 +10,7 @@ $error = '';
 $success = '';
 $show_verify_modal = false;
 $user_email = '';
-$unverified_email_attempt = ''; // Stores email if login fails due to verification status
+$unverified_email_attempt = '';
 
 // 2. Handle Registration Success (Trigger Modal)
 if (isset($_GET['registered']) && $_GET['registered'] == 1) {
@@ -50,6 +50,9 @@ if ($_SESSION['login_attempts'] >= 5 && time() < $_SESSION['login_lockout']) {
     }
 
     // --- 5. GOOGLE OAUTH HANDLER ---
+    // Make sure GOOGLE_CLIENT_ID and GOOGLE_CLIENT_SECRET are set in your .env
+    $google_login_url = "https://accounts.google.com/o/oauth2/v2/auth?response_type=code&client_id=" . urlencode(GOOGLE_CLIENT_ID) . "&redirect_uri=" . urlencode(GOOGLE_REDIRECT_URL) . "&scope=email%20profile";
+
     if (isset($_GET['code'])) {
         $token_url = 'https://oauth2.googleapis.com/token';
         $params = [
@@ -60,13 +63,21 @@ if ($_SESSION['login_attempts'] >= 5 && time() < $_SESSION['login_lockout']) {
             'grant_type' => 'authorization_code'
         ];
 
+        // Ensure cURL is configured securely
         $ch = curl_init();
         curl_setopt($ch, CURLOPT_URL, $token_url);
         curl_setopt($ch, CURLOPT_POST, 1);
         curl_setopt($ch, CURLOPT_POSTFIELDS, http_build_query($params));
         curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
+        // Important for production: Verify SSL
+        curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, true); 
         $response = curl_exec($ch);
+        
+        if(curl_errno($ch)){
+            $error = 'Google Login Error: ' . curl_error($ch);
+        }
         curl_close($ch);
+        
         $token_data = json_decode($response, true);
 
         if (isset($token_data['access_token'])) {
@@ -75,41 +86,59 @@ if ($_SESSION['login_attempts'] >= 5 && time() < $_SESSION['login_lockout']) {
             curl_setopt($ch, CURLOPT_URL, $info_url);
             curl_setopt($ch, CURLOPT_HTTPHEADER, ['Authorization: Bearer ' . $token_data['access_token']]);
             curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
+            curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, true);
             $user_info = json_decode(curl_exec($ch), true);
             curl_close($ch);
 
             if (isset($user_info['email'])) {
-                $g_email = $user_info['email'];
-                $g_name = $user_info['name'];
+                $g_email = filter_var($user_info['email'], FILTER_SANITIZE_EMAIL);
+                $g_name = htmlspecialchars(trim($user_info['name']));
                 
                 $stmt = $pdo->prepare("SELECT * FROM users WHERE email = ?");
                 $stmt->execute([$g_email]);
                 $user = $stmt->fetch();
 
                 if ($user) {
+                    // Auto-verify if they logged in via Google
                     if ($user['is_verified'] == 0) {
                         $pdo->prepare("UPDATE users SET is_verified = 1 WHERE id = ?")->execute([$user['id']]);
                     }
+                    
+                    // Log them in
                     $_SESSION['user_id'] = $user['id'];
                     $_SESSION['user_name'] = $user['username'];
                     $_SESSION['user_email'] = $user['email'];
-                    redirect('index.php');
+                    
+                    redirect('index.php?module=user&page=dashboard');
                 } else {
-                    // Register New User (Google)
-                    $username = strtolower(str_replace(' ', '', $g_name)) . rand(100, 999);
-                    $random_pass = bin2hex(random_bytes(10));
+                    // Auto-Register New User (Google)
+                    // Generate a safe username
+                    $base_username = strtolower(preg_replace('/[^a-zA-Z0-9]/', '', $g_name));
+                    if (empty($base_username)) $base_username = 'user';
+                    $username = $base_username . rand(1000, 9999);
+                    
+                    $random_pass = bin2hex(random_bytes(12));
                     $hashed = password_hash($random_pass, PASSWORD_DEFAULT);
-                    $stmt = $pdo->prepare("INSERT INTO users (full_name, username, email, password, is_verified) VALUES (?, ?, ?, ?, 1)");
-                    if ($stmt->execute([$g_name, $username, $g_email, $hashed])) {
-                        $_SESSION['user_id'] = $pdo->lastInsertId();
-                        $_SESSION['user_name'] = $username;
-                        $_SESSION['user_email'] = $g_email;
-                        redirect('index.php');
-                    } else {
-                        $error = "Failed to create account with Google.";
+                    
+                    try {
+                        $stmt = $pdo->prepare("INSERT INTO users (full_name, username, email, password, is_verified) VALUES (?, ?, ?, ?, 1)");
+                        if ($stmt->execute([$g_name, $username, $g_email, $hashed])) {
+                            $_SESSION['user_id'] = $pdo->lastInsertId();
+                            $_SESSION['user_name'] = $username;
+                            $_SESSION['user_email'] = $g_email;
+                            redirect('index.php?module=user&page=dashboard');
+                        } else {
+                            $error = "Failed to create account with Google. Database error.";
+                        }
+                    } catch(PDOException $e) {
+                         $error = "System error during Google registration.";
                     }
                 }
+            } else {
+                $error = "Could not retrieve email from Google.";
             }
+        } elseif (isset($token_data['error'])) {
+             $error = "Google Authentication Failed: " . htmlspecialchars($token_data['error_description'] ?? 'Unknown error');
         }
     }
 
@@ -119,9 +148,9 @@ if ($_SESSION['login_attempts'] >= 5 && time() < $_SESSION['login_lockout']) {
         $post_token = $_POST['csrf_token'] ?? '';
         
         if (empty($session_token) || !hash_equals($session_token, $post_token)) {
-            $error = "Security token expired. Please refresh.";
+            $error = "Security session expired. Please refresh the page and try again.";
         } else {
-            $email = trim($_POST['email']);
+            $email = filter_var(trim($_POST['email']), FILTER_SANITIZE_EMAIL);
             $password = $_POST['password'];
             $remember = isset($_POST['remember']);
 
@@ -133,8 +162,8 @@ if ($_SESSION['login_attempts'] >= 5 && time() < $_SESSION['login_lockout']) {
                 
                 // 🔒 Check Verification
                 if ($user['is_verified'] == 0) {
-                    $error = "Email not verified.";
-                    $unverified_email_attempt = $email; // Enable Resend Button
+                    $error = "Your email address has not been verified.";
+                    $unverified_email_attempt = $email; 
                 } else {
                     // Success
                     $_SESSION['login_attempts'] = 0;
@@ -149,12 +178,20 @@ if ($_SESSION['login_attempts'] >= 5 && time() < $_SESSION['login_lockout']) {
                         setcookie(session_name(), session_id(), time() + (86400 * 30), $params["path"], $params["domain"], $params["secure"], $params["httponly"]);
                     }
 
-                    $redirect_url = isset($_GET['redirect']) ? urldecode($_GET['redirect']) : 'index.php';
+                    $redirect_url = isset($_GET['redirect']) ? urldecode($_GET['redirect']) : 'index.php?module=user&page=dashboard';
+                    // Prevent open redirects
+                    if (!preg_match('/^index\.php/', $redirect_url)) {
+                        $redirect_url = 'index.php';
+                    }
+                    
                     header("Location: " . $redirect_url);
                     exit;
                 }
             } else {
                 $_SESSION['login_attempts']++;
+                if ($_SESSION['login_attempts'] >= 5) {
+                    $_SESSION['login_lockout'] = time() + (5 * 60); // Lock for 5 mins
+                }
                 $error = "Invalid email or password.";
             }
         }
@@ -165,64 +202,99 @@ if ($_SESSION['login_attempts'] >= 5 && time() < $_SESSION['login_lockout']) {
 <html lang="en">
 <head>
     <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>Login - DigitalMarketplaceMM</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
     <style>
-        body { background: #0f172a; color: white; font-family: 'Inter', sans-serif; }
+        body { 
+            background: #0f172a; 
+            color: white; 
+            font-family: 'Inter', sans-serif; 
+            /* Fix mobile viewport height issues */
+            min-height: 100vh;
+            min-height: -webkit-fill-available;
+        }
         .glass { 
-            background: rgba(30, 41, 59, 0.7); 
+            background: rgba(15, 23, 42, 0.85); 
             backdrop-filter: blur(20px); 
             -webkit-backdrop-filter: blur(20px);
-            border: 1px solid rgba(255, 255, 255, 0.08); 
-            box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.5); 
+            border: 1px solid rgba(0, 240, 255, 0.15); 
+            box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.5), 0 0 30px rgba(0, 240, 255, 0.05); 
         }
+        
+        /* Mobile Optimized Inputs */
         .input-group { position: relative; }
         .input-icon { 
             position: absolute; 
-            left: 1rem; 
+            left: 1.25rem; 
             top: 50%; 
             transform: translateY(-50%); 
             color: #64748b; 
             transition: color 0.3s; 
+            font-size: 1.1rem;
         }
         .input-field { 
-            padding-left: 2.75rem; 
+            padding-left: 3.25rem; 
+            padding-right: 1rem;
             transition: all 0.3s ease; 
+            /* Prevent iOS zoom on focus */
+            font-size: 16px !important; 
         }
-        .input-field:focus + .input-icon { color: #3b82f6; }
-        .input-field:focus { border-color: #3b82f6; box-shadow: 0 0 0 4px rgba(59, 130, 246, 0.1); }
+        .input-field:focus + .input-icon { color: #00f0ff; }
+        .input-field:focus { 
+            border-color: #00f0ff; 
+            box-shadow: inset 0 0 10px rgba(0, 240, 255, 0.1); 
+        }
+
+        /* Abstract Background Animations */
+        @keyframes blob {
+            0% { transform: translate(0px, 0px) scale(1); }
+            33% { transform: translate(30px, -50px) scale(1.1); }
+            66% { transform: translate(-20px, 20px) scale(0.9); }
+            100% { transform: translate(0px, 0px) scale(1); }
+        }
+        .animate-blob { animation: blob 7s infinite; }
+        .animation-delay-2000 { animation-delay: 2s; }
+        .animation-delay-4000 { animation-delay: 4s; }
     </style>
 </head>
-<body class="flex items-center justify-center min-h-screen p-4 bg-[url('https://images.unsplash.com/photo-1620641788421-7a1c342ea42e?q=80&w=1974&auto=format&fit=crop')] bg-cover bg-center">
+<body class="flex items-center justify-center relative overflow-hidden px-4 py-8 md:p-4">
     
-    <div class="absolute inset-0 bg-slate-900/90 backdrop-blur-sm"></div>
+    <!-- Animated Cyberpunk Background -->
+    <div class="fixed inset-0 w-full h-full bg-slate-950 -z-20"></div>
+    <div class="fixed top-0 -left-4 w-72 h-72 bg-blue-600 rounded-full mix-blend-multiply filter blur-[128px] opacity-40 animate-blob -z-10"></div>
+    <div class="fixed top-0 -right-4 w-72 h-72 bg-purple-600 rounded-full mix-blend-multiply filter blur-[128px] opacity-40 animate-blob animation-delay-2000 -z-10"></div>
+    <div class="fixed -bottom-8 left-20 w-72 h-72 bg-[#00f0ff] rounded-full mix-blend-multiply filter blur-[128px] opacity-20 animate-blob animation-delay-4000 -z-10"></div>
 
-    <div class="w-full max-w-md glass p-8 rounded-2xl relative z-10 animate-fade-in-down border-t border-gray-700/50">
+    <!-- Main Container -->
+    <div class="w-full max-w-md glass p-6 md:p-8 rounded-3xl relative z-10 w-full transform transition-all">
         
+        <!-- Header -->
         <div class="text-center mb-8">
-            <div class="inline-flex items-center justify-center w-14 h-14 rounded-2xl bg-gradient-to-br from-blue-600 to-indigo-600 mb-4 shadow-lg shadow-blue-500/20">
-                <i class="fas fa-fingerprint text-2xl text-white"></i>
-            </div>
-            <h2 class="text-3xl font-bold tracking-tight text-white">Welcome Back</h2>
-            <p class="text-slate-400 mt-2 text-sm">Sign in to manage your orders</p>
+            <a href="index.php" class="inline-block mb-4 group">
+                <div class="w-16 h-16 bg-slate-900 border border-[#00f0ff]/30 rounded-2xl flex items-center justify-center mx-auto shadow-[0_0_15px_rgba(0,240,255,0.2)] group-hover:shadow-[0_0_25px_rgba(0,240,255,0.4)] transition duration-300">
+                    <i class="fas fa-bolt text-3xl text-[#00f0ff]"></i>
+                </div>
+            </a>
+            <h2 class="text-3xl font-black tracking-tight text-white mb-1">Access Portal</h2>
+            <p class="text-slate-400 text-sm">Secure entry to DigitalMarketplaceMM</p>
         </div>
         
-        <!-- Error Alert with Resend Button -->
+        <!-- Alerts -->
         <?php if($error): ?>
-            <div class="bg-red-500/10 border border-red-500/20 text-red-400 p-4 rounded-xl mb-6 text-sm">
-                <div class="flex items-center gap-3">
-                    <i class="fas fa-exclamation-circle text-lg"></i>
-                    <span class="font-medium"><?php echo $error; ?></span>
+            <div class="bg-red-900/20 border border-red-500/50 text-red-400 p-4 rounded-xl mb-6 text-sm backdrop-blur-md shadow-lg">
+                <div class="flex items-start gap-3">
+                    <i class="fas fa-exclamation-triangle text-lg mt-0.5 shrink-0"></i>
+                    <span class="font-medium leading-snug"><?php echo htmlspecialchars($error); ?></span>
                 </div>
                 
                 <?php if($unverified_email_attempt): ?>
-                    <div class="mt-3 pt-3 border-t border-red-500/20">
-                        <p class="text-xs text-red-300 mb-2">Did not receive the code?</p>
+                    <div class="mt-4 pt-3 border-t border-red-500/30">
                         <a href="index.php?module=auth&page=verify_resend&email=<?php echo urlencode($unverified_email_attempt); ?>" 
-                           class="block w-full bg-red-500/20 hover:bg-red-500/30 text-white text-center py-2 rounded-lg text-xs font-bold transition border border-red-500/30">
-                           <i class="fas fa-paper-plane mr-1"></i> Resend Verification Email
+                           class="block w-full bg-red-600 hover:bg-red-500 text-white text-center py-3 rounded-lg text-sm font-bold transition shadow-lg flex items-center justify-center gap-2">
+                           <i class="fas fa-paper-plane"></i> Send New Code
                         </a>
                     </div>
                 <?php endif; ?>
@@ -230,79 +302,91 @@ if ($_SESSION['login_attempts'] >= 5 && time() < $_SESSION['login_lockout']) {
         <?php endif; ?>
 
         <?php if($success && !$show_verify_modal): ?>
-            <div class="bg-green-500/10 border border-green-500/20 text-green-400 p-4 rounded-xl mb-6 text-sm flex items-center gap-3">
-                <i class="fas fa-check-circle text-lg"></i>
-                <span><?php echo $success; ?></span>
+            <div class="bg-green-900/20 border border-green-500/50 text-green-400 p-4 rounded-xl mb-6 text-sm flex items-center gap-3 backdrop-blur-md shadow-lg">
+                <i class="fas fa-shield-check text-xl shrink-0"></i>
+                <span class="font-medium leading-snug"><?php echo $success; ?></span>
             </div>
         <?php endif; ?>
 
-        <!-- Google Login -->
-        <a href="<?php echo $google_login_url; ?>" class="w-full bg-white text-slate-900 font-bold py-3 rounded-xl shadow hover:bg-slate-100 transition flex items-center justify-center gap-3 mb-6 transform hover:scale-[1.01] duration-200">
-            <img src="https://www.svgrepo.com/show/475656/google-color.svg" class="w-5 h-5" alt="Google">
-            <span>Sign in with Google</span>
+        <!-- Google OAuth Button -->
+        <a href="<?php echo $google_login_url; ?>" class="w-full bg-white hover:bg-gray-100 text-slate-900 font-black py-3.5 px-4 rounded-xl shadow-lg transition flex items-center justify-center gap-3 mb-6 group">
+            <img src="https://www.svgrepo.com/show/475656/google-color.svg" class="w-6 h-6 transition-transform group-hover:scale-110" alt="Google">
+            <span class="text-sm tracking-wide">Continue with Google</span>
         </a>
 
+        <!-- Divider -->
         <div class="flex items-center gap-4 mb-6">
-            <div class="h-px bg-slate-700 flex-1"></div>
-            <span class="text-xs text-slate-500 uppercase font-bold tracking-wider">Or continue with</span>
-            <div class="h-px bg-slate-700 flex-1"></div>
+            <div class="h-px bg-slate-700/80 flex-1"></div>
+            <span class="text-[10px] text-slate-500 uppercase font-black tracking-widest">Or standard login</span>
+            <div class="h-px bg-slate-700/80 flex-1"></div>
         </div>
 
+        <!-- Login Form -->
         <form method="POST" class="space-y-5">
             <input type="hidden" name="csrf_token" value="<?php echo generate_csrf_token(); ?>">
             
             <div class="input-group">
-                <input type="email" name="email" placeholder="Email Address" required 
-                       class="input-field w-full bg-slate-900/50 border border-slate-600 rounded-xl p-3.5 text-white focus:border-blue-500 focus:ring-1 focus:ring-blue-500 outline-none placeholder-slate-500 shadow-inner text-sm">
+                <input type="email" name="email" placeholder="Email Address" required autocomplete="email"
+                       class="input-field w-full bg-slate-900/60 border border-slate-600 rounded-xl py-4 text-white focus:border-[#00f0ff] outline-none placeholder-slate-500 backdrop-blur-sm">
                 <i class="fas fa-envelope input-icon"></i>
             </div>
 
             <div class="input-group">
-                <input type="password" name="password" placeholder="Password" required 
-                       class="input-field w-full bg-slate-900/50 border border-slate-600 rounded-xl p-3.5 text-white focus:border-blue-500 focus:ring-1 focus:ring-blue-500 outline-none placeholder-slate-500 shadow-inner text-sm">
+                <input type="password" name="password" placeholder="Master Password" required autocomplete="current-password"
+                       class="input-field w-full bg-slate-900/60 border border-slate-600 rounded-xl py-4 text-white focus:border-[#00f0ff] outline-none placeholder-slate-500 backdrop-blur-sm">
                 <i class="fas fa-lock input-icon"></i>
             </div>
 
-            <div class="flex justify-between items-center text-xs text-slate-400 px-1">
+            <div class="flex justify-between items-center px-1">
                 <label class="flex items-center gap-2 cursor-pointer select-none group">
-                    <input type="checkbox" name="remember" class="rounded border-slate-600 bg-slate-800 text-blue-600 focus:ring-offset-slate-900 focus:ring-blue-500 cursor-pointer">
-                    <span class="group-hover:text-slate-300 transition">Remember me</span>
+                    <div class="relative flex items-center">
+                        <input type="checkbox" name="remember" class="w-4 h-4 rounded border-slate-600 bg-slate-800 text-[#00f0ff] focus:ring-[#00f0ff] focus:ring-offset-slate-900 cursor-pointer transition">
+                    </div>
+                    <span class="text-xs text-slate-400 group-hover:text-white transition font-medium">Remember me</span>
                 </label>
-                <a href="index.php?module=auth&page=forgot_password" class="text-blue-400 hover:text-blue-300 transition font-medium">Forgot Password?</a>
+                <a href="index.php?module=auth&page=forgot_password" class="text-xs text-[#00f0ff] hover:text-white transition font-bold tracking-wide">Recover Password</a>
             </div>
 
-            <button type="submit" class="w-full bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-500 hover:to-indigo-500 text-white font-bold py-3.5 rounded-xl shadow-lg shadow-blue-900/20 transform transition active:scale-[0.98] text-sm tracking-wide">
-                Sign In
+            <button type="submit" class="w-full bg-gradient-to-r from-blue-600 to-[#00f0ff] hover:from-blue-500 hover:to-[#00f0ff] text-slate-900 font-black py-4 rounded-xl shadow-[0_0_20px_rgba(0,240,255,0.2)] hover:shadow-[0_0_30px_rgba(0,240,255,0.4)] transform transition active:scale-[0.98] text-sm uppercase tracking-widest mt-2 flex justify-center items-center gap-2">
+                <span>Initiate Login</span>
+                <i class="fas fa-sign-in-alt"></i>
             </button>
         </form>
 
-        <div class="mt-8 text-center space-y-4 pt-6 border-t border-slate-700/50">
-            <p class="text-sm text-slate-400">
-                New here? <a href="index.php?module=auth&page=register" class="text-blue-400 font-bold hover:text-blue-300 transition hover:underline">Create an account</a>
+        <!-- Footer Links -->
+        <div class="mt-8 pt-6 border-t border-slate-700/50 text-center space-y-4">
+            <p class="text-sm text-slate-400 font-medium">
+                No account yet? <a href="index.php?module=auth&page=register" class="text-[#00f0ff] font-bold hover:underline ml-1">Deploy New User</a>
             </p>
-            <a href="index.php" class="inline-flex items-center gap-2 text-xs text-slate-500 hover:text-white transition group">
-                <i class="fas fa-arrow-left group-hover:-translate-x-1 transition-transform"></i> Return to Store
+            <a href="index.php" class="inline-flex items-center gap-2 text-xs text-slate-500 hover:text-white transition group font-bold uppercase tracking-wider">
+                <i class="fas fa-home group-hover:-translate-x-1 transition-transform"></i> Return to Hub
             </a>
         </div>
     </div>
 
     <!-- Verification Modal (Success State) -->
     <?php if($show_verify_modal): ?>
-    <div class="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-md animate-fade-in">
-        <div class="bg-slate-800 rounded-2xl max-w-sm w-full p-6 text-center border border-slate-700 shadow-2xl transform scale-100 transition-all">
-            <div class="w-16 h-16 bg-green-500/10 rounded-full flex items-center justify-center mx-auto mb-5 ring-1 ring-green-500/30">
-                <i class="fas fa-paper-plane text-3xl text-green-500 animate-bounce"></i>
+    <div class="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/80 backdrop-blur-xl animate-fade-in">
+        <div class="bg-slate-900 border border-[#00f0ff]/30 rounded-3xl max-w-sm w-full p-8 text-center shadow-[0_0_50px_rgba(0,240,255,0.1)] transform transition-all relative overflow-hidden">
+            <!-- Glow FX -->
+            <div class="absolute top-0 inset-x-0 h-1 bg-gradient-to-r from-transparent via-[#00f0ff] to-transparent"></div>
+            
+            <div class="w-20 h-20 bg-green-500/10 border border-green-500/30 rounded-full flex items-center justify-center mx-auto mb-6 shadow-[0_0_30px_rgba(34,197,94,0.2)]">
+                <i class="fas fa-paper-plane text-4xl text-green-400 animate-bounce"></i>
             </div>
-            <h3 class="text-xl font-bold text-white mb-2">Check your Email</h3>
-            <p class="text-slate-400 text-sm mb-6 leading-relaxed">
-                We sent a link to <strong class="text-white"><?php echo $user_email; ?></strong>.<br>Please check your inbox.
+            
+            <h3 class="text-2xl font-black text-white mb-2">Verify Identity</h3>
+            <p class="text-slate-400 text-sm mb-8 leading-relaxed">
+                An authentication link was dispatched to:<br>
+                <strong class="text-[#00f0ff] font-mono mt-1 inline-block break-all"><?php echo $user_email; ?></strong>
             </p>
+            
             <div class="space-y-3">
-                <a href="<?php echo $email_link; ?>" target="_blank" class="flex items-center justify-center gap-2 w-full bg-blue-600 hover:bg-blue-500 text-white font-bold py-3 rounded-xl transition shadow-lg text-sm">
-                    <i class="<?php echo $email_icon; ?>"></i> <?php echo $email_btn_text; ?>
+                <a href="<?php echo $email_link; ?>" target="_blank" class="flex items-center justify-center gap-2 w-full bg-blue-600 hover:bg-[#00f0ff] hover:text-slate-900 text-white font-bold py-4 rounded-xl transition shadow-lg text-sm tracking-wide">
+                    <i class="<?php echo $email_icon; ?> text-lg"></i> <?php echo $email_btn_text; ?>
                 </a>
-                <button onclick="this.closest('.fixed').remove()" class="block w-full bg-transparent hover:bg-slate-700 text-slate-400 hover:text-white font-medium py-3 rounded-xl transition text-sm">
-                    Close
+                <button onclick="this.closest('.fixed').remove()" class="block w-full bg-slate-800 hover:bg-slate-700 text-slate-400 hover:text-white font-bold py-4 rounded-xl transition text-sm">
+                    Dismiss
                 </button>
             </div>
         </div>
