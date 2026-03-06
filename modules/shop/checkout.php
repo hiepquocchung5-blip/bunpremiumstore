@@ -1,6 +1,6 @@
 <?php
 // modules/shop/checkout.php
-// PRODUCTION DEPLOYMENT v3.1 - Admin Delivery Only & Neon UI
+// PRODUCTION DEPLOYMENT v3.2 - SQL Error 1054 Patch (Stored Payment Node in JSON)
 
 if (!is_logged_in()) redirect('index.php?module=auth&page=login');
 
@@ -75,16 +75,24 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 $email_type = isset($_POST['email_type']) ? $_POST['email_type'] : 'admin';
                 $delivery = ($email_type == 'own') ? $_SESSION['user_email'] : 'Admin Provided via Chat';
                 
-                // Construct Form Data JSON if applicable
-                $form_data = null;
-                if ($product['delivery_type'] === 'form' && isset($_POST['form_field'])) {
-                     $form_data = json_encode($_POST['form_field']);
-                }
+                // -------------------------------------------------------------------------
+                // SQL ERROR PATCH: Store Payment Method inside JSON instead of missing column
+                // -------------------------------------------------------------------------
+                $stmt_pm = $pdo->prepare("SELECT bank_name FROM payment_methods WHERE id = ?");
+                $stmt_pm->execute([$selected_payment_id]);
+                $pm_name = $stmt_pm->fetchColumn() ?: 'Manual Transfer';
 
-                // Insert Order
-                $sql = "INSERT INTO orders (user_id, product_id, email_delivery_type, delivery_email, form_data, payment_method_id, transaction_last_6, proof_image_path, total_price_paid, coupon_code) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)";
+                $form_data_array = ['Payment Node' => $pm_name];
+                
+                if ($product['delivery_type'] === 'form' && isset($_POST['form_field'])) {
+                     $form_data_array = array_merge($form_data_array, $_POST['form_field']);
+                }
+                $form_data = json_encode($form_data_array);
+
+                // Insert Order (Removed payment_method_id to prevent PDO Exception)
+                $sql = "INSERT INTO orders (user_id, product_id, email_delivery_type, delivery_email, form_data, transaction_last_6, proof_image_path, total_price_paid, coupon_code) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)";
                 $stmt = $pdo->prepare($sql);
-                $stmt->execute([$_SESSION['user_id'], $product_id, $email_type, $delivery, $form_data, $selected_payment_id, $txn_id, $target_file, $final_price, $coupon_code]);
+                $stmt->execute([$_SESSION['user_id'], $product_id, $email_type, $delivery, $form_data, $txn_id, $target_file, $final_price, $coupon_code]);
                 
                 $new_order_id = $pdo->lastInsertId();
 
