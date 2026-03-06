@@ -1,6 +1,6 @@
 <?php
 // modules/shop/checkout.php
-// PRODUCTION DEPLOYMENT v3.2 - SQL Error 1054 Patch (Stored Payment Node in JSON)
+// PRODUCTION DEPLOYMENT v3.3 - SQL ENUM Patch ('admin_provided')
 
 if (!is_logged_in()) redirect('index.php?module=auth&page=login');
 
@@ -72,7 +72,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 $txn_id = trim($_POST['txn_id']);
                 
                 // Force Admin Delivery unless it's a form type that requires user email context
-                $email_type = isset($_POST['email_type']) ? $_POST['email_type'] : 'admin';
+                // FIX: Ensure it strictly matches the ENUM('own', 'admin_provided') in the database
+                $email_type = isset($_POST['email_type']) && $_POST['email_type'] === 'own' ? 'own' : 'admin_provided';
                 $delivery = ($email_type == 'own') ? $_SESSION['user_email'] : 'Admin Provided via Chat';
                 
                 // -------------------------------------------------------------------------
@@ -255,7 +256,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                             </div>
                         </div>
                         <?php if($product['delivery_type'] != 'form'): ?>
-                            <input type="hidden" name="email_type" value="admin">
+                            <!-- FIX: Use exact ENUM value 'admin_provided' -->
+                            <input type="hidden" name="email_type" value="admin_provided">
                         <?php else: ?>
                             <input type="hidden" name="email_type" value="own">
                         <?php endif; ?>
