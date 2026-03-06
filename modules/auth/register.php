@@ -110,7 +110,6 @@ elseif ($_SERVER['REQUEST_METHOD'] === 'POST') {
                     } elseif ($e->getCode() == 'HY000' && strpos($e->getMessage(), '1366') !== false) {
                         // Catch Error 1366 (Incorrect string value) explicitly
                         $error = "Your name contains characters not supported by the database. Please use standard characters.";
-                        // Admin Note: Run 'ALTER TABLE users CONVERT TO CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;' on DB
                     } else {
                          // Don't show raw DB errors in production
                         error_log($e->getMessage()); 
@@ -133,171 +132,226 @@ elseif ($_SERVER['REQUEST_METHOD'] === 'POST') {
     }
 }
 
-// Google Auth Link
-$google_login_url = "https://accounts.google.com/o/oauth2/v2/auth?response_type=code&client_id=" . GOOGLE_CLIENT_ID . "&redirect_uri=" . urlencode(GOOGLE_REDIRECT_URL) . "&scope=email%20profile";
+// Google Auth Link (Safe variable fetch)
+$google_client_id = defined('GOOGLE_CLIENT_ID') ? GOOGLE_CLIENT_ID : '';
+$google_redirect_url = defined('GOOGLE_REDIRECT_URL') ? GOOGLE_REDIRECT_URL : '';
+$google_login_url = "https://accounts.google.com/o/oauth2/v2/auth?response_type=code&client_id=" . urlencode($google_client_id) . "&redirect_uri=" . urlencode($google_redirect_url) . "&scope=email%20profile";
 ?>
 <!DOCTYPE html>
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <title>Create Account - DigitalMarketplaceMM</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Deploy Account - DigitalMarketplaceMM</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
     <style>
-        body { background: #0f172a; color: white; font-family: 'Inter', sans-serif; }
-        .glass { background: rgba(30, 41, 59, 0.75); backdrop-filter: blur(16px); border: 1px solid rgba(255, 255, 255, 0.08); box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.5); }
-        .input-icon { position: absolute; left: 1rem; top: 50%; transform: translateY(-50%); color: #94a3b8; transition: color 0.2s; }
-        .input-field { padding-left: 2.75rem; transition: all 0.2s ease; }
-        .input-field:focus + .input-icon { color: #60a5fa; }
-        /* Custom Checkbox */
-        .custom-checkbox:checked { background-color: #2563eb; border-color: #2563eb; }
-        /* Hide Honeypot */
+        body { 
+            background: #0f172a; 
+            color: white; 
+            font-family: 'Inter', sans-serif; 
+            min-height: 100vh;
+        }
+        .glass { 
+            background: rgba(15, 23, 42, 0.85); 
+            backdrop-filter: blur(20px); 
+            -webkit-backdrop-filter: blur(20px);
+            border: 1px solid rgba(0, 240, 255, 0.15); 
+            box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.5), 0 0 30px rgba(0, 240, 255, 0.05); 
+        }
+        
+        /* Mobile Optimized Inputs */
+        .input-group { position: relative; }
+        .input-icon { 
+            position: absolute; 
+            left: 1.25rem; 
+            top: 50%; 
+            transform: translateY(-50%); 
+            color: #64748b; 
+            transition: color 0.3s; 
+            font-size: 1.1rem;
+        }
+        .input-field { 
+            padding-left: 3.25rem; 
+            padding-right: 1rem;
+            transition: all 0.3s ease; 
+            font-size: 16px !important; 
+        }
+        .input-field:focus + .input-icon { color: #00f0ff; }
+        .input-field:focus { 
+            border-color: #00f0ff; 
+            box-shadow: inset 0 0 10px rgba(0, 240, 255, 0.1); 
+        }
+
+        /* Abstract Background Animations */
+        @keyframes blob {
+            0% { transform: translate(0px, 0px) scale(1); }
+            33% { transform: translate(30px, -50px) scale(1.1); }
+            66% { transform: translate(-20px, 20px) scale(0.9); }
+            100% { transform: translate(0px, 0px) scale(1); }
+        }
+        .animate-blob { animation: blob 7s infinite; }
+        .animation-delay-2000 { animation-delay: 2s; }
+        .animation-delay-4000 { animation-delay: 4s; }
+        
         .visually-hidden { position: absolute; left: -9999px; top: -9999px; visibility: hidden; }
     </style>
 </head>
-<body class="flex items-center justify-center min-h-screen p-4 bg-[url('https://images.unsplash.com/photo-1550745165-9bc0b252726f?q=80&w=2070&auto=format&fit=crop')] bg-cover bg-center">
+<body class="flex items-center justify-center relative overflow-x-hidden px-4 py-12 md:py-8 min-h-screen">
     
-    <div class="absolute inset-0 bg-slate-900/90 backdrop-blur-sm"></div>
+    <!-- Animated Cyberpunk Background -->
+    <div class="fixed inset-0 w-full h-full bg-slate-950 -z-20"></div>
+    <div class="fixed top-0 -left-4 w-72 h-72 bg-blue-600 rounded-full mix-blend-multiply filter blur-[128px] opacity-30 animate-blob -z-10"></div>
+    <div class="fixed top-0 -right-4 w-72 h-72 bg-[#00f0ff] rounded-full mix-blend-multiply filter blur-[128px] opacity-20 animate-blob animation-delay-2000 -z-10"></div>
+    <div class="fixed -bottom-8 left-20 w-72 h-72 bg-purple-600 rounded-full mix-blend-multiply filter blur-[128px] opacity-30 animate-blob animation-delay-4000 -z-10"></div>
 
-    <div class="w-full max-w-lg glass p-8 rounded-2xl relative z-10 animate-fade-in-down border-t border-gray-700/50">
+    <!-- Main Container -->
+    <div class="w-full max-w-lg glass p-6 md:p-10 rounded-3xl relative z-10 animate-fade-in-down border-t border-[#00f0ff]/30">
         
-        <div class="text-center mb-6">
-            <a href="index.php" class="inline-block mb-4 hover:scale-110 transition duration-300">
-                <div class="w-14 h-14 bg-gradient-to-br from-blue-600 to-indigo-600 rounded-xl flex items-center justify-center shadow-lg shadow-blue-500/20">
-                    <i class="fas fa-shopping-bag text-2xl text-white"></i>
+        <!-- Header -->
+        <div class="text-center mb-8">
+            <a href="index.php" class="inline-block mb-4 group">
+                <div class="w-16 h-16 bg-slate-900 border border-[#00f0ff]/30 rounded-2xl flex items-center justify-center mx-auto shadow-[0_0_15px_rgba(0,240,255,0.2)] group-hover:shadow-[0_0_25px_rgba(0,240,255,0.4)] transition duration-300">
+                    <i class="fas fa-satellite-dish text-3xl text-[#00f0ff]"></i>
                 </div>
             </a>
-            <h2 class="text-3xl font-bold tracking-tight text-white">Create Account</h2>
-            <p class="text-slate-400 mt-2 text-sm">Join Myanmar's #1 Digital Marketplace</p>
+            <h2 class="text-3xl font-black tracking-tight text-white mb-1">Initialize Operative</h2>
+            <p class="text-slate-400 text-sm">Deploy your identity into the network</p>
         </div>
         
+        <!-- Alerts -->
         <?php if($error): ?>
-            <div class="bg-red-500/10 border border-red-500/20 text-red-400 p-4 rounded-xl mb-6 text-sm flex items-start gap-3 animate-pulse">
-                <i class="fas fa-exclamation-circle text-lg mt-0.5"></i>
-                <span><?php echo $error; ?></span>
+            <div class="bg-red-900/20 border border-red-500/50 text-red-400 p-4 rounded-xl mb-6 text-sm backdrop-blur-md shadow-lg flex items-start gap-3">
+                <i class="fas fa-exclamation-triangle text-lg mt-0.5 shrink-0"></i>
+                <span class="font-medium leading-snug"><?php echo htmlspecialchars($error); ?></span>
             </div>
         <?php endif; ?>
 
         <!-- Google Sign-Up -->
-        <a href="<?php echo $google_login_url; ?>" class="w-full bg-white text-gray-900 font-bold py-3 rounded-xl shadow hover:bg-gray-100 transition flex items-center justify-center gap-3 mb-6 transform hover:scale-[1.01] duration-200">
-            <img src="https://www.svgrepo.com/show/475656/google-color.svg" class="w-5 h-5" alt="Google">
-            <span>Sign up with Google</span>
+        <?php if(!empty($google_client_id)): ?>
+        <a href="<?php echo $google_login_url; ?>" class="w-full bg-white hover:bg-gray-100 text-slate-900 font-black py-3.5 px-4 rounded-xl shadow-lg transition flex items-center justify-center gap-3 mb-6 group">
+            <img src="https://www.svgrepo.com/show/475656/google-color.svg" class="w-6 h-6 transition-transform group-hover:scale-110" alt="Google">
+            <span class="text-sm tracking-wide">Fast Deploy with Google</span>
         </a>
 
         <div class="flex items-center gap-4 mb-6">
-            <div class="h-px bg-slate-700 flex-1"></div>
-            <span class="text-xs text-slate-500 uppercase font-bold">Or register with email</span>
-            <div class="h-px bg-slate-700 flex-1"></div>
+            <div class="h-px bg-slate-700/80 flex-1"></div>
+            <span class="text-[10px] text-slate-500 uppercase font-black tracking-widest">Or manual setup</span>
+            <div class="h-px bg-slate-700/80 flex-1"></div>
         </div>
+        <?php endif; ?>
 
-        <form method="POST" class="space-y-4" onsubmit="return validateForm()">
+        <!-- Form -->
+        <form method="POST" class="space-y-5" onsubmit="return validateForm()">
             <input type="hidden" name="csrf_token" value="<?php echo generate_csrf_token(); ?>">
             
-            <!-- Honeypot Field (Hidden) -->
+            <!-- Honeypot -->
             <input type="text" name="fax" class="visually-hidden" tabindex="-1" autocomplete="off">
             
-            <!-- Row 1: Name & Username -->
-            <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <div class="relative">
-                    <input type="text" name="full_name" placeholder="Full Name" required 
-                           class="input-field w-full bg-slate-900/50 border border-slate-600 rounded-xl p-3 text-white focus:border-blue-500 focus:ring-1 focus:ring-blue-500 outline-none text-sm shadow-inner">
-                    <i class="fas fa-user input-icon text-sm"></i>
+            <!-- Row 1: Identity -->
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-5">
+                <div class="input-group">
+                    <input type="text" name="full_name" placeholder="Full Designation" required 
+                           class="input-field w-full bg-slate-900/60 border border-slate-600 rounded-xl py-3.5 text-white focus:border-[#00f0ff] outline-none placeholder-slate-500 backdrop-blur-sm">
+                    <i class="fas fa-id-badge input-icon"></i>
                 </div>
-                <div class="relative">
-                    <input type="text" name="username" placeholder="Username" required 
-                           class="input-field w-full bg-slate-900/50 border border-slate-600 rounded-xl p-3 text-white focus:border-blue-500 focus:ring-1 focus:ring-blue-500 outline-none text-sm shadow-inner">
-                    <i class="fas fa-at input-icon text-sm"></i>
+                <div class="input-group">
+                    <input type="text" name="username" placeholder="Handle (Username)" required 
+                           class="input-field w-full bg-slate-900/60 border border-slate-600 rounded-xl py-3.5 text-white focus:border-[#00f0ff] outline-none placeholder-slate-500 backdrop-blur-sm">
+                    <i class="fas fa-at input-icon"></i>
                 </div>
             </div>
 
-            <!-- Row 2: Contact -->
-            <div class="relative">
-                <input type="email" name="email" placeholder="Email Address" required 
-                       class="input-field w-full bg-slate-900/50 border border-slate-600 rounded-xl p-3 text-white focus:border-blue-500 focus:ring-1 focus:ring-blue-500 outline-none text-sm shadow-inner">
-                <i class="fas fa-envelope input-icon text-sm"></i>
+            <!-- Row 2: Comms -->
+            <div class="input-group">
+                <input type="email" name="email" placeholder="Secure Comm (Email)" required 
+                       class="input-field w-full bg-slate-900/60 border border-slate-600 rounded-xl py-3.5 text-white focus:border-[#00f0ff] outline-none placeholder-slate-500 backdrop-blur-sm">
+                <i class="fas fa-envelope input-icon"></i>
             </div>
 
-            <div class="relative">
-                <input type="tel" name="phone" placeholder="Phone Number (Optional)" 
-                       class="input-field w-full bg-slate-900/50 border border-slate-600 rounded-xl p-3 text-white focus:border-blue-500 focus:ring-1 focus:ring-blue-500 outline-none text-sm shadow-inner">
-                <i class="fas fa-phone input-icon text-sm"></i>
+            <div class="input-group">
+                <input type="tel" name="phone" placeholder="Local Link (Optional Phone)" 
+                       class="input-field w-full bg-slate-900/60 border border-slate-600 rounded-xl py-3.5 text-white focus:border-[#00f0ff] outline-none placeholder-slate-500 backdrop-blur-sm">
+                <i class="fas fa-phone-alt input-icon text-sm"></i>
             </div>
 
             <!-- Row 3: Security -->
-            <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <div class="relative">
-                    <input type="password" name="password" id="password" placeholder="Password" required 
-                           class="input-field w-full bg-slate-900/50 border border-slate-600 rounded-xl p-3 text-white focus:border-blue-500 focus:ring-1 focus:ring-blue-500 outline-none text-sm shadow-inner">
-                    <i class="fas fa-lock input-icon text-sm"></i>
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-5">
+                <div class="input-group">
+                    <input type="password" name="password" id="password" placeholder="Master Key" required 
+                           class="input-field w-full bg-slate-900/60 border border-slate-600 rounded-xl py-3.5 text-white focus:border-[#00f0ff] outline-none placeholder-slate-500 backdrop-blur-sm">
+                    <i class="fas fa-key input-icon"></i>
                 </div>
-                <div class="relative">
-                    <input type="password" name="confirm_password" id="confirm_password" placeholder="Confirm" required 
-                           class="input-field w-full bg-slate-900/50 border border-slate-600 rounded-xl p-3 text-white focus:border-blue-500 focus:ring-1 focus:ring-blue-500 outline-none text-sm shadow-inner">
-                    <i class="fas fa-check-double input-icon text-sm"></i>
+                <div class="input-group">
+                    <input type="password" name="confirm_password" id="confirm_password" placeholder="Verify Key" required 
+                           class="input-field w-full bg-slate-900/60 border border-slate-600 rounded-xl py-3.5 text-white focus:border-[#00f0ff] outline-none placeholder-slate-500 backdrop-blur-sm">
+                    <i class="fas fa-check-double input-icon"></i>
                 </div>
             </div>
 
-            <!-- Requirements Hint -->
-            <div class="text-[10px] text-slate-500 flex flex-wrap gap-3 px-1 font-medium">
-                <span id="len" class="transition-colors flex items-center gap-1"><i class="fas fa-circle text-[4px]"></i> 8+ Chars</span>
-                <span id="cap" class="transition-colors flex items-center gap-1"><i class="fas fa-circle text-[4px]"></i> Uppercase</span>
-                <span id="num" class="transition-colors flex items-center gap-1"><i class="fas fa-circle text-[4px]"></i> Number</span>
+            <!-- Security Requirements -->
+            <div class="text-[10px] text-slate-500 flex flex-wrap justify-between gap-2 px-2 font-medium tracking-wide">
+                <span id="len" class="flex items-center gap-1 transition-colors"><i class="fas fa-circle text-[5px]"></i> 8+ Chars</span>
+                <span id="cap" class="flex items-center gap-1 transition-colors"><i class="fas fa-circle text-[5px]"></i> Uppercase</span>
+                <span id="num" class="flex items-center gap-1 transition-colors"><i class="fas fa-circle text-[5px]"></i> Number</span>
             </div>
 
-            <!-- Terms -->
-            <label class="flex items-start gap-3 cursor-pointer group mt-2 select-none">
-                <div class="relative flex items-center">
-                    <input type="checkbox" name="terms" required 
-                           class="w-4 h-4 rounded border-slate-600 bg-slate-800 text-blue-600 focus:ring-blue-500 focus:ring-offset-slate-900 cursor-pointer transition">
+            <!-- Agreements -->
+            <label class="flex items-start gap-3 cursor-pointer group mt-4 select-none px-1">
+                <div class="relative flex items-center pt-0.5">
+                    <input type="checkbox" name="terms" required class="peer sr-only">
+                    <div class="w-5 h-5 rounded border border-slate-600 bg-slate-900 peer-checked:bg-[#00f0ff] peer-checked:border-[#00f0ff] transition flex items-center justify-center">
+                        <i class="fas fa-check text-slate-900 text-xs opacity-0 peer-checked:opacity-100 transition"></i>
+                    </div>
                 </div>
-                <span class="text-xs text-slate-400 group-hover:text-slate-300 transition leading-snug pt-0.5">
-                    I agree to the <a href="index.php?module=info&page=terms" target="_blank" class="text-blue-400 font-bold hover:underline hover:text-blue-300">Terms of Service</a> & <a href="index.php?module=info&page=privacy" target="_blank" class="text-blue-400 font-bold hover:underline hover:text-blue-300">Privacy Policy</a>
+                <span class="text-xs text-slate-400 group-hover:text-white transition leading-snug">
+                    I acknowledge the <a href="index.php?module=info&page=terms" target="_blank" class="text-[#00f0ff] font-bold hover:underline">Terms of Service</a> & <a href="index.php?module=info&page=privacy" target="_blank" class="text-[#00f0ff] font-bold hover:underline">Privacy Policy</a>
                 </span>
             </label>
 
             <!-- Submit -->
-            <button type="submit" class="w-full bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-500 hover:to-indigo-500 text-white font-bold py-3.5 rounded-xl shadow-lg shadow-blue-900/40 transform transition active:scale-[0.98] mt-6 flex justify-center items-center gap-2 group">
-                <span>Create Account</span>
-                <i class="fas fa-arrow-right text-sm group-hover:translate-x-1 transition-transform"></i>
+            <button type="submit" class="w-full bg-gradient-to-r from-blue-600 to-[#00f0ff] hover:from-blue-500 hover:to-[#00f0ff] text-slate-900 font-black py-4 rounded-xl shadow-[0_0_20px_rgba(0,240,255,0.2)] hover:shadow-[0_0_30px_rgba(0,240,255,0.4)] transform transition active:scale-[0.98] text-sm uppercase tracking-widest mt-6 flex justify-center items-center gap-2 group/btn">
+                <span>Deploy Credentials</span>
+                <i class="fas fa-upload group-hover/btn:-translate-y-1 transition-transform"></i>
             </button>
         </form>
 
+        <!-- Footer -->
         <div class="mt-8 pt-6 border-t border-slate-700/50 text-center">
-            <p class="text-sm text-slate-400">
-                Already have an account? <a href="index.php?module=auth&page=login" class="text-blue-400 font-bold hover:text-blue-300 hover:underline transition">Log in</a>
+            <p class="text-sm text-slate-400 font-medium">
+                Already registered? <a href="index.php?module=auth&page=login" class="text-[#00f0ff] font-bold hover:underline ml-1">Initiate Login</a>
             </p>
         </div>
     </div>
 
-    <!-- Client-Side Validation -->
+    <!-- Validation Script -->
     <script>
         const passwordInput = document.getElementById('password');
         const reqLen = document.getElementById('len');
         const reqCap = document.getElementById('cap');
         const reqNum = document.getElementById('num');
 
-        passwordInput.addEventListener('input', function() {
-            const val = this.value;
-            
-            // Length Check
-            if(val.length >= 8) { reqLen.classList.replace('text-slate-500', 'text-green-400'); }
-            else { reqLen.classList.replace('text-green-400', 'text-slate-500'); }
+        if(passwordInput) {
+            passwordInput.addEventListener('input', function() {
+                const val = this.value;
+                
+                if(val.length >= 8) { reqLen.classList.replace('text-slate-500', 'text-green-400'); }
+                else { reqLen.classList.replace('text-green-400', 'text-slate-500'); }
 
-            // Capital Check
-            if(/[A-Z]/.test(val)) { reqCap.classList.replace('text-slate-500', 'text-green-400'); }
-            else { reqCap.classList.replace('text-green-400', 'text-slate-500'); }
+                if(/[A-Z]/.test(val)) { reqCap.classList.replace('text-slate-500', 'text-green-400'); }
+                else { reqCap.classList.replace('text-green-400', 'text-slate-500'); }
 
-            // Number Check
-            if(/[0-9]/.test(val)) { reqNum.classList.replace('text-slate-500', 'text-green-400'); }
-            else { reqNum.classList.replace('text-green-400', 'text-slate-500'); }
-        });
+                if(/[0-9]/.test(val)) { reqNum.classList.replace('text-slate-500', 'text-green-400'); }
+                else { reqNum.classList.replace('text-green-400', 'text-slate-500'); }
+            });
+        }
 
         function validateForm() {
             const p1 = document.getElementById('password').value;
             const p2 = document.getElementById('confirm_password').value;
             if(p1 !== p2) {
-                alert("Passwords do not match!");
+                alert("Master Keys do not match.");
                 return false;
             }
             return true;
