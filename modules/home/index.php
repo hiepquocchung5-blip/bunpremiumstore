@@ -1,6 +1,6 @@
 <?php
 // modules/home/index.php
-// PRODUCTION READY v2.0 - Category Slider, Social Proof & Neon Tech UI
+// PRODUCTION READY v2.1 - Added Telemetry Counters & Trust Marquees
 
 // 1. Fetch Banners (Active Slides)
 $stmt = $pdo->query("SELECT * FROM banners ORDER BY display_order ASC, id DESC LIMIT 5");
@@ -10,7 +10,7 @@ $banners = $stmt->fetchAll();
 $stmt = $pdo->query("SELECT id, name, image_url, description, type FROM categories ORDER BY id ASC");
 $categories = $stmt->fetchAll();
 
-// 3. Fetch "Hot Deals" (Sale Items) - REMOVED c.icon_class
+// 3. Fetch "Hot Deals" (Sale Items)
 $stmt = $pdo->query("
     SELECT p.*, c.name as cat_name, c.image_url as cat_image
     FROM products p 
@@ -64,6 +64,13 @@ $live_purchases_json = json_encode(array_map(function($p) {
         'time' => rand(1, 59) . ' mins ago'
     ];
 }, array_slice($best_sellers, 0, 4)));
+
+// 9. Fetch Real Stats for Telemetry
+$total_users_count = $pdo->query("SELECT COUNT(*) FROM users")->fetchColumn();
+$total_orders_count = $pdo->query("SELECT COUNT(*) FROM orders WHERE status = 'active'")->fetchColumn();
+// Base offsets to make it look active even if site is new
+$display_users = max($total_users_count, 1250); 
+$display_orders = max($total_orders_count, 8500);
 ?>
 
 <style>
@@ -87,6 +94,7 @@ $live_purchases_json = json_encode(array_map(function($p) {
     }
     
     .animate-marquee { animation: marquee 30s linear infinite; }
+    .animate-marquee-slow { animation: marquee 45s linear infinite; }
     @keyframes marquee { 0% { transform: translateX(100%); } 100% { transform: translateX(-100%); } }
 
     /* Slider Scroll Snapping */
@@ -99,9 +107,6 @@ $live_purchases_json = json_encode(array_map(function($p) {
         0% { width: 0%; }
         100% { width: 100%; }
     }
-    .animate-progress {
-        animation: loadProgress 5s linear infinite;
-    }
     
     /* Live Notification Toast */
     .toast-enter { animation: toastSlideIn 0.5s cubic-bezier(0.175, 0.885, 0.32, 1.275) forwards; }
@@ -111,7 +116,7 @@ $live_purchases_json = json_encode(array_map(function($p) {
 </style>
 
 <!-- SECTION 0: News Ticker -->
-<div class="w-full bg-slate-950 border-b border-[#00f0ff]/20 overflow-hidden py-1.5 mb-6 relative">
+<div class="w-full bg-slate-950 border-b border-[#00f0ff]/20 overflow-hidden py-1.5 mb-6 relative shadow-[0_4px_20px_rgba(0,240,255,0.05)]">
     <div class="absolute inset-y-0 left-0 w-16 bg-gradient-to-r from-slate-950 to-transparent z-10 pointer-events-none"></div>
     <div class="absolute inset-y-0 right-0 w-16 bg-gradient-to-l from-slate-950 to-transparent z-10 pointer-events-none"></div>
     <div class="whitespace-nowrap animate-marquee text-[10px] sm:text-xs text-[#00f0ff] font-mono tracking-[0.2em] uppercase font-bold">
@@ -121,19 +126,19 @@ $live_purchases_json = json_encode(array_map(function($p) {
 
 <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
     
-    <!-- User Greeting (Gemini Feature) -->
+    <!-- User Greeting -->
     <div class="mb-6 flex items-center justify-between animate-fade-in-down">
         <h2 class="text-xl md:text-2xl font-black text-white tracking-tight">
             Welcome, <span class="text-transparent bg-clip-text bg-gradient-to-r from-blue-400 to-[#00f0ff]"><?php echo htmlspecialchars($first_name); ?></span>
         </h2>
-        <div class="flex items-center gap-2 text-xs font-mono text-green-400 bg-green-500/10 px-3 py-1 rounded-full border border-green-500/20">
-            <span class="w-2 h-2 rounded-full bg-green-500 animate-pulse"></span> Network Stable
+        <div class="flex items-center gap-2 text-xs font-mono text-green-400 bg-green-500/10 px-3 py-1 rounded-full border border-green-500/20 shadow-[0_0_10px_rgba(34,197,94,0.2)]">
+            <span class="w-2 h-2 rounded-full bg-green-500 animate-pulse shadow-[0_0_8px_#22c55e]"></span> Network Stable
         </div>
     </div>
 
     <!-- SECTION 1: Responsive Banner Slider -->
     <?php if(!empty($banners)): ?>
-    <div class="relative w-full h-[180px] sm:h-[280px] md:h-[350px] lg:h-[420px] mb-12 rounded-3xl overflow-hidden group shadow-[0_20px_50px_rgba(0,0,0,0.5)] bg-slate-900 border border-[#00f0ff]/20" id="heroSliderContainer">
+    <div class="relative w-full h-[180px] sm:h-[280px] md:h-[350px] lg:h-[420px] mb-10 rounded-3xl overflow-hidden group shadow-[0_20px_50px_rgba(0,0,0,0.5)] bg-slate-900 border border-[#00f0ff]/20" id="heroSliderContainer">
         
         <div class="flex overflow-x-auto snap-x-mandatory h-full no-scrollbar scroll-smooth" id="bannerSlider">
             <?php foreach($banners as $index => $b): ?>
@@ -173,8 +178,31 @@ $live_purchases_json = json_encode(array_map(function($p) {
     </div>
     <?php endif; ?>
 
+    <!-- SECTION 1.5: System Telemetry (Social Proof Counters) -->
+    <div class="grid grid-cols-2 md:grid-cols-4 gap-4 mb-14 relative z-10">
+        <div class="bg-slate-900/60 backdrop-blur border border-slate-700/50 rounded-2xl p-4 text-center group hover:border-[#00f0ff]/50 transition-colors shadow-inner">
+            <i class="fas fa-server text-xl text-slate-500 group-hover:text-[#00f0ff] mb-2 transition-colors"></i>
+            <div class="text-2xl font-black text-white tracking-tighter"><span class="telemetry-counter" data-target="99.9" data-suffix="%">0</span></div>
+            <div class="text-[9px] text-slate-400 uppercase tracking-widest font-bold mt-1">Uptime</div>
+        </div>
+        <div class="bg-slate-900/60 backdrop-blur border border-slate-700/50 rounded-2xl p-4 text-center group hover:border-purple-500/50 transition-colors shadow-inner">
+            <i class="fas fa-users text-xl text-slate-500 group-hover:text-purple-400 mb-2 transition-colors"></i>
+            <div class="text-2xl font-black text-white tracking-tighter"><span class="telemetry-counter" data-target="<?php echo $display_users; ?>" data-suffix="+">0</span></div>
+            <div class="text-[9px] text-slate-400 uppercase tracking-widest font-bold mt-1">Active Nodes</div>
+        </div>
+        <div class="bg-slate-900/60 backdrop-blur border border-slate-700/50 rounded-2xl p-4 text-center group hover:border-green-500/50 transition-colors shadow-inner">
+            <i class="fas fa-box-open text-xl text-slate-500 group-hover:text-green-400 mb-2 transition-colors"></i>
+            <div class="text-2xl font-black text-white tracking-tighter"><span class="telemetry-counter" data-target="<?php echo $display_orders; ?>" data-suffix="+">0</span></div>
+            <div class="text-[9px] text-slate-400 uppercase tracking-widest font-bold mt-1">Deliveries</div>
+        </div>
+        <div class="bg-slate-900/60 backdrop-blur border border-slate-700/50 rounded-2xl p-4 text-center group hover:border-yellow-500/50 transition-colors shadow-inner">
+            <i class="fas fa-bolt text-xl text-slate-500 group-hover:text-yellow-400 mb-2 transition-colors"></i>
+            <div class="text-2xl font-black text-white tracking-tighter"><span class="telemetry-counter" data-target="24" data-suffix="/7">0</span></div>
+            <div class="text-[9px] text-slate-400 uppercase tracking-widest font-bold mt-1">Auto System</div>
+        </div>
+    </div>
 
-    <!-- SECTION 2: Interactive Category Slider (Gemini Feature) -->
+    <!-- SECTION 2: Interactive Category Slider -->
     <div class="mb-16 relative">
         <div class="flex items-end justify-between mb-6">
             <h2 class="text-2xl md:text-3xl font-black text-white tracking-tight flex items-center gap-3">
@@ -192,7 +220,7 @@ $live_purchases_json = json_encode(array_map(function($p) {
                 <?php foreach($categories as $cat): ?>
                     <a href="index.php?module=shop&page=category&id=<?php echo $cat['id']; ?>" class="snap-start shrink-0 w-[140px] sm:w-[180px] lg:w-[220px] glass-card rounded-3xl overflow-hidden group/cat relative flex flex-col justify-end aspect-[4/5] border border-slate-700/50 hover:border-[#00f0ff]/50">
                         
-                        <!-- Dynamic Background without icon_class -->
+                        <!-- Dynamic Background -->
                         <?php if(!empty($cat['image_url'])): ?>
                             <img src="<?php echo BASE_URL . $cat['image_url']; ?>" alt="<?php echo htmlspecialchars($cat['name']); ?>" class="absolute inset-0 w-full h-full object-cover opacity-60 group-hover/cat:opacity-100 transition-all duration-700 group-hover/cat:scale-110">
                         <?php else: ?>
@@ -287,7 +315,6 @@ $live_purchases_json = json_encode(array_map(function($p) {
         </div>
     </div>
 
-
     <!-- SECTION 5: Main Hub (Sidebar + Grid) -->
     <div class="grid grid-cols-1 lg:grid-cols-4 gap-8 mb-16">
         
@@ -308,7 +335,6 @@ $live_purchases_json = json_encode(array_map(function($p) {
                         ?>
                         <a href="index.php?module=shop&page=product&id=<?php echo $product['id']; ?>" class="flex items-center gap-4 group">
                             
-                            <!-- REMOVED icon_class fallback, strictly image_url -->
                             <div class="w-14 h-14 rounded-xl bg-slate-900 flex items-center justify-center text-[#00f0ff] border border-slate-700 shrink-0 group-hover:border-[#00f0ff]/50 transition overflow-hidden shadow-inner">
                                 <?php if(!empty($product['image_path'])): ?>
                                     <img src="<?php echo BASE_URL . $product['image_path']; ?>" class="w-full h-full object-cover">
@@ -319,7 +345,7 @@ $live_purchases_json = json_encode(array_map(function($p) {
                                 <?php endif; ?>
                             </div>
                             
-                            <div class="min-w-0">
+                            <div class="min-w-0 flex-1">
                                 <h4 class="text-sm font-bold text-slate-200 truncate group-hover:text-[#00f0ff] transition"><?php echo htmlspecialchars($product['name']); ?></h4>
                                 <div class="flex items-center gap-2 text-[10px] mt-1">
                                     <span class="text-green-400 font-mono font-bold bg-green-900/20 px-2 py-0.5 rounded border border-green-500/20"><?php echo format_price($b_final); ?></span>
@@ -365,6 +391,25 @@ $live_purchases_json = json_encode(array_map(function($p) {
         </div>
     </div>
 
+    <!-- Trusted Payment Gateways Marquee -->
+    <div class="border-t border-slate-800 pt-8 pb-4 relative overflow-hidden">
+        <p class="text-center text-[10px] font-black text-slate-500 uppercase tracking-[0.3em] mb-6">Encrypted Payment Gateways Supported</p>
+        <div class="w-full overflow-hidden relative">
+            <div class="absolute inset-y-0 left-0 w-24 bg-gradient-to-r from-slate-950 to-transparent z-10 pointer-events-none"></div>
+            <div class="absolute inset-y-0 right-0 w-24 bg-gradient-to-l from-slate-950 to-transparent z-10 pointer-events-none"></div>
+            
+            <div class="flex items-center gap-12 sm:gap-24 animate-marquee-slow opacity-60 hover:opacity-100 transition-opacity w-max">
+                <!-- Repeated to ensure smooth infinite scroll -->
+                <?php for($i=0; $i<3; $i++): ?>
+                    <div class="flex items-center gap-3 text-slate-400 font-bold tracking-wider uppercase text-sm"><i class="fas fa-wallet text-[#00f0ff] text-2xl"></i> KBZPay</div>
+                    <div class="flex items-center gap-3 text-slate-400 font-bold tracking-wider uppercase text-sm"><i class="fas fa-money-bill-wave text-yellow-400 text-2xl"></i> Wave Money</div>
+                    <div class="flex items-center gap-3 text-slate-400 font-bold tracking-wider uppercase text-sm"><i class="fab fa-bitcoin text-orange-400 text-2xl"></i> Crypto (USDT)</div>
+                    <div class="flex items-center gap-3 text-slate-400 font-bold tracking-wider uppercase text-sm"><i class="fas fa-qrcode text-blue-400 text-2xl"></i> Binance Pay</div>
+                <?php endfor; ?>
+            </div>
+        </div>
+    </div>
+
 </div>
 
 <!-- Floating Live Purchase Toast (Gemini Social Proof Feature) -->
@@ -386,6 +431,34 @@ $live_purchases_json = json_encode(array_map(function($p) {
 <script>
 document.addEventListener('DOMContentLoaded', () => {
     
+    // --- 0. TELEMETRY COUNTER ANIMATION ---
+    const counters = document.querySelectorAll('.telemetry-counter');
+    const speed = 100; // Lower = faster
+    
+    counters.forEach(counter => {
+        const updateCount = () => {
+            const target = +counter.getAttribute('data-target');
+            const count = +counter.innerText;
+            const inc = target / speed;
+            
+            if (count < target) {
+                counter.innerText = Math.ceil(count + inc);
+                setTimeout(updateCount, 15);
+            } else {
+                counter.innerText = target + (counter.getAttribute('data-suffix') || '');
+            }
+        };
+        
+        // Start animation when element is in viewport
+        const observer = new IntersectionObserver((entries) => {
+            if(entries[0].isIntersecting) {
+                updateCount();
+                observer.disconnect();
+            }
+        });
+        observer.observe(counter);
+    });
+
     // --- 1. HERO BANNER SLIDER ---
     const hSlider = document.getElementById('bannerSlider');
     const hDots = document.querySelectorAll('.slider-dot');
@@ -401,9 +474,11 @@ document.addEventListener('DOMContentLoaded', () => {
         });
         
         // Reset and trigger animation
-        hProgress.style.animation = 'none';
-        hProgress.offsetHeight; /* trigger reflow */
-        hProgress.style.animation = `loadProgress ${hTime}ms linear forwards`;
+        if(hProgress) {
+            hProgress.style.animation = 'none';
+            hProgress.offsetHeight; /* trigger reflow */
+            hProgress.style.animation = `loadProgress ${hTime}ms linear forwards`;
+        }
     };
 
     const moveHero = (next = true) => {
@@ -418,7 +493,7 @@ document.addEventListener('DOMContentLoaded', () => {
     };
 
     const startHero = () => {
-        hProgress.style.animation = `loadProgress ${hTime}ms linear forwards`;
+        if(hProgress) hProgress.style.animation = `loadProgress ${hTime}ms linear forwards`;
         hInterval = setInterval(() => moveHero(true), hTime);
     };
 
