@@ -18,9 +18,23 @@ if (session_status() === PHP_SESSION_NONE) {
 function isActive($module, $page = null) {
     $c_mod = $_GET['module'] ?? 'home';
     $c_page = $_GET['page'] ?? 'index';
-    if ($page) return ($c_mod == $module && $c_page == $page) ? 'text-[#00f0ff] font-bold drop-shadow-[0_0_8px_rgba(0,240,255,0.8)]' : 'text-gray-400 hover:text-white transition-colors';
-    return ($c_mod == $module) ? 'text-[#00f0ff] font-bold drop-shadow-[0_0_8px_rgba(0,240,255,0.8)]' : 'text-gray-400 hover:text-white transition-colors';
+    if ($page) return ($c_mod == $module && $c_page == $page) ? 'text-[#00f0ff] font-bold drop-shadow-[0_0_8px_rgba(0,240,255,0.8)]' : 'text-slate-400 hover:text-white transition-colors';
+    return ($c_mod == $module) ? 'text-[#00f0ff] font-bold drop-shadow-[0_0_8px_rgba(0,240,255,0.8)]' : 'text-slate-400 hover:text-white transition-colors';
 }
+
+// 3. Detect Current Language from Google Translate Cookie
+$curr_lang = 'en';
+if(isset($_COOKIE['googtrans'])) {
+    if(strpos($_COOKIE['googtrans'], '/my') !== false) {
+        $curr_lang = 'my';
+    }
+}
+$lang_emoji = $curr_lang == 'my' ? '🇲🇲' : '🇺🇸';
+$lang_text = $curr_lang == 'my' ? 'MY' : 'EN';
+
+// 4. Current Currency
+$curr_currency = $_SESSION['currency'] ?? 'MMK';
+$curr_symbol = $curr_currency == 'USD' ? '$' : 'Ks';
 ?>
 <!DOCTYPE html>
 <html lang="en" class="scroll-smooth">
@@ -48,53 +62,62 @@ function isActive($module, $page = null) {
 
     <!-- Inline Critical CSS -->
     <style>
-        .glass { background: rgba(15, 23, 42, 0.85); backdrop-filter: blur(16px); border-bottom: 1px solid rgba(0, 240, 255, 0.1); }
-        body { background-color: #0f172a; color: #f3f4f6; font-family: 'Inter', sans-serif; }
+        .glass { background: rgba(15, 23, 42, 0.85); backdrop-filter: blur(16px); -webkit-backdrop-filter: blur(16px); border-bottom: 1px solid rgba(0, 240, 255, 0.1); }
+        .glass-pill { background: rgba(15, 23, 42, 0.90); backdrop-filter: blur(20px); -webkit-backdrop-filter: blur(20px); border: 1px solid rgba(0, 240, 255, 0.2); }
+        body { background-color: #0f172a; color: #f3f4f6; font-family: 'Inter', sans-serif; -webkit-tap-highlight-color: transparent; }
         
-        /* Google Translate Hiding */
-        .goog-te-banner-frame { display: none !important; }
+        /* Completely Hide Google Translate Default UI */
+        .goog-te-banner-frame, .skiptranslate, #google_translate_element { display: none !important; }
         body { top: 0 !important; }
-        .goog-te-gadget-simple { background-color: #1e293b !important; border: 1px solid #334155 !important; padding: 4px 8px !important; border-radius: 8px !important; }
-        .goog-te-gadget-simple span { color: #e5e7eb !important; font-weight: 600 !important; }
-        .goog-te-gadget-icon { display: none !important; }
 
         /* Custom Dropdown Animation */
         .dropdown-menu { transform-origin: top right; transition: all 0.2s ease-out; }
+        
+        /* Bottom Nav Safe Area */
+        main { padding-bottom: 90px; }
+        @media (min-width: 1024px) { main { padding-bottom: 0; } }
     </style>
 
-    <!-- Google Translate API -->
+    <!-- Google Translate API (Hidden but functional) -->
     <script type="text/javascript">
         function googleTranslateElementInit() {
             new google.translate.TranslateElement({
                 pageLanguage: 'en',
                 includedLanguages: 'en,my',
-                layout: google.translate.TranslateElement.InlineLayout.SIMPLE,
                 autoDisplay: false
             }, 'google_translate_element');
+        }
+        
+        function changeLanguage(lang) {
+            document.cookie = `googtrans=/en/${lang}; path=/`;
+            document.cookie = `googtrans=/en/${lang}; domain=.${location.hostname}; path=/`;
+            window.location.reload();
         }
     </script>
     <script type="text/javascript" src="//translate.google.com/translate_a/element.js?cb=googleTranslateElementInit"></script>
 </head>
 <body class="flex flex-col min-h-screen bg-[#0f172a] text-gray-100 antialiased selection:bg-[#00f0ff]/30 selection:text-[#00f0ff]">
 
-    <!-- Navbar -->
+    <!-- Hidden translate element for API to hook into -->
+    <div id="google_translate_element"></div>
+
+    <!-- Top Navbar -->
     <nav class="glass sticky top-0 z-50 transition-all duration-300 shadow-[0_4px_30px_rgba(0,0,0,0.5)]">
         <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-            <div class="flex items-center justify-between h-20">
+            <div class="flex items-center justify-between h-16 lg:h-20">
                 
                 <!-- 1. Logo Area -->
-                <a href="index.php" class="flex items-center gap-3 group relative z-10">
-                    <div class="w-12 h-12 bg-slate-800 rounded-xl flex items-center justify-center shadow-[0_0_15px_rgba(0,240,255,0.1)] group-hover:shadow-[0_0_25px_rgba(0,240,255,0.3)] transition duration-300 border border-[#00f0ff]/30 group-hover:border-[#00f0ff] overflow-hidden">
-                        <!-- Make sure to place your logo.png in the assets/images folder -->
-                        <img src="assets/images/logo.png" alt="DMMM Logo" class="w-full h-full object-contain p-1 transform group-hover:scale-110 transition-transform duration-300">
+                <a href="index.php" class="flex items-center gap-3 group relative z-10 shrink-0">
+                    <div class="w-10 h-10 lg:w-12 lg:h-12 bg-slate-800 rounded-xl flex items-center justify-center shadow-[0_0_15px_rgba(0,240,255,0.1)] group-hover:shadow-[0_0_25px_rgba(0,240,255,0.3)] transition duration-300 border border-[#00f0ff]/30 group-hover:border-[#00f0ff] overflow-hidden">
+                        <img src="assets/images/logo.png" alt="DMMM" class="w-full h-full object-contain p-1 transform group-hover:scale-110 transition-transform duration-300" onerror="this.outerHTML='<i class=\'fas fa-bolt text-[#00f0ff] text-xl\'></i>'">
                     </div>
                     <div class="flex flex-col">
-                        <span class="font-bold text-xl leading-none tracking-tight text-white group-hover:text-[#00f0ff] transition">Digital<span class="text-[#00f0ff]">MM</span></span>
-                        <span class="text-[9px] text-slate-400 uppercase tracking-[0.2em] font-bold mt-1">Marketplace</span>
+                        <span class="font-black text-lg lg:text-xl leading-none tracking-tight text-white group-hover:text-[#00f0ff] transition">Digital<span class="text-[#00f0ff]">MM</span></span>
+                        <span class="text-[8px] lg:text-[9px] text-slate-400 uppercase tracking-[0.2em] font-bold mt-0.5">Marketplace</span>
                     </div>
                 </a>
 
-                <!-- 2. Desktop Search (Replaced with Interactive Trigger) -->
+                <!-- 2. Desktop Search -->
                 <div class="hidden lg:flex flex-1 items-center justify-center px-12">
                     <div class="relative w-full max-w-xl group">
                         <button onclick="document.getElementById('search-modal').classList.remove('hidden')" class="w-full flex items-center justify-between bg-slate-900/50 border border-slate-700 hover:border-[#00f0ff]/50 rounded-xl py-2.5 px-4 text-sm text-slate-400 transition-all duration-300 shadow-inner group-hover:shadow-[0_0_15px_rgba(0,240,255,0.05)]">
@@ -102,49 +125,77 @@ function isActive($module, $page = null) {
                                 <i class="fas fa-search text-slate-500 group-hover:text-[#00f0ff] transition"></i>
                                 Search games, software, gifts...
                             </span>
-                            <kbd class="hidden sm:inline-block border border-slate-600 bg-slate-800 rounded px-2 py-0.5 text-[10px] font-mono text-slate-400">Ctrl K</kbd>
+                            <kbd class="border border-slate-600 bg-slate-800 rounded px-2 py-0.5 text-[10px] font-mono text-slate-400">Ctrl K</kbd>
                         </button>
                     </div>
                 </div>
 
-                <!-- 3. Right Toolbar -->
-                <div class="hidden lg:flex items-center gap-5">
+                <!-- 3. Right Toolbar (Desktop & Mobile Mixed) -->
+                <div class="flex items-center gap-2 lg:gap-5 relative z-10">
                     
-                    <!-- Main Navigation Links -->
-                    <div class="flex items-center gap-4 border-r border-slate-700 pr-5 mr-1">
-                        <a href="index.php?module=shop&page=search" class="text-sm font-medium <?php echo isActive('shop', 'search'); ?>">Store</a>
-                        <a href="index.php?module=user&page=agent" class="text-sm font-medium flex items-center gap-1.5 <?php echo isActive('user', 'agent'); ?>">
+                    <!-- Desktop Main Navigation Links -->
+                    <div class="hidden lg:flex items-center gap-4 border-r border-slate-700 pr-5 mr-1">
+                        <a href="index.php?module=shop&page=search" class="text-sm font-bold uppercase tracking-wider <?php echo isActive('shop', 'search'); ?>">Store</a>
+                        <a href="index.php?module=user&page=agent" class="text-sm font-bold uppercase tracking-wider flex items-center gap-1.5 <?php echo isActive('user', 'agent'); ?>">
                             <i class="fas fa-crown text-yellow-500"></i> Reseller
                         </a>
                     </div>
 
-                    <!-- Utilities (Lang + Currency) -->
-                    <div class="flex items-center bg-slate-800/50 rounded-xl p-1 border border-slate-700/50 backdrop-blur-sm">
-                        <div id="google_translate_element" class="mr-2 opacity-80 hover:opacity-100 transition"></div>
-                        <div class="h-4 w-px bg-slate-700 mx-1"></div>
-                        <a href="?set_curr=MMK" class="px-2.5 py-1 text-xs font-bold rounded-lg transition-all <?php echo (isset($_SESSION['currency']) && $_SESSION['currency']=='MMK') ? 'bg-[#00f0ff]/10 text-[#00f0ff] border border-[#00f0ff]/30' : 'text-slate-400 hover:text-white'; ?>">Ks</a>
-                        <a href="?set_curr=USD" class="px-2.5 py-1 text-xs font-bold rounded-lg transition-all <?php echo (isset($_SESSION['currency']) && $_SESSION['currency']=='USD') ? 'bg-[#00f0ff]/10 text-[#00f0ff] border border-[#00f0ff]/30' : 'text-slate-400 hover:text-white'; ?>">$</a>
+                    <!-- Custom Localization Dropdown (Lang + Currency) -->
+                    <div class="relative group">
+                        <button class="flex items-center gap-1.5 bg-slate-800/80 hover:bg-slate-700 border border-slate-700 hover:border-[#00f0ff]/50 rounded-xl px-2.5 py-1.5 lg:px-3 lg:py-2 transition shadow-sm focus:outline-none">
+                            <span class="text-sm"><?php echo $lang_emoji; ?></span>
+                            <span class="text-xs font-bold text-white hidden sm:inline"><?php echo $lang_text; ?></span>
+                            <div class="h-3 w-px bg-slate-600 mx-0.5"></div>
+                            <span class="text-xs font-bold text-[#00f0ff]"><?php echo $curr_symbol; ?></span>
+                        </button>
+                        
+                        <!-- Local Dropdown Menu -->
+                        <div class="absolute right-0 top-full mt-2 w-48 bg-slate-800/95 backdrop-blur-xl rounded-xl shadow-[0_10px_40px_rgba(0,0,0,0.5)] border border-slate-700 opacity-0 invisible group-hover:opacity-100 group-hover:visible dropdown-menu z-50 overflow-hidden">
+                            
+                            <div class="px-4 py-2 bg-slate-900/50 border-b border-slate-700 text-[10px] font-black text-slate-400 uppercase tracking-widest">
+                                Translation
+                            </div>
+                            <div class="p-1">
+                                <button onclick="changeLanguage('en')" class="w-full text-left px-3 py-2 text-sm text-slate-300 hover:text-white hover:bg-slate-700 rounded-lg flex items-center justify-between transition">
+                                    <span class="flex items-center gap-2">🇺🇸 English</span>
+                                    <?php if($curr_lang=='en') echo '<i class="fas fa-check text-green-400 text-xs"></i>'; ?>
+                                </button>
+                                <button onclick="changeLanguage('my')" class="w-full text-left px-3 py-2 text-sm text-slate-300 hover:text-white hover:bg-slate-700 rounded-lg flex items-center justify-between transition">
+                                    <span class="flex items-center gap-2">🇲🇲 Myanmar</span>
+                                    <?php if($curr_lang=='my') echo '<i class="fas fa-check text-green-400 text-xs"></i>'; ?>
+                                </button>
+                            </div>
+                            
+                            <div class="px-4 py-2 bg-slate-900/50 border-y border-slate-700 text-[10px] font-black text-slate-400 uppercase tracking-widest">
+                                Currency
+                            </div>
+                            <div class="p-1">
+                                <a href="?set_curr=MMK" class="w-full text-left px-3 py-2 text-sm text-slate-300 hover:text-white hover:bg-slate-700 rounded-lg flex items-center justify-between transition">
+                                    <span class="flex items-center gap-2"><i class="fas fa-coins text-yellow-500 w-4 text-center"></i> MMK (Kyat)</span>
+                                    <?php if($curr_currency=='MMK') echo '<i class="fas fa-check text-green-400 text-xs"></i>'; ?>
+                                </a>
+                                <a href="?set_curr=USD" class="w-full text-left px-3 py-2 text-sm text-slate-300 hover:text-white hover:bg-slate-700 rounded-lg flex items-center justify-between transition">
+                                    <span class="flex items-center gap-2"><i class="fas fa-dollar-sign text-green-500 w-4 text-center"></i> USD ($)</span>
+                                    <?php if($curr_currency=='USD') echo '<i class="fas fa-check text-green-400 text-xs"></i>'; ?>
+                                </a>
+                            </div>
+                        </div>
                     </div>
 
-                    <!-- User Actions -->
+                    <!-- User Actions (Desktop Only & Unified Notification) -->
                     <?php if(isset($_SESSION['user_id'])): ?>
                         
-                        <!-- Wishlist Quick Link -->
-                        <a href="index.php?module=user&page=wishlist" class="relative text-slate-400 hover:text-rose-400 transition" title="Wishlist">
-                            <i class="fas fa-heart text-lg"></i>
-                        </a>
-
                         <!-- Notifications -->
                         <div class="relative cursor-pointer text-slate-400 hover:text-[#00f0ff] transition group">
-                            <div class="w-10 h-10 rounded-xl hover:bg-slate-800 flex items-center justify-center transition border border-transparent hover:border-slate-700">
+                            <div class="w-9 h-9 lg:w-10 lg:h-10 rounded-xl hover:bg-slate-800 flex items-center justify-center transition border border-transparent hover:border-slate-700">
                                 <i class="far fa-bell text-lg"></i>
                             </div>
-                            <span class="absolute top-2 right-2 w-2 h-2 bg-red-500 rounded-full animate-pulse border border-slate-900 hidden" id="nav-notif-badge"></span>
+                            <span class="absolute top-1.5 right-1.5 w-2 h-2 bg-red-500 rounded-full animate-pulse border border-slate-900 hidden" id="nav-notif-badge"></span>
                             
-                            <!-- Dropdown -->
-                            <div class="absolute right-0 top-12 w-80 bg-slate-800/95 backdrop-blur-xl rounded-xl shadow-[0_10px_40px_rgba(0,0,0,0.5)] border border-slate-700 opacity-0 invisible group-hover:opacity-100 group-hover:visible dropdown-menu z-50">
+                            <div class="absolute right-0 top-full mt-2 w-72 lg:w-80 bg-slate-800/95 backdrop-blur-xl rounded-xl shadow-[0_10px_40px_rgba(0,0,0,0.5)] border border-slate-700 opacity-0 invisible group-hover:opacity-100 group-hover:visible dropdown-menu z-50">
                                 <div class="px-4 py-3 border-b border-slate-700 flex justify-between items-center bg-slate-900/50 rounded-t-xl">
-                                    <h4 class="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Alerts</h4>
+                                    <h4 class="text-[10px] font-bold text-slate-400 uppercase tracking-widest">System Alerts</h4>
                                     <span class="text-[10px] text-[#00f0ff] cursor-pointer hover:underline">Mark read</span>
                                 </div>
                                 <div class="max-h-64 overflow-y-auto custom-scrollbar" id="nav-notif-list">
@@ -155,8 +206,8 @@ function isActive($module, $page = null) {
                             </div>
                         </div>
 
-                        <!-- Profile Dropdown -->
-                        <div class="relative group">
+                        <!-- Profile Dropdown (Desktop Only) -->
+                        <div class="relative group hidden lg:block">
                             <button class="flex items-center gap-3 focus:outline-none pl-2">
                                 <div class="w-10 h-10 rounded-full bg-slate-800 p-0.5 shadow-lg border border-[#00f0ff]/30 group-hover:border-[#00f0ff] transition-all relative">
                                     <div class="w-full h-full rounded-full bg-slate-900 flex items-center justify-center text-white font-bold text-sm">
@@ -166,9 +217,8 @@ function isActive($module, $page = null) {
                                 </div>
                             </button>
                             
-                            <div class="absolute right-0 top-14 w-64 bg-slate-800/95 backdrop-blur-xl rounded-xl shadow-[0_10px_40px_rgba(0,0,0,0.5)] border border-slate-700 opacity-0 invisible group-hover:opacity-100 group-hover:visible dropdown-menu z-50 overflow-hidden">
+                            <div class="absolute right-0 top-full mt-2 w-64 bg-slate-800/95 backdrop-blur-xl rounded-xl shadow-[0_10px_40px_rgba(0,0,0,0.5)] border border-slate-700 opacity-0 invisible group-hover:opacity-100 group-hover:visible dropdown-menu z-50 overflow-hidden">
                                 
-                                <!-- User Identity Banner -->
                                 <div class="px-5 py-4 border-b border-slate-700 bg-slate-900/50 relative overflow-hidden">
                                     <div class="absolute inset-0 bg-[#00f0ff]/5"></div>
                                     <div class="relative z-10">
@@ -186,14 +236,11 @@ function isActive($module, $page = null) {
                                     <a href="index.php?module=user&page=orders" class="block px-3 py-2 rounded-lg text-sm text-slate-300 hover:bg-slate-700 hover:text-white transition flex items-center gap-3 group/link">
                                         <i class="fas fa-box-open w-5 text-center text-slate-500 group-hover/link:text-green-400 transition-colors"></i> My Orders
                                     </a>
+                                    <a href="index.php?module=user&page=wishlist" class="block px-3 py-2 rounded-lg text-sm text-slate-300 hover:bg-slate-700 hover:text-white transition flex items-center gap-3 group/link">
+                                        <i class="fas fa-heart w-5 text-center text-slate-500 group-hover/link:text-rose-400 transition-colors"></i> Wishlist
+                                    </a>
                                     <a href="index.php?module=user&page=wallet" class="block px-3 py-2 rounded-lg text-sm text-slate-300 hover:bg-slate-700 hover:text-white transition flex items-center gap-3 group/link">
                                         <i class="fas fa-wallet w-5 text-center text-slate-500 group-hover/link:text-purple-400 transition-colors"></i> Wallet
-                                    </a>
-                                    <a href="index.php?module=user&page=referrals" class="block px-3 py-2 rounded-lg text-sm text-slate-300 hover:bg-slate-700 hover:text-white transition flex items-center gap-3 group/link">
-                                        <i class="fas fa-users w-5 text-center text-slate-500 group-hover/link:text-yellow-400 transition-colors"></i> Referrals
-                                    </a>
-                                    <a href="index.php?module=user&page=profile" class="block px-3 py-2 rounded-lg text-sm text-slate-300 hover:bg-slate-700 hover:text-white transition flex items-center gap-3 group/link">
-                                        <i class="fas fa-cog w-5 text-center text-slate-500 group-hover/link:text-gray-300 transition-colors"></i> Settings
                                     </a>
                                 </div>
 
@@ -205,104 +252,134 @@ function isActive($module, $page = null) {
                             </div>
                         </div>
                     <?php else: ?>
-                        <div class="flex items-center gap-3 ml-2">
+                        <div class="hidden lg:flex items-center gap-3 ml-2">
                             <a href="index.php?module=auth&page=login" class="text-slate-300 hover:text-white font-medium text-sm transition px-4 py-2 rounded-lg hover:bg-slate-800 border border-transparent hover:border-slate-700">Login</a>
-                            <a href="index.php?module=auth&page=register" class="bg-[#00f0ff]/10 hover:bg-[#00f0ff]/20 text-[#00f0ff] border border-[#00f0ff]/30 hover:border-[#00f0ff] px-5 py-2 rounded-xl font-bold text-sm shadow-[0_0_15px_rgba(0,240,255,0.1)] hover:shadow-[0_0_20px_rgba(0,240,255,0.2)] transition-all">Sign Up</a>
+                            <a href="index.php?module=auth&page=register" class="bg-gradient-to-r from-blue-600 to-[#00f0ff] hover:from-blue-500 hover:to-[#00f0ff] text-slate-900 px-5 py-2 rounded-xl font-black text-sm shadow-[0_0_15px_rgba(0,240,255,0.3)] transition-all">Sign Up</a>
                         </div>
                     <?php endif; ?>
                 </div>
 
-                <!-- Mobile Menu Button -->
-                <div class="lg:hidden flex items-center gap-4">
-                    <button onclick="document.getElementById('search-modal').classList.remove('hidden')" class="text-slate-400 hover:text-[#00f0ff] transition focus:outline-none">
-                        <i class="fas fa-search text-xl"></i>
-                    </button>
-                    <button onclick="document.getElementById('mobile-menu').classList.toggle('hidden')" class="text-slate-300 hover:text-white p-2 focus:outline-none rounded-lg hover:bg-slate-800 transition">
-                        <i class="fas fa-bars text-2xl"></i>
-                    </button>
-                </div>
-            </div>
-        </div>
-
-        <!-- Mobile Menu Overlay -->
-        <div id="mobile-menu" class="hidden lg:hidden bg-slate-900/95 backdrop-blur-2xl border-b border-slate-700 shadow-2xl absolute w-full z-40 transition-all origin-top">
-            <div class="px-4 pt-4 pb-6 space-y-4">
-                
-                <div class="grid grid-cols-2 gap-3 mb-6">
-                    <a href="index.php" class="flex flex-col items-center justify-center p-3 rounded-xl bg-slate-800 border border-slate-700 text-slate-300 hover:text-[#00f0ff] hover:border-[#00f0ff]/50 transition gap-2">
-                        <i class="fas fa-home text-xl"></i>
-                        <span class="text-xs font-bold uppercase">Home</span>
-                    </a>
-                    <a href="index.php?module=shop&page=search" class="flex flex-col items-center justify-center p-3 rounded-xl bg-slate-800 border border-slate-700 text-slate-300 hover:text-[#00f0ff] hover:border-[#00f0ff]/50 transition gap-2">
-                        <i class="fas fa-store text-xl"></i>
-                        <span class="text-xs font-bold uppercase">Store</span>
-                    </a>
-                    <a href="index.php?module=user&page=agent" class="flex flex-col items-center justify-center p-3 rounded-xl bg-yellow-500/10 border border-yellow-500/20 text-yellow-500 hover:bg-yellow-500/20 transition gap-2">
-                        <i class="fas fa-crown text-xl"></i>
-                        <span class="text-xs font-bold uppercase">Reseller</span>
-                    </a>
-                    <a href="index.php?module=info&page=support" class="flex flex-col items-center justify-center p-3 rounded-xl bg-slate-800 border border-slate-700 text-slate-300 hover:text-[#00f0ff] hover:border-[#00f0ff]/50 transition gap-2">
-                        <i class="fas fa-headset text-xl"></i>
-                        <span class="text-xs font-bold uppercase">Support</span>
-                    </a>
-                </div>
-
-                <?php if(isset($_SESSION['user_id'])): ?>
-                    <div class="border-t border-slate-700 pt-6">
-                        <div class="flex items-center px-2 mb-4">
-                            <div class="h-10 w-10 rounded-full bg-slate-800 border border-[#00f0ff]/50 flex items-center justify-center text-[#00f0ff] font-bold text-lg">
-                                <?php echo strtoupper(substr($_SESSION['user_name'] ?? 'U', 0, 1)); ?>
-                            </div>
-                            <div class="ml-3">
-                                <div class="text-sm font-bold text-white"><?php echo htmlspecialchars($_SESSION['user_name']); ?></div>
-                                <div class="text-xs text-slate-400 font-mono"><?php echo htmlspecialchars($_SESSION['user_email']); ?></div>
-                            </div>
-                        </div>
-                        <div class="grid grid-cols-2 gap-2">
-                            <a href="index.php?module=user&page=dashboard" class="px-3 py-2 rounded-lg text-sm font-medium text-slate-300 bg-slate-800/50 flex items-center gap-2"><i class="fas fa-chart-pie text-slate-500"></i> Dashboard</a>
-                            <a href="index.php?module=user&page=orders" class="px-3 py-2 rounded-lg text-sm font-medium text-slate-300 bg-slate-800/50 flex items-center gap-2"><i class="fas fa-box text-slate-500"></i> Orders</a>
-                            <a href="index.php?module=user&page=wallet" class="px-3 py-2 rounded-lg text-sm font-medium text-slate-300 bg-slate-800/50 flex items-center gap-2"><i class="fas fa-wallet text-slate-500"></i> Wallet</a>
-                            <a href="index.php?module=user&page=wishlist" class="px-3 py-2 rounded-lg text-sm font-medium text-slate-300 bg-slate-800/50 flex items-center gap-2"><i class="fas fa-heart text-slate-500"></i> Wishlist</a>
-                            <a href="index.php?module=auth&page=logout" class="col-span-2 mt-2 px-3 py-2.5 rounded-lg text-sm font-bold text-red-400 bg-red-500/10 flex justify-center items-center gap-2 border border-red-500/20"><i class="fas fa-power-off"></i> Logout</a>
-                        </div>
-                    </div>
-                <?php else: ?>
-                    <div class="grid grid-cols-2 gap-4 border-t border-slate-700 pt-6">
-                        <a href="index.php?module=auth&page=login" class="text-center px-4 py-3 border border-slate-600 rounded-xl text-slate-300 font-bold hover:bg-slate-800 transition">Login</a>
-                        <a href="index.php?module=auth&page=register" class="text-center px-4 py-3 bg-[#00f0ff]/10 text-[#00f0ff] border border-[#00f0ff]/30 rounded-xl font-bold shadow-[0_0_15px_rgba(0,240,255,0.1)]">Sign Up</a>
-                    </div>
-                <?php endif; ?>
             </div>
         </div>
     </nav>
 
-    <!-- Global Search Modal -->
-    <div id="search-modal" class="fixed inset-0 z-[60] hidden">
-        <div class="absolute inset-0 bg-slate-900/90 backdrop-blur-sm" onclick="document.getElementById('search-modal').classList.add('hidden')"></div>
+    <!-- ========================================== -->
+    <!-- FLOATING APP BOTTOM NAV (MOBILE ONLY)      -->
+    <!-- ========================================== -->
+    <div class="fixed bottom-4 left-4 right-4 z-50 lg:hidden pointer-events-none">
+        <div class="glass-pill rounded-full px-6 py-3 flex justify-between items-center shadow-[0_15px_40px_rgba(0,0,0,0.8)] pointer-events-auto relative">
+            
+            <a href="index.php" class="flex flex-col items-center gap-1 <?php echo isActive('home'); ?>">
+                <i class="fas fa-home text-lg"></i>
+                <span class="text-[8px] font-black uppercase tracking-widest">Home</span>
+            </a>
+
+            <button onclick="document.getElementById('search-modal').classList.remove('hidden')" class="flex flex-col items-center gap-1 text-slate-400 hover:text-[#00f0ff] transition">
+                <i class="fas fa-search text-lg"></i>
+                <span class="text-[8px] font-black uppercase tracking-widest">Search</span>
+            </button>
+
+            <!-- Center Action Button -->
+            <div class="relative -top-5">
+                <a href="index.php?module=shop&page=category" class="w-14 h-14 bg-gradient-to-br from-blue-600 to-[#00f0ff] text-slate-900 rounded-full flex items-center justify-center shadow-[0_0_20px_rgba(0,240,255,0.4)] border-4 border-slate-900 transform transition active:scale-95">
+                    <i class="fas fa-layer-group text-xl"></i>
+                </a>
+            </div>
+
+            <a href="index.php?module=user&page=orders" class="flex flex-col items-center gap-1 <?php echo isActive('user', 'orders'); ?>">
+                <i class="fas fa-box-open text-lg"></i>
+                <span class="text-[8px] font-black uppercase tracking-widest">Orders</span>
+            </a>
+
+            <!-- Toggle Mobile Menu Overlay -->
+            <button onclick="document.getElementById('mobile-menu').classList.toggle('translate-y-full'); document.getElementById('mobile-menu').classList.toggle('opacity-0');" class="flex flex-col items-center gap-1 text-slate-400 hover:text-[#00f0ff] transition">
+                <i class="fas fa-bars text-lg"></i>
+                <span class="text-[8px] font-black uppercase tracking-widest">Menu</span>
+            </button>
+
+        </div>
+    </div>
+
+    <!-- Mobile Menu Overlay (Slides up from bottom) -->
+    <div id="mobile-menu" class="fixed inset-0 z-40 lg:hidden transform translate-y-full opacity-0 transition-all duration-300 ease-in-out flex flex-col justify-end pointer-events-none">
+        <div class="absolute inset-0 bg-slate-950/60 backdrop-blur-sm pointer-events-auto" onclick="document.getElementById('mobile-menu').classList.add('translate-y-full', 'opacity-0')"></div>
         
-        <div class="absolute top-20 left-1/2 transform -translate-x-1/2 w-full max-w-2xl px-4 animate-fade-in-down">
-            <form action="index.php" method="GET" class="relative bg-slate-800 rounded-2xl shadow-[0_0_50px_rgba(0,0,0,0.5)] border border-slate-600 overflow-hidden flex items-center p-2 focus-within:border-[#00f0ff]/50 focus-within:shadow-[0_0_30px_rgba(0,240,255,0.15)] transition-all">
+        <div class="bg-slate-900 border-t border-[#00f0ff]/30 rounded-t-3xl w-full relative z-10 pointer-events-auto pb-24 pt-6 px-6 shadow-[0_-10px_40px_rgba(0,0,0,0.8)]">
+            <div class="w-12 h-1.5 bg-slate-700 rounded-full mx-auto mb-6"></div>
+
+            <h3 class="text-xs font-black text-slate-500 uppercase tracking-widest mb-4">Navigation</h3>
+            <div class="grid grid-cols-2 gap-3 mb-6">
+                <a href="index.php?module=shop&page=search" class="bg-slate-800 border border-slate-700 p-4 rounded-2xl flex flex-col items-center justify-center gap-2 text-slate-300 hover:text-[#00f0ff] transition shadow-inner">
+                    <i class="fas fa-store text-2xl"></i>
+                    <span class="text-[10px] font-bold uppercase tracking-wider">All Assets</span>
+                </a>
+                <a href="index.php?module=user&page=agent" class="bg-slate-800 border border-slate-700 p-4 rounded-2xl flex flex-col items-center justify-center gap-2 text-yellow-500 hover:text-yellow-400 transition shadow-inner">
+                    <i class="fas fa-crown text-2xl"></i>
+                    <span class="text-[10px] font-bold uppercase tracking-wider">Reseller Hub</span>
+                </a>
+            </div>
+
+            <?php if(isset($_SESSION['user_id'])): ?>
+                <h3 class="text-xs font-black text-slate-500 uppercase tracking-widest mb-4">Command Center</h3>
+                <div class="space-y-2">
+                    <a href="index.php?module=user&page=dashboard" class="flex items-center gap-4 p-3 bg-slate-800/50 rounded-xl border border-slate-700 text-slate-300 hover:text-white transition">
+                        <div class="w-8 h-8 rounded-lg bg-blue-500/10 flex items-center justify-center text-blue-400"><i class="fas fa-chart-pie"></i></div>
+                        <span class="text-sm font-bold tracking-wide">Dashboard</span>
+                    </a>
+                    <a href="index.php?module=user&page=wallet" class="flex items-center gap-4 p-3 bg-slate-800/50 rounded-xl border border-slate-700 text-slate-300 hover:text-white transition">
+                        <div class="w-8 h-8 rounded-lg bg-green-500/10 flex items-center justify-center text-green-400"><i class="fas fa-wallet"></i></div>
+                        <span class="text-sm font-bold tracking-wide">Digital Wallet</span>
+                    </a>
+                    <a href="index.php?module=user&page=wishlist" class="flex items-center gap-4 p-3 bg-slate-800/50 rounded-xl border border-slate-700 text-slate-300 hover:text-white transition">
+                        <div class="w-8 h-8 rounded-lg bg-rose-500/10 flex items-center justify-center text-rose-400"><i class="fas fa-heart"></i></div>
+                        <span class="text-sm font-bold tracking-wide">Wishlist</span>
+                    </a>
+                    <a href="index.php?module=user&page=profile" class="flex items-center gap-4 p-3 bg-slate-800/50 rounded-xl border border-slate-700 text-slate-300 hover:text-white transition">
+                        <div class="w-8 h-8 rounded-lg bg-slate-700 flex items-center justify-center text-slate-400"><i class="fas fa-cog"></i></div>
+                        <span class="text-sm font-bold tracking-wide">Settings</span>
+                    </a>
+                </div>
+                <div class="mt-6">
+                    <a href="index.php?module=auth&page=logout" class="w-full flex items-center justify-center gap-2 p-3 bg-red-500/10 text-red-400 font-bold rounded-xl border border-red-500/20">
+                        <i class="fas fa-power-off"></i> Terminate Session
+                    </a>
+                </div>
+            <?php else: ?>
+                <div class="space-y-3 mt-4">
+                    <a href="index.php?module=auth&page=login" class="block w-full text-center p-3 bg-slate-800 border border-slate-600 text-white font-bold rounded-xl shadow-lg">Initiate Login</a>
+                    <a href="index.php?module=auth&page=register" class="block w-full text-center p-3 bg-gradient-to-r from-blue-600 to-[#00f0ff] text-slate-900 font-black rounded-xl shadow-[0_0_15px_rgba(0,240,255,0.3)]">Deploy New Account</a>
+                </div>
+            <?php endif; ?>
+        </div>
+    </div>
+
+    <!-- Global Search Modal -->
+    <div id="search-modal" class="fixed inset-0 z-[60] hidden flex items-start justify-center pt-20 px-4">
+        <div class="absolute inset-0 bg-slate-950/90 backdrop-blur-md" onclick="document.getElementById('search-modal').classList.add('hidden')"></div>
+        
+        <div class="w-full max-w-2xl relative z-10 animate-fade-in-down">
+            <form action="index.php" method="GET" class="relative bg-slate-900 rounded-2xl shadow-[0_0_50px_rgba(0,240,255,0.15)] border border-[#00f0ff]/50 overflow-hidden flex items-center p-2 focus-within:shadow-[0_0_40px_rgba(0,240,255,0.3)] transition-all">
                 <input type="hidden" name="module" value="shop">
                 <input type="hidden" name="page" value="search">
                 
-                <div class="pl-4 pr-2 text-slate-500"><i class="fas fa-search text-xl"></i></div>
-                <input type="text" name="q" placeholder="What are you looking for?" id="global-search-input"
-                       class="flex-1 bg-transparent border-none py-3 px-2 text-white text-lg placeholder-slate-500 focus:outline-none focus:ring-0">
+                <div class="pl-4 pr-2 text-[#00f0ff]"><i class="fas fa-search text-xl"></i></div>
+                <input type="text" name="q" placeholder="Query Matrix..." id="global-search-input"
+                       class="flex-1 bg-transparent border-none py-3 px-2 text-white text-lg placeholder-slate-500 focus:outline-none font-mono">
                 
-                <button type="submit" class="bg-blue-600 hover:bg-[#00f0ff] hover:text-slate-900 text-white px-6 py-3 rounded-xl font-bold transition-colors">Search</button>
+                <button type="submit" class="bg-blue-600 hover:bg-[#00f0ff] hover:text-slate-900 text-white px-6 py-3 rounded-xl font-bold transition-colors uppercase tracking-widest text-xs hidden sm:block">Execute</button>
             </form>
-            <div class="text-center mt-3 text-xs text-slate-500">
-                Press <kbd class="bg-slate-800 border border-slate-700 px-1.5 py-0.5 rounded text-slate-300">ESC</kbd> to close
+            <div class="text-center mt-4 text-xs text-slate-500 font-medium tracking-widest uppercase">
+                Press <kbd class="bg-slate-800 border border-slate-700 px-2 py-1 rounded text-slate-300 font-mono">ESC</kbd> to abort
             </div>
         </div>
     </div>
 
     <!-- Main Content Wrapper -->
-    <main class="flex-grow relative z-0 pb-12">
+    <main class="flex-grow relative z-0">
         <!-- Abstract Background Effects for whole site -->
         <div class="absolute top-0 inset-x-0 h-[500px] overflow-hidden -z-10 pointer-events-none">
-            <div class="absolute -top-40 -right-40 w-96 h-96 bg-blue-900/20 rounded-full blur-3xl opacity-50"></div>
-            <div class="absolute top-20 -left-40 w-96 h-96 bg-purple-900/20 rounded-full blur-3xl opacity-30"></div>
+            <div class="absolute -top-40 -right-40 w-96 h-96 bg-blue-600/20 rounded-full blur-3xl opacity-50"></div>
+            <div class="absolute top-20 -left-40 w-96 h-96 bg-[#00f0ff]/10 rounded-full blur-3xl opacity-30"></div>
         </div>
 
     <script>
