@@ -1,18 +1,18 @@
 <?php
 // modules/home/index.php
-// PRODUCTION READY v1.0
+// PRODUCTION READY v1.1 - Added Image URL support for Categories
 
 // 1. Fetch Banners (Active Slides)
 $stmt = $pdo->query("SELECT * FROM banners ORDER BY display_order ASC, id DESC LIMIT 5");
 $banners = $stmt->fetchAll();
 
-// 2. Fetch Categories
+// 2. Fetch Categories (Now fetching image_url)
 $stmt = $pdo->query("SELECT * FROM categories ORDER BY id ASC");
 $categories = $stmt->fetchAll();
 
 // 3. Fetch "Hot Deals" (Sale Items)
 $stmt = $pdo->query("
-    SELECT p.*, c.name as cat_name, c.icon_class 
+    SELECT p.*, c.name as cat_name, c.icon_class, c.image_url as cat_image
     FROM products p 
     JOIN categories c ON p.category_id = c.id 
     WHERE p.sale_price IS NOT NULL AND p.sale_price < p.price
@@ -22,7 +22,7 @@ $flash_sales = $stmt->fetchAll();
 
 // 4. Fetch "Best Sellers" (Based on active orders)
 $stmt = $pdo->query("
-    SELECT p.*, c.name as cat_name, c.icon_class, COUNT(o.id) as sales_count
+    SELECT p.*, c.name as cat_name, c.icon_class, c.image_url as cat_image, COUNT(o.id) as sales_count
     FROM products p 
     JOIN categories c ON p.category_id = c.id 
     LEFT JOIN orders o ON p.id = o.product_id AND o.status = 'active'
@@ -33,7 +33,7 @@ $best_sellers = $stmt->fetchAll();
 
 // 5. Fetch "Recent Arrivals" (Main Grid)
 $stmt = $pdo->query("
-    SELECT p.*, c.name as cat_name, c.icon_class 
+    SELECT p.*, c.name as cat_name, c.icon_class, c.image_url as cat_image
     FROM products p 
     JOIN categories c ON p.category_id = c.id 
     ORDER BY p.id DESC LIMIT 12
@@ -127,9 +127,15 @@ $discount = is_logged_in() ? get_user_discount($_SESSION['user_id']) : 0;
         <?php foreach($categories as $cat): ?>
             <a href="index.php?module=shop&page=category&id=<?php echo $cat['id']; ?>" class="glass-card p-5 rounded-2xl text-center group block border border-gray-700 hover:border-blue-500/50 relative overflow-hidden">
                 <div class="absolute inset-0 bg-blue-600/5 opacity-0 group-hover:opacity-100 transition"></div>
-                <div class="w-12 h-12 mx-auto bg-gray-900 rounded-xl flex items-center justify-center mb-3 group-hover:scale-110 transition border border-gray-700 group-hover:border-blue-500 shadow-lg relative z-10">
-                    <i class="fas <?php echo $cat['icon_class']; ?> text-xl text-gray-400 group-hover:text-blue-400 transition-colors"></i>
+                
+                <div class="w-12 h-12 mx-auto bg-gray-900 rounded-xl flex items-center justify-center mb-3 group-hover:scale-110 transition border border-gray-700 group-hover:border-blue-500 shadow-lg relative z-10 overflow-hidden">
+                    <?php if(!empty($cat['image_url'])): ?>
+                        <img src="<?php echo BASE_URL . $cat['image_url']; ?>" alt="<?php echo htmlspecialchars($cat['name']); ?>" class="w-full h-full object-cover">
+                    <?php else: ?>
+                        <i class="fas <?php echo htmlspecialchars($cat['icon_class']); ?> text-xl text-gray-400 group-hover:text-blue-400 transition-colors"></i>
+                    <?php endif; ?>
                 </div>
+                
                 <h3 class="text-xs font-bold text-gray-300 group-hover:text-white transition-colors relative z-10 uppercase tracking-wide"><?php echo htmlspecialchars($cat['name']); ?></h3>
             </a>
         <?php endforeach; ?>
@@ -211,9 +217,17 @@ $discount = is_logged_in() ? get_user_discount($_SESSION['user_id']) : 0;
                         $b_final = $b_base * ((100 - $discount) / 100);
                     ?>
                     <a href="index.php?module=shop&page=product&id=<?php echo $product['id']; ?>" class="flex items-center gap-3 group">
-                        <div class="w-12 h-12 rounded-lg bg-gray-900 flex items-center justify-center text-blue-500 border border-gray-700 shrink-0 group-hover:border-blue-500/50 transition">
-                            <i class="fas <?php echo htmlspecialchars($product['icon_class'] ?? 'fa-cube'); ?>"></i>
+                        
+                        <div class="w-12 h-12 rounded-lg bg-gray-900 flex items-center justify-center text-blue-500 border border-gray-700 shrink-0 group-hover:border-blue-500/50 transition overflow-hidden">
+                            <?php if(!empty($product['image_path'])): ?>
+                                <img src="<?php echo BASE_URL . $product['image_path']; ?>" class="w-full h-full object-cover">
+                            <?php elseif(!empty($product['cat_image'])): ?>
+                                <img src="<?php echo BASE_URL . $product['cat_image']; ?>" class="w-full h-full object-cover">
+                            <?php else: ?>
+                                <i class="fas <?php echo htmlspecialchars($product['icon_class'] ?? 'fa-cube'); ?>"></i>
+                            <?php endif; ?>
                         </div>
+                        
                         <div class="min-w-0">
                             <h4 class="text-xs font-bold text-gray-200 truncate group-hover:text-blue-400 transition"><?php echo htmlspecialchars($product['name']); ?></h4>
                             <div class="flex items-center gap-2 text-[10px] mt-0.5">
