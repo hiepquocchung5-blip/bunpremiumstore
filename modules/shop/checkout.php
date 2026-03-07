@@ -1,13 +1,18 @@
 <?php
 // modules/shop/checkout.php
-// PRODUCTION DEPLOYMENT v3.3 - SQL ENUM Patch ('admin_provided')
+// PRODUCTION DEPLOYMENT v3.4 - Dynamic Image Rendering & SQL Fixes
 
 if (!is_logged_in()) redirect('index.php?module=auth&page=login');
 
 $product_id = isset($_GET['id']) ? (int)$_GET['id'] : 0;
 
-// 1. Fetch Product
-$stmt = $pdo->prepare("SELECT * FROM products WHERE id = ?");
+// 1. Fetch Product & Category Info
+$stmt = $pdo->prepare("
+    SELECT p.*, c.name as cat_name, c.image_url as cat_image 
+    FROM products p 
+    LEFT JOIN categories c ON p.category_id = c.id 
+    WHERE p.id = ?
+");
 $stmt->execute([$product_id]);
 $product = $stmt->fetch();
 
@@ -122,7 +127,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 }
 ?>
 
-<div class="max-w-6xl mx-auto grid grid-cols-1 lg:grid-cols-3 gap-8 pb-10">
+<div class="max-w-6xl mx-auto grid grid-cols-1 lg:grid-cols-3 gap-8 pb-10 px-4 pt-4">
     
     <!-- LEFT: Checkout Form -->
     <div class="lg:col-span-2 space-y-6">
@@ -160,27 +165,27 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                     </div>
 
                     <!-- Hidden Details Panel (Revealed on click) -->
-                    <div id="paymentDetailsPanel" class="hidden bg-blue-900/10 border border-[#00f0ff]/30 rounded-2xl p-6 relative overflow-hidden animate-fade-in-down shadow-[0_0_15px_rgba(0,240,255,0.05)]">
+                    <div id="paymentDetailsPanel" class="hidden bg-blue-900/10 border border-[#00f0ff]/30 rounded-2xl p-5 md:p-6 relative overflow-hidden animate-fade-in-down shadow-[0_0_15px_rgba(0,240,255,0.05)]">
                         <div class="absolute right-0 top-0 w-40 h-40 bg-[#00f0ff]/10 rounded-full blur-3xl pointer-events-none"></div>
                         
-                        <div class="flex justify-between items-start mb-4 relative z-10">
+                        <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-4 relative z-10">
                             <div>
                                 <p class="text-[10px] text-[#00f0ff] uppercase font-black tracking-widest mb-1">Transfer Exactly</p>
                                 <p class="text-3xl font-black text-white tracking-tight drop-shadow-[0_0_8px_rgba(0,240,255,0.3)]" id="transferAmountDisplay"><?php echo format_price($final_price); ?></p>
                             </div>
                             <!-- 5 Minute Session Timer -->
-                            <div class="bg-red-900/20 border border-red-500/50 px-3 py-1.5 rounded-lg flex items-center gap-2 shadow-inner">
+                            <div class="bg-red-900/20 border border-red-500/50 px-3 py-1.5 rounded-lg flex items-center gap-2 shadow-inner w-full sm:w-auto justify-center">
                                 <i class="fas fa-stopwatch text-red-500 animate-pulse"></i>
                                 <span id="sessionTimer" class="font-mono text-red-400 font-bold text-sm tracking-widest">05:00</span>
                             </div>
                         </div>
 
-                        <div class="bg-slate-900/90 p-5 rounded-xl border border-slate-700 relative z-10">
+                        <div class="bg-slate-900/90 p-4 md:p-5 rounded-xl border border-slate-700 relative z-10">
                             <p class="text-xs text-slate-400 mb-1 font-medium">Receiver Name: <strong class="text-white ml-1" id="receiverName">...</strong></p>
                             <p class="text-xs text-slate-400 mb-1 font-medium">Account Number:</p>
-                            <div class="flex items-center gap-3">
-                                <code class="text-xl font-mono text-green-400 font-bold select-all break-all" id="accountNumber">...</code>
-                                <button type="button" onclick="copyAccountInfo()" class="text-slate-500 hover:text-white hover:bg-slate-800 p-2 rounded-lg transition" title="Copy Number">
+                            <div class="flex items-center justify-between gap-3 bg-black/40 p-2 md:p-3 rounded-lg border border-slate-700/50">
+                                <code class="text-lg md:text-xl font-mono text-green-400 font-bold select-all break-all" id="accountNumber">...</code>
+                                <button type="button" onclick="copyAccountInfo()" class="text-slate-500 hover:text-white hover:bg-slate-800 p-2 rounded-lg transition shrink-0" title="Copy Number">
                                     <i class="fas fa-copy"></i>
                                 </button>
                             </div>
@@ -207,7 +212,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                                 <input type="file" name="proof" accept="image/*" required class="absolute inset-0 w-full h-full opacity-0 cursor-pointer z-10" 
                                        onchange="document.getElementById('fileNameDisplay').innerHTML = `<span class='text-green-400 font-bold'><i class='fas fa-check-circle'></i> ` + this.files[0].name + `</span>`; this.parentElement.classList.add('border-green-500/50', 'bg-green-500/10');">
                                 <i class="fas fa-cloud-upload-alt text-2xl text-slate-500 mb-2 group-hover:text-[#00f0ff] transition transform group-hover:-translate-y-1"></i>
-                                <p class="text-xs font-medium text-slate-400" id="fileNameDisplay">Browse or Drag Receipt</p>
+                                <p class="text-xs font-medium text-slate-400 truncate px-2" id="fileNameDisplay">Browse or Drag Receipt</p>
                             </div>
                         </div>
                     </div>
@@ -266,20 +271,20 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
                 <!-- STEP 5: Mandatory Instructions -->
                 <?php if(!empty($instructions)): ?>
-                <div class="mb-8 bg-red-900/10 border border-red-500/20 p-6 rounded-2xl relative">
+                <div class="mb-8 bg-red-900/10 border border-red-500/20 p-5 md:p-6 rounded-2xl relative">
                     <h3 class="font-bold text-red-400 mb-4 flex items-center gap-2 uppercase tracking-wide text-sm">
                         <i class="fas fa-shield-alt"></i> Security Protocol Agreement
                     </h3>
                     <div class="space-y-4">
                         <?php foreach($instructions as $ins): ?>
                             <label class="flex items-start gap-3 cursor-pointer group select-none">
-                                <div class="relative flex items-center pt-0.5">
+                                <div class="relative flex items-center pt-0.5 shrink-0">
                                     <input type="checkbox" name="agreed[]" value="<?php echo $ins['id']; ?>" required class="peer sr-only">
                                     <div class="w-5 h-5 rounded border border-slate-600 bg-slate-900 peer-checked:bg-red-500 peer-checked:border-red-500 transition flex items-center justify-center">
                                         <i class="fas fa-check text-white text-xs opacity-0 peer-checked:opacity-100 transition"></i>
                                     </div>
                                 </div>
-                                <span class="text-sm text-slate-300 group-hover:text-white transition leading-relaxed font-medium"><?php echo htmlspecialchars($ins['instruction_text']); ?></span>
+                                <span class="text-xs sm:text-sm text-slate-300 group-hover:text-white transition leading-relaxed font-medium"><?php echo htmlspecialchars($ins['instruction_text']); ?></span>
                             </label>
                         <?php endforeach; ?>
                     </div>
@@ -299,8 +304,15 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         <div class="glass p-6 md:p-8 rounded-3xl border border-slate-700 sticky top-24 shadow-[0_20px_40px_rgba(0,0,0,0.4)]">
             
             <div class="flex items-center gap-4 mb-6 pb-6 border-b border-slate-700/50">
-                <div class="w-16 h-16 bg-slate-900 rounded-2xl flex items-center justify-center text-[#00f0ff] text-3xl border border-slate-700 shadow-inner shrink-0">
-                    <i class="fas <?php echo htmlspecialchars($product['icon_class'] ?? 'fa-cube'); ?>"></i>
+                <div class="w-16 h-16 bg-slate-900 rounded-2xl flex items-center justify-center text-[#00f0ff] text-3xl border border-slate-700 shadow-inner shrink-0 overflow-hidden relative">
+                    <div class="absolute inset-0 bg-gradient-to-br from-blue-600/20 to-[#00f0ff]/20"></div>
+                    <?php if(!empty($product['image_path'])): ?>
+                        <img src="<?php echo BASE_URL . $product['image_path']; ?>" alt="<?php echo htmlspecialchars($product['name']); ?>" class="w-full h-full object-cover relative z-10">
+                    <?php elseif(!empty($product['cat_image'])): ?>
+                        <img src="<?php echo BASE_URL . $product['cat_image']; ?>" alt="Category" class="w-full h-full object-cover relative z-10">
+                    <?php else: ?>
+                        <i class="fas fa-cube relative z-10 drop-shadow-[0_0_10px_rgba(0,240,255,0.8)]"></i>
+                    <?php endif; ?>
                 </div>
                 <div class="min-w-0">
                     <h3 class="text-lg font-bold text-white leading-tight truncate"><?php echo htmlspecialchars($product['name']); ?></h3>
@@ -315,7 +327,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 <label class="block text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-2 ml-1">Transmission Code (Promo)</label>
                 <div class="flex gap-2">
                     <input type="text" id="coupon_input" placeholder="e.g. OMEGA20" class="w-full bg-slate-800 border border-slate-600 rounded-xl px-4 py-2.5 text-white text-sm focus:border-yellow-500 focus:ring-1 focus:ring-yellow-500 outline-none uppercase font-mono tracking-wider transition">
-                    <button type="button" onclick="applyCoupon()" class="bg-yellow-600 hover:bg-yellow-500 text-slate-900 px-5 py-2.5 rounded-xl text-xs font-black transition shadow-[0_0_15px_rgba(234,179,8,0.2)] uppercase tracking-wide">Patch In</button>
+                    <button type="button" onclick="applyCoupon()" class="bg-yellow-600 hover:bg-yellow-500 text-slate-900 px-5 py-2.5 rounded-xl text-xs font-black transition shadow-[0_0_15px_rgba(234,179,8,0.2)] uppercase tracking-wide shrink-0">Patch In</button>
                 </div>
                 <p id="coupon_msg" class="text-xs mt-3 hidden flex items-center gap-1.5 font-medium ml-1"></p>
             </div>
@@ -351,7 +363,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
             <div class="flex justify-between items-end mb-6">
                 <span class="text-slate-400 font-black uppercase text-xs tracking-widest">Total Required</span>
-                <span class="text-4xl font-black text-[#00f0ff] tracking-tighter drop-shadow-[0_0_15px_rgba(0,240,255,0.4)]" id="final_price_display">
+                <span class="text-3xl md:text-4xl font-black text-[#00f0ff] tracking-tighter drop-shadow-[0_0_15px_rgba(0,240,255,0.4)]" id="final_price_display">
                     <?php echo format_price($price_after_agent); ?>
                 </span>
             </div>
