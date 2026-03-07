@@ -1,6 +1,6 @@
 <?php
 // modules/user/agent.php
-// PRODUCTION DEPLOYMENT v2.2 - Agent Dashboard & Referral Stats
+// PRODUCTION DEPLOYMENT v3.0 - Decoupled DB Architecture (pass_id integration)
 
 // Auth Guard
 if (!is_logged_in()) redirect('index.php?module=auth&page=login');
@@ -10,7 +10,7 @@ $error = '';
 $success = '';
 
 // =====================================================================================
-// 1. HANDLE PASS PURCHASE (Real Transaction Flow)
+// 1. HANDLE PASS PURCHASE (Direct pass_id insertion)
 // =====================================================================================
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['buy_pass'])) {
     if (!hash_equals($_SESSION['csrf_token'], $_POST['csrf_token'])) die("Invalid Token");
@@ -45,42 +45,16 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['buy_pass'])) {
                 try {
                     $form_data = json_encode([
                         'Type' => 'Agent Pass Upgrade',
-                        'Pass ID' => $pass['id'],
-                        'Pass Name' => $pass['name'],
+                        'Pass Tier' => $pass['name'],
                         'Duration' => $pass['duration_days'] . ' Days'
                     ]);
 
-                    // FIX for SQLSTATE[23000]: Integrity constraint violation: 1452
-                    // We must ensure the dummy product (ID 0) exists before creating the order.
-                    // We need to disable foreign key checks temporarily if ID 0 conflicts with auto-increment logic,
-                    // or just use a standard INSERT IGNORE if ID 0 is allowed.
-                    
-                    // 1. Check if category 1 exists, if not, we must create a dummy category too
-                    $stmt_cat = $pdo->prepare("SELECT id FROM categories LIMIT 1");
-                    $stmt_cat->execute();
-                    $cat_id = $stmt_cat->fetchColumn() ?: 1; // Fallback to 1, but it might fail if 1 doesn't exist.
-
-                    if (!$cat_id) {
-                        $pdo->exec("INSERT IGNORE INTO categories (id, name, type) VALUES (1, 'System', 'subscription')");
-                        $cat_id = 1;
-                    }
-
-                    // 2. Safely create the dummy product (ID 0). 
-                    // Using a high ID like 99999 is safer than 0 to avoid AUTO_INCREMENT issues.
-                    $dummy_product_id = 99999;
-                    $stmt_prod = $pdo->prepare("SELECT id FROM products WHERE id = ?");
-                    $stmt_prod->execute([$dummy_product_id]);
-                    
-                    if (!$stmt_prod->fetch()) {
-                        $stmt_insert_prod = $pdo->prepare("INSERT IGNORE INTO products (id, category_id, name, price, delivery_type) VALUES (?, ?, 'System: Agent Pass Upgrade', 0, 'universal')");
-                        $stmt_insert_prod->execute([$dummy_product_id, $cat_id]);
-                    }
-
-                    // 3. Now insert the order using the safe dummy product ID
-                    $sql = "INSERT INTO orders (user_id, product_id, email_delivery_type, delivery_email, form_data, transaction_last_6, proof_image_path, total_price_paid, status) 
-                            VALUES (?, ?, 'own', ?, ?, ?, ?, ?, 'pending')";
+                    // FIX: Clean Architecture - Inserting pass_id, product_id is strictly NULL
+                    // This relies on the database_pass_fix.sql patch
+                    $sql = "INSERT INTO orders (user_id, product_id, pass_id, email_delivery_type, delivery_email, form_data, transaction_last_6, proof_image_path, total_price_paid, status) 
+                            VALUES (?, NULL, ?, 'own', ?, ?, ?, ?, ?, 'pending')";
                     $stmt = $pdo->prepare($sql);
-                    $stmt->execute([$user_id, $dummy_product_id, $_SESSION['user_email'], $form_data, $txn_id, $target_file, $pass['price']]);
+                    $stmt->execute([$user_id, $pass['id'], $_SESSION['user_email'], $form_data, $txn_id, $target_file, $pass['price']]);
                     
                     $order_id = $pdo->lastInsertId();
                     
@@ -92,7 +66,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['buy_pass'])) {
                     $success = "Upgrade requested! Admin will verify your payment and activate your pass shortly.";
                     
                 } catch (PDOException $e) {
-                    $error = "System error processing request. " . $e->getMessage();
+                    $error = "System error processing request: " . $e->getMessage();
                 }
             } else {
                 $error = "Failed to upload proof. Check folder permissions.";
@@ -124,14 +98,14 @@ $active_pass = $stmt->fetch();
 // Fetch Payment Methods for Modal
 $payment_methods = $pdo->query("SELECT * FROM payment_methods WHERE is_active = 1")->fetchAll();
 
-// Fetch User Data for Referral Code
-$stmt = $pdo->prepare("SELECT referral_code FROM users WHERE id = ?");
+// Fetch User Data for Referral Code & Wallet
+$stmt = $pdo->prepare("SELECT referral_code, wallet_balance FROM users WHERE id = ?");
 $stmt->execute([$user_id]);
 $user_data = $stmt->fetch();
 
 $ref_link = $user_data['referral_code'] ? BASE_URL . "index.php?module=auth&page=register&ref=" . $user_data['referral_code'] : null;
 
-// Calculate Estimated Total Savings (Mock metric for engagement)
+// Calculate Estimated Total Savings (Mock metric for engagement based on active orders)
 $total_orders_stmt = $pdo->prepare("SELECT SUM(price - total_price_paid) FROM orders o JOIN products p ON o.product_id = p.id WHERE o.user_id = ? AND o.status = 'active'");
 $total_orders_stmt->execute([$user_id]);
 $total_savings = $total_orders_stmt->fetchColumn() ?: 0;
@@ -146,25 +120,25 @@ $referral_count = $referrals_stmt->fetchColumn() ?: 0;
 <div class="max-w-7xl mx-auto animate-fade-in-down px-4 sm:px-6 lg:px-8 py-8">
     
     <!-- Dynamic Header -->
-    <div class="flex flex-col md:flex-row md:items-end justify-between mb-10 gap-6">
+    <div class="flex flex-col md:flex-row md:items-end justify-between mb-10 gap-6 relative z-10">
         <div>
             <h1 class="text-3xl md:text-5xl font-black text-transparent bg-clip-text bg-gradient-to-r from-yellow-200 via-yellow-400 to-yellow-600 drop-shadow-sm tracking-tight mb-2">
                 Agent Command Center
             </h1>
-            <p class="text-slate-400 text-sm max-w-2xl">
-                <?php echo $active_pass ? "Manage your reseller metrics and deploy your network." : "Unlock wholesale pricing on all digital products. Start your own reselling business today."; ?>
+            <p class="text-slate-400 text-sm max-w-2xl leading-relaxed">
+                <?php echo $active_pass ? "Manage your reseller metrics, access your network link, and view active privileges." : "Unlock wholesale pricing on all digital products. Start your own reselling business today with our premium membership tiers."; ?>
             </p>
         </div>
         
         <?php if($active_pass): ?>
-            <div class="bg-yellow-500/10 border border-yellow-500/30 px-5 py-3 rounded-2xl flex items-center gap-4 shadow-[0_0_20px_rgba(234,179,8,0.15)] relative overflow-hidden">
+            <div class="bg-yellow-500/10 border border-yellow-500/30 px-5 py-3 rounded-2xl flex items-center gap-4 shadow-[0_0_20px_rgba(234,179,8,0.15)] relative overflow-hidden shrink-0">
                 <div class="absolute right-0 top-0 w-16 h-16 bg-yellow-500/20 rounded-full blur-xl pointer-events-none"></div>
                 <div class="w-12 h-12 bg-gradient-to-br from-yellow-400 to-yellow-600 rounded-full flex items-center justify-center text-slate-900 text-xl font-black shadow-lg relative z-10 shrink-0">
                     <?php echo $active_pass['discount_percent']; ?>%
                 </div>
                 <div class="relative z-10">
-                    <p class="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Active Tier</p>
-                    <h3 class="text-lg font-black text-yellow-400"><?php echo htmlspecialchars($active_pass['name']); ?></h3>
+                    <p class="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-0.5">Active Tier</p>
+                    <h3 class="text-lg font-black text-yellow-400 leading-none"><?php echo htmlspecialchars($active_pass['name']); ?></h3>
                 </div>
             </div>
         <?php endif; ?>
@@ -184,9 +158,9 @@ $referral_count = $referrals_stmt->fetchColumn() ?: 0;
     <?php endif; ?>
 
     <?php if($error): ?>
-        <div class="max-w-3xl mb-8 bg-red-500/10 border border-red-500/30 text-red-400 p-4 rounded-xl flex items-center gap-3 animate-pulse relative z-10">
-            <i class="fas fa-exclamation-triangle text-lg shrink-0"></i>
-            <span class="text-sm font-medium"><?php echo htmlspecialchars($error); ?></span>
+        <div class="max-w-3xl mb-8 bg-red-500/10 border border-red-500/30 text-red-400 p-4 rounded-xl flex items-start gap-3 animate-pulse relative z-10">
+            <i class="fas fa-exclamation-triangle text-lg shrink-0 mt-0.5"></i>
+            <span class="text-sm font-medium leading-relaxed"><?php echo htmlspecialchars($error); ?></span>
         </div>
     <?php endif; ?>
 
@@ -198,24 +172,25 @@ $referral_count = $referrals_stmt->fetchColumn() ?: 0;
         <div class="md:col-span-2 bg-slate-900/80 backdrop-blur-xl border border-slate-700/50 rounded-3xl p-6 md:p-8 flex flex-col justify-center relative overflow-hidden group shadow-[0_10px_30px_rgba(0,0,0,0.5)]">
             <div class="absolute -right-20 -top-20 w-64 h-64 bg-[#00f0ff]/5 rounded-full blur-3xl pointer-events-none group-hover:bg-[#00f0ff]/10 transition duration-700"></div>
             
-            <h3 class="text-lg font-black text-white mb-2 flex items-center gap-3">
+            <h3 class="text-lg md:text-xl font-black text-white mb-2 flex items-center gap-3">
                 <i class="fas fa-network-wired text-[#00f0ff]"></i> Expand Your Network
             </h3>
             <p class="text-sm text-slate-400 mb-6">Distribute your unique referral link to clients. Earn passive commissions on their deployments.</p>
             
             <?php if($ref_link): ?>
             <div class="flex flex-col sm:flex-row gap-3">
-                <div class="relative flex-1">
-                    <i class="fas fa-link absolute left-4 top-1/2 transform -translate-y-1/2 text-slate-500"></i>
-                    <input type="text" value="<?php echo $ref_link; ?>" readonly class="w-full bg-slate-950 border border-slate-600 rounded-xl py-3.5 pl-10 pr-4 text-sm text-[#00f0ff] focus:border-[#00f0ff] outline-none select-all font-mono font-bold shadow-inner">
+                <div class="relative flex-1 group/input">
+                    <i class="fas fa-link absolute left-4 top-1/2 transform -translate-y-1/2 text-slate-500 group-focus-within/input:text-[#00f0ff] transition-colors"></i>
+                    <input type="text" value="<?php echo $ref_link; ?>" readonly class="w-full bg-slate-950 border border-slate-600 rounded-xl py-3.5 pl-10 pr-4 text-sm text-[#00f0ff] focus:border-[#00f0ff] outline-none select-all font-mono font-bold shadow-inner transition-colors">
                 </div>
                 <button onclick="navigator.clipboard.writeText('<?php echo addslashes($ref_link); ?>'); this.innerHTML='<i class=\'fas fa-check\'></i> Copied!'; setTimeout(()=>this.innerHTML='<i class=\'fas fa-copy\'></i> Copy Link', 2000);" class="bg-gradient-to-r from-blue-600 to-[#00f0ff] hover:from-blue-500 hover:to-[#00f0ff] text-slate-900 font-black px-8 py-3.5 rounded-xl transition shadow-[0_0_15px_rgba(0,240,255,0.3)] transform active:scale-95 flex items-center justify-center gap-2 uppercase tracking-widest text-xs shrink-0">
                     <i class="fas fa-copy"></i> Copy Link
                 </button>
             </div>
             <?php else: ?>
-            <div class="bg-slate-800 p-4 rounded-xl border border-slate-700 text-sm text-slate-400">
-                Please visit your <a href="index.php?module=user&page=referrals" class="text-[#00f0ff] hover:underline font-bold">Referral Dashboard</a> to generate your unique link.
+            <div class="bg-slate-800 p-4 rounded-xl border border-slate-700 text-sm text-slate-400 flex items-center gap-3">
+                <i class="fas fa-info-circle text-blue-400"></i>
+                <span>Please visit your <a href="index.php?module=user&page=referrals" class="text-[#00f0ff] hover:underline font-bold">Referral Dashboard</a> to generate your unique link.</span>
             </div>
             <?php endif; ?>
         </div>

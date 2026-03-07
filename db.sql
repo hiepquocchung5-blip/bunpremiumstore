@@ -199,3 +199,15 @@ ALTER TABLE products CONVERT TO CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci
 ALTER TABLE products MODIFY description TEXT CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci DEFAULT NULL;
 ALTER TABLE products MODIFY user_instruction TEXT CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci DEFAULT NULL;
 ALTER TABLE products MODIFY universal_content TEXT CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci DEFAULT NULL;
+
+-- 1. Allow orders to NOT have a product_id
+ALTER TABLE orders MODIFY product_id INT NULL;
+
+-- 2. Add a dedicated pass_id column
+ALTER TABLE orders ADD COLUMN pass_id INT NULL AFTER product_id;
+
+-- 3. Link it to the passes table
+ALTER TABLE orders ADD CONSTRAINT fk_order_pass FOREIGN KEY (pass_id) REFERENCES passes(id) ON DELETE CASCADE;
+
+-- 4. Purge the dummy products that were cluttering your database
+DELETE FROM products WHERE id = 99999 OR name LIKE 'System: Agent Pass%';
