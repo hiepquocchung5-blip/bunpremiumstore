@@ -1,16 +1,16 @@
 <?php
 // modules/home/index.php
-// PRODUCTION READY v1.2 - Enhanced Slider & Category Images UI
+// PRODUCTION READY v2.0 - Category Slider, Social Proof & Neon Tech UI
 
 // 1. Fetch Banners (Active Slides)
 $stmt = $pdo->query("SELECT * FROM banners ORDER BY display_order ASC, id DESC LIMIT 5");
 $banners = $stmt->fetchAll();
 
-// 2. Fetch Categories (Now fetching image_url)
-$stmt = $pdo->query("SELECT * FROM categories ORDER BY id ASC");
+// 2. Fetch Categories (REMOVED icon_class, strictly using image_url)
+$stmt = $pdo->query("SELECT id, name, image_url, description, type FROM categories ORDER BY id ASC");
 $categories = $stmt->fetchAll();
 
-// 3. Fetch "Hot Deals" (Sale Items)
+// 3. Fetch "Hot Deals" (Sale Items) - REMOVED c.icon_class
 $stmt = $pdo->query("
     SELECT p.*, c.name as cat_name, c.image_url as cat_image
     FROM products p 
@@ -51,8 +51,19 @@ $stmt = $pdo->query("
 ");
 $recent_reviews = $stmt->fetchAll();
 
-// 7. Get Current User Discount
+// 7. Get Current User Discount & Name
 $discount = is_logged_in() ? get_user_discount($_SESSION['user_id']) : 0;
+$first_name = is_logged_in() ? explode(' ', $_SESSION['user_name'])[0] : 'Operative';
+
+// 8. Generate Mock Data for Live Purchase Notifications (Social Proof)
+$live_purchases_json = json_encode(array_map(function($p) {
+    $names = ['Alex***', 'Ste***', 'Kyaw***', 'Zin***', 'Min***', 'Aung***', 'Lin***'];
+    return [
+        'user' => $names[array_rand($names)],
+        'item' => $p['name'],
+        'time' => rand(1, 59) . ' mins ago'
+    ];
+}, array_slice($best_sellers, 0, 4)));
 ?>
 
 <style>
@@ -63,6 +74,7 @@ $discount = is_logged_in() ? get_user_discount($_SESSION['user_id']) : 0;
     .glass-card {
         background: rgba(15, 23, 42, 0.6);
         backdrop-filter: blur(16px);
+        -webkit-backdrop-filter: blur(16px);
         border: 1px solid rgba(255, 255, 255, 0.05);
         box-shadow: 0 4px 30px rgba(0, 0, 0, 0.1);
         transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
@@ -74,100 +86,145 @@ $discount = is_logged_in() ? get_user_discount($_SESSION['user_id']) : 0;
         box-shadow: 0 10px 25px -5px rgba(0, 240, 255, 0.15);
     }
     
-    .animate-marquee { animation: marquee 25s linear infinite; }
+    .animate-marquee { animation: marquee 30s linear infinite; }
     @keyframes marquee { 0% { transform: translateX(100%); } 100% { transform: translateX(-100%); } }
 
     /* Slider Scroll Snapping */
-    .snap-x-mandatory {
-        scroll-snap-type: x mandatory;
-        -webkit-overflow-scrolling: touch;
-    }
+    .snap-x-mandatory { scroll-snap-type: x mandatory; -webkit-overflow-scrolling: touch; }
+    .snap-start { scroll-snap-align: start; }
     .snap-center { scroll-snap-align: center; }
+
+    /* Progress Bar Animation */
+    @keyframes loadProgress {
+        0% { width: 0%; }
+        100% { width: 100%; }
+    }
+    .animate-progress {
+        animation: loadProgress 5s linear infinite;
+    }
+    
+    /* Live Notification Toast */
+    .toast-enter { animation: toastSlideIn 0.5s cubic-bezier(0.175, 0.885, 0.32, 1.275) forwards; }
+    .toast-exit { animation: toastSlideOut 0.5s ease-in forwards; }
+    @keyframes toastSlideIn { from { transform: translateX(-100%) translateY(20px); opacity: 0; } to { transform: translateX(0) translateY(0); opacity: 1; } }
+    @keyframes toastSlideOut { from { transform: translateX(0); opacity: 1; } to { transform: translateX(-100%); opacity: 0; } }
 </style>
 
 <!-- SECTION 0: News Ticker -->
-<div class="w-full bg-slate-900 border-b border-slate-800 overflow-hidden py-1.5 mb-6">
-    <div class="whitespace-nowrap animate-marquee text-xs text-[#00f0ff] font-mono tracking-widest uppercase font-bold">
-        🚀 Welcome to DigitalMarketplaceMM • Instant Delivery 24/7 • Official Game Keys & Premium Accounts • Join our Telegram for Giveaways! • Verified KBZPay/Wave Agents
+<div class="w-full bg-slate-950 border-b border-[#00f0ff]/20 overflow-hidden py-1.5 mb-6 relative">
+    <div class="absolute inset-y-0 left-0 w-16 bg-gradient-to-r from-slate-950 to-transparent z-10 pointer-events-none"></div>
+    <div class="absolute inset-y-0 right-0 w-16 bg-gradient-to-l from-slate-950 to-transparent z-10 pointer-events-none"></div>
+    <div class="whitespace-nowrap animate-marquee text-[10px] sm:text-xs text-[#00f0ff] font-mono tracking-[0.2em] uppercase font-bold">
+        🚀 System Online • Encrypted Connections Active • Global Game Keys & Premium Deployments Available 24/7 • Instant Delivery Matrix 
     </div>
 </div>
 
 <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
     
+    <!-- User Greeting (Gemini Feature) -->
+    <div class="mb-6 flex items-center justify-between animate-fade-in-down">
+        <h2 class="text-xl md:text-2xl font-black text-white tracking-tight">
+            Welcome, <span class="text-transparent bg-clip-text bg-gradient-to-r from-blue-400 to-[#00f0ff]"><?php echo htmlspecialchars($first_name); ?></span>
+        </h2>
+        <div class="flex items-center gap-2 text-xs font-mono text-green-400 bg-green-500/10 px-3 py-1 rounded-full border border-green-500/20">
+            <span class="w-2 h-2 rounded-full bg-green-500 animate-pulse"></span> Network Stable
+        </div>
+    </div>
+
     <!-- SECTION 1: Responsive Banner Slider -->
     <?php if(!empty($banners)): ?>
-    <div class="relative w-full h-[180px] sm:h-[280px] md:h-[350px] lg:h-[400px] mb-12 rounded-3xl overflow-hidden group shadow-[0_20px_50px_rgba(0,0,0,0.5)] bg-slate-900 border border-[#00f0ff]/20" id="sliderContainer">
+    <div class="relative w-full h-[180px] sm:h-[280px] md:h-[350px] lg:h-[420px] mb-12 rounded-3xl overflow-hidden group shadow-[0_20px_50px_rgba(0,0,0,0.5)] bg-slate-900 border border-[#00f0ff]/20" id="heroSliderContainer">
         
         <div class="flex overflow-x-auto snap-x-mandatory h-full no-scrollbar scroll-smooth" id="bannerSlider">
             <?php foreach($banners as $index => $b): ?>
                 <div class="w-full flex-shrink-0 snap-center relative h-full banner-slide" data-index="<?php echo $index; ?>">
-                    <a href="<?php echo $b['target_url'] ?: '#'; ?>" target="<?php echo $b['target_url'] ? '_blank' : '_self'; ?>" class="block w-full h-full cursor-pointer">
-                        <img src="<?php echo BASE_URL . $b['image_path']; ?>" class="w-full h-full object-cover transition duration-1000 group-hover:scale-105" loading="lazy" alt="<?php echo htmlspecialchars($b['title']); ?>">
+                    <a href="<?php echo $b['target_url'] ?: '#'; ?>" target="<?php echo $b['target_url'] ? '_blank' : '_self'; ?>" class="block w-full h-full cursor-pointer overflow-hidden">
+                        <img src="<?php echo BASE_URL . $b['image_path']; ?>" class="w-full h-full object-cover transition duration-1000 group-hover:scale-105 group-hover:rotate-1" loading="lazy" alt="<?php echo htmlspecialchars($b['title']); ?>">
                         
                         <!-- Gradient Overlay -->
                         <div class="absolute inset-0 bg-gradient-to-t from-slate-950 via-slate-900/40 to-transparent opacity-90"></div>
+                        <div class="absolute inset-0 bg-blue-900/10 mix-blend-color-burn"></div>
                         
                         <!-- Banner Text -->
                         <div class="absolute bottom-0 left-0 p-6 sm:p-10 w-full z-10">
-                            <h3 class="text-white text-2xl sm:text-4xl md:text-5xl font-black drop-shadow-[0_0_10px_rgba(0,240,255,0.5)] mb-3 transform transition translate-y-0 group-hover:-translate-y-2 tracking-tight"><?php echo htmlspecialchars($b['title']); ?></h3>
-                            <div class="h-1 sm:h-1.5 w-16 sm:w-24 bg-gradient-to-r from-blue-600 to-[#00f0ff] rounded-full shadow-[0_0_10px_rgba(0,240,255,0.8)]"></div>
+                            <span class="text-[10px] text-[#00f0ff] font-bold uppercase tracking-widest mb-2 block drop-shadow-md">Featured Deployment</span>
+                            <h3 class="text-white text-3xl sm:text-4xl md:text-5xl lg:text-6xl font-black drop-shadow-[0_0_15px_rgba(0,240,255,0.5)] mb-3 transform transition-transform duration-500 translate-y-0 group-hover:-translate-y-2 tracking-tighter leading-none"><?php echo htmlspecialchars($b['title']); ?></h3>
                         </div>
                     </a>
                 </div>
             <?php endforeach; ?>
         </div>
         
+        <!-- Progress Bar Indicator -->
+        <div class="absolute bottom-0 left-0 w-full h-1.5 bg-slate-800 z-20">
+            <div id="slideProgress" class="h-full bg-gradient-to-r from-blue-600 via-[#00f0ff] to-white shadow-[0_0_10px_#00f0ff] w-0"></div>
+        </div>
+
         <!-- Navigation Dots -->
         <div class="absolute bottom-6 right-6 flex gap-2.5 z-20" id="sliderDots">
             <?php foreach($banners as $i => $b): ?>
-                <button class="w-2.5 h-2.5 rounded-full transition-all duration-300 slider-dot <?php echo $i === 0 ? 'bg-[#00f0ff] shadow-[0_0_10px_rgba(0,240,255,0.8)] w-6' : 'bg-white/30 hover:bg-white/60'; ?>" data-target="<?php echo $i; ?>"></button>
+                <button class="w-2.5 h-2.5 rounded-full transition-all duration-300 slider-dot <?php echo $i === 0 ? 'bg-[#00f0ff] shadow-[0_0_10px_rgba(0,240,255,0.8)] w-8' : 'bg-white/30 hover:bg-white/60'; ?>" data-target="<?php echo $i; ?>"></button>
             <?php endforeach; ?>
         </div>
         
         <!-- Arrow Controls -->
-        <button id="prevSlide" class="absolute left-4 top-1/2 -translate-y-1/2 w-10 h-10 rounded-full bg-slate-900/50 backdrop-blur border border-white/10 text-white flex items-center justify-center opacity-0 group-hover:opacity-100 transition duration-300 hover:bg-[#00f0ff] hover:text-slate-900"><i class="fas fa-chevron-left"></i></button>
-        <button id="nextSlide" class="absolute right-4 top-1/2 -translate-y-1/2 w-10 h-10 rounded-full bg-slate-900/50 backdrop-blur border border-white/10 text-white flex items-center justify-center opacity-0 group-hover:opacity-100 transition duration-300 hover:bg-[#00f0ff] hover:text-slate-900"><i class="fas fa-chevron-right"></i></button>
+        <button id="prevSlide" class="absolute left-4 top-1/2 -translate-y-1/2 w-12 h-12 rounded-2xl bg-slate-900/50 backdrop-blur-md border border-white/10 text-white flex items-center justify-center opacity-0 group-hover:opacity-100 transition-all duration-300 hover:bg-[#00f0ff] hover:text-slate-900 hover:scale-110 shadow-lg"><i class="fas fa-chevron-left"></i></button>
+        <button id="nextSlide" class="absolute right-4 top-1/2 -translate-y-1/2 w-12 h-12 rounded-2xl bg-slate-900/50 backdrop-blur-md border border-white/10 text-white flex items-center justify-center opacity-0 group-hover:opacity-100 transition-all duration-300 hover:bg-[#00f0ff] hover:text-slate-900 hover:scale-110 shadow-lg"><i class="fas fa-chevron-right"></i></button>
     </div>
-    <?php else: ?>
-        <div class="relative w-full h-[200px] md:h-[300px] mb-12 rounded-3xl bg-slate-900 flex items-center justify-center border border-[#00f0ff]/20 shadow-[0_20px_50px_rgba(0,0,0,0.5)]">
-            <div class="text-center">
-                <h2 class="text-4xl md:text-5xl font-black text-white mb-2 tracking-tight">Digital<span class="text-[#00f0ff] drop-shadow-[0_0_10px_rgba(0,240,255,0.8)]">MM</span></h2>
-                <p class="text-slate-400 uppercase tracking-widest font-bold text-xs md:text-sm">Premium Digital Network</p>
-            </div>
-        </div>
     <?php endif; ?>
 
 
-    <!-- SECTION 2: Categories (Image Centric) -->
-    <div class="mb-16">
-        <h2 class="text-2xl md:text-3xl font-black text-white mb-6 tracking-tight flex items-center gap-3">
-            <i class="fas fa-network-wired text-[#00f0ff]"></i> Sector Directory
-        </h2>
-        <div class="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-4 sm:gap-6">
-            <?php foreach($categories as $cat): ?>
-                <a href="index.php?module=shop&page=category&id=<?php echo $cat['id']; ?>" class="glass-card rounded-2xl overflow-hidden group relative flex flex-col justify-end aspect-square sm:aspect-auto sm:h-40 border border-slate-700/50">
-                    
-                    <!-- Dynamic Background -->
-                    <?php if(!empty($cat['image_url'])): ?>
-                        <img src="<?php echo BASE_URL . $cat['image_url']; ?>" alt="<?php echo htmlspecialchars($cat['name']); ?>" class="absolute inset-0 w-full h-full object-cover opacity-50 group-hover:opacity-80 transition duration-500 group-hover:scale-110">
-                        <div class="absolute inset-0 bg-gradient-to-t from-slate-950 via-slate-900/60 to-transparent"></div>
-                    <?php else: ?>
-                        <div class="absolute inset-0 bg-slate-800 flex items-center justify-center group-hover:scale-110 transition duration-500">
-                            <!-- Fallback Icon if no image URL -->
-                            <i class="fas fa-folder text-6xl text-slate-700 group-hover:text-[#00f0ff]/20 transition-colors"></i>
-                        </div>
-                        <div class="absolute inset-0 bg-gradient-to-t from-slate-950 to-transparent"></div>
-                    <?php endif; ?>
+    <!-- SECTION 2: Interactive Category Slider (Gemini Feature) -->
+    <div class="mb-16 relative">
+        <div class="flex items-end justify-between mb-6">
+            <h2 class="text-2xl md:text-3xl font-black text-white tracking-tight flex items-center gap-3">
+                <i class="fas fa-network-wired text-[#00f0ff]"></i> Sector Directory
+            </h2>
+            <div class="hidden sm:flex gap-2">
+                <button id="catPrev" class="w-8 h-8 rounded-lg bg-slate-800 hover:bg-[#00f0ff] text-slate-400 hover:text-slate-900 transition flex items-center justify-center"><i class="fas fa-angle-left"></i></button>
+                <button id="catNext" class="w-8 h-8 rounded-lg bg-slate-800 hover:bg-[#00f0ff] text-slate-400 hover:text-slate-900 transition flex items-center justify-center"><i class="fas fa-angle-right"></i></button>
+            </div>
+        </div>
 
-                    <!-- Content -->
-                    <div class="relative z-10 p-4 text-center w-full transform transition group-hover:-translate-y-1">
-                        <?php if(empty($cat['image_url'])): ?>
-                             <i class="fas fa-folder text-[#00f0ff] text-xl mb-1.5 drop-shadow-[0_0_5px_rgba(0,240,255,0.8)]"></i>
+        <!-- Slider Container -->
+        <div class="relative group">
+            <div id="categorySlider" class="flex overflow-x-auto snap-x-mandatory gap-4 sm:gap-6 pb-6 pt-2 px-2 -mx-2 no-scrollbar scroll-smooth">
+                <?php foreach($categories as $cat): ?>
+                    <a href="index.php?module=shop&page=category&id=<?php echo $cat['id']; ?>" class="snap-start shrink-0 w-[140px] sm:w-[180px] lg:w-[220px] glass-card rounded-3xl overflow-hidden group/cat relative flex flex-col justify-end aspect-[4/5] border border-slate-700/50 hover:border-[#00f0ff]/50">
+                        
+                        <!-- Dynamic Background without icon_class -->
+                        <?php if(!empty($cat['image_url'])): ?>
+                            <img src="<?php echo BASE_URL . $cat['image_url']; ?>" alt="<?php echo htmlspecialchars($cat['name']); ?>" class="absolute inset-0 w-full h-full object-cover opacity-60 group-hover/cat:opacity-100 transition-all duration-700 group-hover/cat:scale-110">
+                        <?php else: ?>
+                            <!-- Circuit Pattern Fallback if no image -->
+                            <div class="absolute inset-0 bg-slate-800 flex items-center justify-center group-hover/cat:scale-110 transition duration-700 bg-[url('data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMjAiIGhlaWdodD0iMjAiIHhtbG5zPSJodHRwOi8vd3d3LnczLm9yZy8yMDAwL3N2ZyI+PGNpcmNsZSBjeD0iMiIgY3k9IjIiIHI9IjEiIGZpbGw9InJnYmEoMCwgMjQwLCAyNTUsIDAuMikiLz48L3N2Zz4=')] opacity-50"></div>
                         <?php endif; ?>
-                        <h3 class="text-sm font-black text-white uppercase tracking-wider drop-shadow-md"><?php echo htmlspecialchars($cat['name']); ?></h3>
-                    </div>
-                </a>
-            <?php endforeach; ?>
+
+                        <!-- Overlays -->
+                        <div class="absolute inset-0 bg-gradient-to-t from-slate-950 via-slate-900/60 to-transparent opacity-90 group-hover/cat:opacity-70 transition-opacity"></div>
+                        
+                        <!-- Hover Glow -->
+                        <div class="absolute -bottom-10 left-1/2 -translate-x-1/2 w-24 h-24 bg-[#00f0ff]/40 rounded-full blur-2xl opacity-0 group-hover/cat:opacity-100 transition-opacity duration-500 pointer-events-none"></div>
+
+                        <!-- Content -->
+                        <div class="relative z-10 p-5 text-center w-full transform transition-transform duration-300 group-hover/cat:-translate-y-2">
+                            <span class="inline-block px-2 py-1 bg-slate-900/80 border border-slate-700 rounded text-[8px] font-bold text-slate-400 uppercase tracking-widest mb-2 backdrop-blur-md">
+                                <?php echo htmlspecialchars($cat['type']); ?>
+                            </span>
+                            <h3 class="text-sm sm:text-base font-black text-white uppercase tracking-wider drop-shadow-lg leading-tight"><?php echo htmlspecialchars($cat['name']); ?></h3>
+                            <!-- Hover Reveal Text -->
+                            <div class="h-0 overflow-hidden group-hover/cat:h-auto group-hover/cat:mt-2 transition-all duration-300">
+                                <p class="text-[10px] text-slate-300 line-clamp-2 leading-relaxed">Enter Sector &rarr;</p>
+                            </div>
+                        </div>
+                    </a>
+                <?php endforeach; ?>
+            </div>
+
+            <!-- Horizontal Scroll Progress Line -->
+            <div class="absolute -bottom-2 left-0 w-full h-1 bg-slate-800/50 rounded-full overflow-hidden backdrop-blur">
+                <div id="catScrollProgress" class="h-full bg-gradient-to-r from-blue-600 to-[#00f0ff] rounded-full w-0 transition-all duration-150"></div>
+            </div>
         </div>
     </div>
 
@@ -182,7 +239,10 @@ $discount = is_logged_in() ? get_user_discount($_SESSION['user_id']) : 0;
                 </span>
                 <h2 class="text-2xl md:text-3xl font-black text-white tracking-tight">Flash Sales</h2>
             </div>
-            <div class="text-xs font-mono text-red-400 font-bold bg-red-900/20 px-3 py-1.5 rounded-lg border border-red-900/50 uppercase tracking-widest w-fit">Limited Time Offer</div>
+            <!-- Dynamic Countdown visual -->
+            <div class="text-xs font-mono text-red-400 font-bold bg-red-900/20 px-3 py-1.5 rounded-lg border border-red-900/50 uppercase tracking-widest w-fit flex items-center gap-2">
+                <i class="fas fa-stopwatch"></i> Ends Soon
+            </div>
         </div>
         <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
             <?php foreach($flash_sales as $product): 
@@ -192,38 +252,38 @@ $discount = is_logged_in() ? get_user_discount($_SESSION['user_id']) : 0;
     </div>
     <?php endif; ?>
 
-
-    <!-- SECTION 4: Feature Strip & Telegram Ad -->
-    <div class="grid grid-cols-1 md:grid-cols-4 gap-4 mb-16">
-        
-        <!-- Telegram Ad Card -->
-        <a href="https://t.me/bunpremiumstore" target="_blank" class="md:col-span-1 bg-gradient-to-br from-blue-600 to-[#00f0ff] rounded-2xl p-5 flex items-center justify-between shadow-[0_10px_30px_rgba(0,240,255,0.2)] hover:shadow-[0_15px_40px_rgba(0,240,255,0.4)] transition duration-300 group relative overflow-hidden transform hover:-translate-y-1">
-            <div class="relative z-10">
-                <h4 class="text-slate-900 font-black text-sm uppercase tracking-widest">Join Network</h4>
-                <p class="text-slate-800 text-xs mt-1 font-bold">Live Updates & Drops</p>
-            </div>
-            <div class="w-12 h-12 bg-white/20 backdrop-blur rounded-full flex items-center justify-center text-white relative z-10 group-hover:scale-110 transition duration-300 border border-white/30">
-                <i class="fab fa-telegram-plane text-2xl"></i>
-            </div>
-            <div class="absolute -right-4 -bottom-4 w-24 h-24 bg-white/20 rounded-full blur-2xl group-hover:bg-white/30 transition"></div>
-        </a>
+    <!-- SECTION 4: Feature Strip (Circuit Node Style) -->
+    <div class="grid grid-cols-1 md:grid-cols-3 gap-4 mb-16 relative">
+        <!-- Connecting Line Background -->
+        <div class="hidden md:block absolute top-1/2 left-10 right-10 h-0.5 bg-slate-800 -z-10 transform -translate-y-1/2">
+            <div class="h-full bg-gradient-to-r from-green-500 via-purple-500 to-yellow-500 opacity-50 w-full animate-pulse"></div>
+        </div>
 
         <!-- Feature 1 -->
-        <div class="glass border border-slate-700/50 p-4 rounded-2xl flex items-center gap-4">
-            <div class="w-12 h-12 rounded-xl bg-green-500/10 flex items-center justify-center text-green-400 text-xl border border-green-500/20 shadow-inner"><i class="fas fa-bolt"></i></div>
-            <div><div class="text-sm font-bold text-white tracking-wide">Instant Delivery</div><div class="text-xs text-slate-400">Automated 24/7</div></div>
+        <div class="glass border border-slate-700/50 p-5 rounded-2xl flex flex-col items-center text-center gap-3 relative overflow-hidden group hover:border-green-500/50 transition">
+            <div class="w-14 h-14 rounded-2xl bg-green-500/10 flex items-center justify-center text-green-400 text-2xl border border-green-500/20 shadow-inner group-hover:scale-110 transition duration-300 rotate-3"><i class="fas fa-bolt"></i></div>
+            <div>
+                <div class="text-sm font-black text-white tracking-widest uppercase mb-1">Instant Delivery</div>
+                <div class="text-xs text-slate-400 font-medium">Automated 24/7 Matrix</div>
+            </div>
         </div>
 
         <!-- Feature 2 -->
-        <div class="glass border border-slate-700/50 p-4 rounded-2xl flex items-center gap-4">
-            <div class="w-12 h-12 rounded-xl bg-purple-500/10 flex items-center justify-center text-purple-400 text-xl border border-purple-500/20 shadow-inner"><i class="fas fa-shield-alt"></i></div>
-            <div><div class="text-sm font-bold text-white tracking-wide">Official Warranty</div><div class="text-xs text-slate-400">Secure Protocol</div></div>
+        <div class="glass border border-slate-700/50 p-5 rounded-2xl flex flex-col items-center text-center gap-3 relative overflow-hidden group hover:border-purple-500/50 transition">
+            <div class="w-14 h-14 rounded-2xl bg-purple-500/10 flex items-center justify-center text-purple-400 text-2xl border border-purple-500/20 shadow-inner group-hover:scale-110 transition duration-300 -rotate-3"><i class="fas fa-shield-alt"></i></div>
+            <div>
+                <div class="text-sm font-black text-white tracking-widest uppercase mb-1">Official Warranty</div>
+                <div class="text-xs text-slate-400 font-medium">Secure Encrypted Protocol</div>
+            </div>
         </div>
 
         <!-- Feature 3 -->
-        <div class="glass border border-slate-700/50 p-4 rounded-2xl flex items-center gap-4">
-            <div class="w-12 h-12 rounded-xl bg-yellow-500/10 flex items-center justify-center text-yellow-400 text-xl border border-yellow-500/20 shadow-inner"><i class="fas fa-wallet"></i></div>
-            <div><div class="text-sm font-bold text-white tracking-wide">Local Payment</div><div class="text-xs text-slate-400">Kpay / Wave Pay</div></div>
+        <div class="glass border border-slate-700/50 p-5 rounded-2xl flex flex-col items-center text-center gap-3 relative overflow-hidden group hover:border-yellow-500/50 transition">
+            <div class="w-14 h-14 rounded-2xl bg-yellow-500/10 flex items-center justify-center text-yellow-400 text-2xl border border-yellow-500/20 shadow-inner group-hover:scale-110 transition duration-300 rotate-3"><i class="fas fa-wallet"></i></div>
+            <div>
+                <div class="text-sm font-black text-white tracking-widest uppercase mb-1">Local Payment</div>
+                <div class="text-xs text-slate-400 font-medium">Kpay / Wave Pay Supported</div>
+            </div>
         </div>
     </div>
 
@@ -235,11 +295,12 @@ $discount = is_logged_in() ? get_user_discount($_SESSION['user_id']) : 0;
         <div class="lg:col-span-1 space-y-8">
             
             <!-- Trending -->
-            <div class="glass border border-slate-700/50 rounded-3xl p-6 shadow-xl">
-                <h3 class="text-lg font-black text-white flex items-center gap-2 mb-6 uppercase tracking-wider">
-                    <i class="fas fa-fire text-orange-500"></i> Trending
+            <div class="glass border border-slate-700/50 rounded-3xl p-6 shadow-xl relative overflow-hidden">
+                <div class="absolute top-0 right-0 w-32 h-32 bg-orange-500/10 rounded-full blur-3xl pointer-events-none"></div>
+                <h3 class="text-lg font-black text-white flex items-center gap-2 mb-6 uppercase tracking-wider relative z-10">
+                    <i class="fas fa-fire text-orange-500 animate-pulse"></i> Trending
                 </h3>
-                <div class="space-y-5">
+                <div class="space-y-5 relative z-10">
                     <?php foreach($best_sellers as $product): ?>
                         <?php 
                             $b_base = $product['sale_price'] ?: $product['price'];
@@ -247,13 +308,14 @@ $discount = is_logged_in() ? get_user_discount($_SESSION['user_id']) : 0;
                         ?>
                         <a href="index.php?module=shop&page=product&id=<?php echo $product['id']; ?>" class="flex items-center gap-4 group">
                             
+                            <!-- REMOVED icon_class fallback, strictly image_url -->
                             <div class="w-14 h-14 rounded-xl bg-slate-900 flex items-center justify-center text-[#00f0ff] border border-slate-700 shrink-0 group-hover:border-[#00f0ff]/50 transition overflow-hidden shadow-inner">
                                 <?php if(!empty($product['image_path'])): ?>
                                     <img src="<?php echo BASE_URL . $product['image_path']; ?>" class="w-full h-full object-cover">
                                 <?php elseif(!empty($product['cat_image'])): ?>
                                     <img src="<?php echo BASE_URL . $product['cat_image']; ?>" class="w-full h-full object-cover">
                                 <?php else: ?>
-                                    <i class="fas fa-cube text-xl"></i>
+                                    <i class="fas fa-box text-xl opacity-50"></i>
                                 <?php endif; ?>
                             </div>
                             
@@ -268,27 +330,19 @@ $discount = is_logged_in() ? get_user_discount($_SESSION['user_id']) : 0;
                 </div>
             </div>
             
-            <!-- Reviews -->
-            <?php if(!empty($recent_reviews)): ?>
-            <div class="glass border border-slate-700/50 rounded-3xl p-6 shadow-xl">
-                <h3 class="text-lg font-black text-white mb-6 flex items-center gap-2 uppercase tracking-wider">
-                    <i class="fas fa-comments text-[#00f0ff]"></i> Network Comms
-                </h3>
-                <div class="space-y-4">
-                    <?php foreach($recent_reviews as $r): ?>
-                        <a href="index.php?module=shop&page=product&id=<?php echo $r['pid']; ?>" class="block p-4 rounded-2xl bg-slate-900/50 border border-slate-700/50 hover:border-[#00f0ff]/30 transition group">
-                            <div class="flex justify-between items-start mb-2">
-                                <span class="text-xs font-bold text-slate-300 group-hover:text-white transition">@<?php echo htmlspecialchars($r['username']); ?></span>
-                                <div class="flex text-[8px] text-yellow-500">
-                                    <?php for($i=0; $i<$r['rating']; $i++) echo '<i class="fas fa-star"></i>'; ?>
-                                </div>
-                            </div>
-                            <p class="text-[11px] text-slate-400 italic line-clamp-3 leading-relaxed">"<?php echo htmlspecialchars($r['comment']); ?>"</p>
-                        </a>
-                    <?php endforeach; ?>
+            <!-- Telegram Ad / Community -->
+            <a href="https://t.me/bunpremiumstore" target="_blank" class="block bg-gradient-to-br from-blue-900 to-slate-900 rounded-3xl p-6 border border-blue-500/30 shadow-[0_10px_30px_rgba(0,0,0,0.5)] hover:shadow-[0_15px_40px_rgba(0,240,255,0.2)] transition duration-300 group relative overflow-hidden transform hover:-translate-y-1">
+                <div class="absolute -right-10 -bottom-10 w-32 h-32 bg-[#00f0ff]/20 rounded-full blur-3xl transition"></div>
+                <div class="relative z-10 flex flex-col items-center text-center">
+                    <div class="w-16 h-16 bg-[#00f0ff]/10 rounded-full flex items-center justify-center text-[#00f0ff] mb-4 border border-[#00f0ff]/30 group-hover:scale-110 transition duration-300">
+                        <i class="fab fa-telegram-plane text-3xl"></i>
+                    </div>
+                    <h4 class="text-white font-black text-lg tracking-tight mb-1">Join the Network</h4>
+                    <p class="text-slate-400 text-xs font-medium mb-4">Daily drops, giveaways, and 24/7 priority support.</p>
+                    <span class="bg-[#00f0ff] text-slate-900 px-5 py-2 rounded-lg text-xs font-black uppercase tracking-widest w-full">Connect</span>
                 </div>
-            </div>
-            <?php endif; ?>
+            </a>
+
         </div>
 
         <!-- RIGHT MAIN GRID: New Arrivals -->
@@ -311,124 +365,140 @@ $discount = is_logged_in() ? get_user_discount($_SESSION['user_id']) : 0;
         </div>
     </div>
 
-    <!-- Bottom CTA (Reseller) -->
-    <?php if($discount == 0): ?>
-    <div class="relative rounded-3xl overflow-hidden border border-yellow-500/30 shadow-[0_20px_50px_rgba(0,0,0,0.5)]">
-        <div class="absolute inset-0 bg-gradient-to-r from-yellow-900/90 via-slate-900 to-slate-900 z-10"></div>
-        <div class="absolute -left-20 -bottom-20 w-64 h-64 bg-yellow-500/20 rounded-full blur-3xl pointer-events-none z-10"></div>
-        
-        <div class="relative z-20 p-8 md:p-12 flex flex-col md:flex-row items-center justify-between gap-6 text-center md:text-left">
-            <div>
-                <h2 class="text-2xl md:text-4xl font-black text-white mb-2 tracking-tight">Establish Your Node</h2>
-                <p class="text-yellow-200/80 max-w-lg text-sm md:text-base">Join our Reseller Program and unlock up to <span class="text-yellow-400 font-black text-lg">35% OFF</span> all global products. Instant activation sequence.</p>
-            </div>
-            <a href="index.php?module=user&page=agent" class="bg-gradient-to-r from-yellow-500 to-yellow-600 hover:from-yellow-400 hover:to-yellow-500 text-slate-900 font-black px-8 py-4 rounded-xl shadow-[0_0_20px_rgba(234,179,8,0.4)] transform hover:-translate-y-1 transition uppercase tracking-widest whitespace-nowrap flex items-center gap-2">
-                <i class="fas fa-crown"></i> Become an Agent
-            </a>
-        </div>
-    </div>
-    <?php endif; ?>
-
 </div>
 
-<!-- SLIDER JS LOGIC -->
+<!-- Floating Live Purchase Toast (Gemini Social Proof Feature) -->
+<div id="livePurchaseToast" class="fixed bottom-24 left-4 md:bottom-8 md:left-8 z-50 hidden max-w-xs">
+    <div class="bg-slate-900/95 backdrop-blur-xl border border-[#00f0ff]/40 p-3 rounded-2xl shadow-[0_10px_40px_rgba(0,240,255,0.2)] flex items-center gap-4 relative overflow-hidden">
+        <div class="absolute top-0 left-0 w-1 h-full bg-gradient-to-b from-[#00f0ff] to-blue-600"></div>
+        <div class="w-10 h-10 bg-[#00f0ff]/10 rounded-xl flex items-center justify-center text-[#00f0ff] shrink-0 border border-[#00f0ff]/20">
+            <i class="fas fa-shopping-bag"></i>
+        </div>
+        <div class="pr-4">
+            <p class="text-[10px] text-slate-400 font-bold uppercase tracking-wider mb-0.5"><span id="toastUser" class="text-white">Someone</span> just bought</p>
+            <p class="text-sm font-black text-[#00f0ff] leading-tight line-clamp-1" id="toastItem">A Product</p>
+            <p class="text-[9px] text-slate-500 font-mono mt-1" id="toastTime">Just now</p>
+        </div>
+    </div>
+</div>
+
+<!-- SCRIPTS: Sliders & Popups -->
 <script>
 document.addEventListener('DOMContentLoaded', () => {
-    const slider = document.getElementById('bannerSlider');
-    const dots = document.querySelectorAll('.slider-dot');
-    const prevBtn = document.getElementById('prevSlide');
-    const nextBtn = document.getElementById('nextSlide');
     
-    if (!slider) return;
+    // --- 1. HERO BANNER SLIDER ---
+    const hSlider = document.getElementById('bannerSlider');
+    const hDots = document.querySelectorAll('.slider-dot');
+    const hProgress = document.getElementById('slideProgress');
+    let hInterval;
+    const hTime = 5000;
 
-    let slideInterval;
-    const intervalTime = 5000; // 5 seconds per slide
-
-    const updateDots = (index) => {
-        dots.forEach((dot, i) => {
-            if (i === index) {
-                dot.className = 'w-6 h-2.5 rounded-full transition-all duration-300 slider-dot bg-[#00f0ff] shadow-[0_0_10px_rgba(0,240,255,0.8)]';
-            } else {
-                dot.className = 'w-2.5 h-2.5 rounded-full transition-all duration-300 slider-dot bg-white/30 hover:bg-white/60';
-            }
+    const updateHero = (index) => {
+        hDots.forEach((dot, i) => {
+            dot.className = i === index 
+                ? 'w-8 h-2.5 rounded-full transition-all duration-300 slider-dot bg-[#00f0ff] shadow-[0_0_10px_rgba(0,240,255,0.8)]' 
+                : 'w-2.5 h-2.5 rounded-full transition-all duration-300 slider-dot bg-white/30 hover:bg-white/60';
         });
+        
+        // Reset and trigger animation
+        hProgress.style.animation = 'none';
+        hProgress.offsetHeight; /* trigger reflow */
+        hProgress.style.animation = `loadProgress ${hTime}ms linear forwards`;
     };
 
-    const goToSlide = (index) => {
-        const slideWidth = slider.clientWidth;
-        slider.scrollTo({
-            left: index * slideWidth,
-            behavior: 'smooth'
+    const moveHero = (next = true) => {
+        if(!hSlider) return;
+        const w = hSlider.clientWidth;
+        let target = hSlider.scrollLeft + (next ? w : -w);
+        if(target >= hSlider.scrollWidth - 10) target = 0;
+        if(target < 0) target = hSlider.scrollWidth - w;
+        
+        hSlider.scrollTo({ left: target, behavior: 'smooth' });
+        updateHero(Math.round(target / w));
+    };
+
+    const startHero = () => {
+        hProgress.style.animation = `loadProgress ${hTime}ms linear forwards`;
+        hInterval = setInterval(() => moveHero(true), hTime);
+    };
+
+    if(hSlider) {
+        document.getElementById('nextSlide')?.addEventListener('click', () => { clearInterval(hInterval); moveHero(true); startHero(); });
+        document.getElementById('prevSlide')?.addEventListener('click', () => { clearInterval(hInterval); moveHero(false); startHero(); });
+        
+        hDots.forEach((dot, idx) => {
+            dot.addEventListener('click', () => {
+                clearInterval(hInterval);
+                hSlider.scrollTo({ left: idx * hSlider.clientWidth, behavior: 'smooth' });
+                updateHero(idx);
+                startHero();
+            });
         });
-        updateDots(index);
-    };
+        
+        hSlider.addEventListener('scroll', () => {
+            clearTimeout(window.scrollTimeout);
+            window.scrollTimeout = setTimeout(() => {
+                updateHero(Math.round(hSlider.scrollLeft / hSlider.clientWidth));
+            }, 100);
+        });
+        
+        startHero();
+    }
 
-    const nextSlide = () => {
-        const slideWidth = slider.clientWidth;
-        const maxScroll = slider.scrollWidth - slideWidth;
-        let nextPos = slider.scrollLeft + slideWidth;
-        
-        // If at the end, go back to start
-        if (nextPos >= maxScroll + 10) { 
-            nextPos = 0;
-        }
-        
-        slider.scrollTo({ left: nextPos, behavior: 'smooth' });
-        const newIndex = Math.round(nextPos / slideWidth);
-        updateDots(newIndex);
-    };
 
-    const prevSlideFn = () => {
-        const slideWidth = slider.clientWidth;
-        let prevPos = slider.scrollLeft - slideWidth;
-        
-        // If at start, go to end
-        if (prevPos < 0) {
-            prevPos = slider.scrollWidth - slideWidth;
-        }
-        
-        slider.scrollTo({ left: prevPos, behavior: 'smooth' });
-        const newIndex = Math.round(prevPos / slideWidth);
-        updateDots(newIndex);
-    };
-
-    // Auto Scroll
-    const startAutoScroll = () => {
-        slideInterval = setInterval(nextSlide, intervalTime);
-    };
+    // --- 2. CATEGORY SLIDER PROGRESS ---
+    const cSlider = document.getElementById('categorySlider');
+    const cProgress = document.getElementById('catScrollProgress');
     
-    const stopAutoScroll = () => {
-        clearInterval(slideInterval);
-    };
-
-    // Event Listeners
-    if(nextBtn) nextBtn.addEventListener('click', () => { stopAutoScroll(); nextSlide(); startAutoScroll(); });
-    if(prevBtn) prevBtn.addEventListener('click', () => { stopAutoScroll(); prevSlideFn(); startAutoScroll(); });
-
-    dots.forEach((dot, index) => {
-        dot.addEventListener('click', () => {
-            stopAutoScroll();
-            goToSlide(index);
-            startAutoScroll();
+    if(cSlider && cProgress) {
+        const updateCatProgress = () => {
+            const scrollPx = cSlider.scrollTop || cSlider.scrollLeft;
+            const maxScroll = cSlider.scrollWidth - cSlider.clientWidth;
+            const percentage = (scrollPx / maxScroll) * 100;
+            cProgress.style.width = percentage + '%';
+        };
+        
+        cSlider.addEventListener('scroll', updateCatProgress);
+        updateCatProgress(); // init
+        
+        document.getElementById('catNext')?.addEventListener('click', () => {
+            cSlider.scrollBy({ left: 300, behavior: 'smooth' });
         });
-    });
+        document.getElementById('catPrev')?.addEventListener('click', () => {
+            cSlider.scrollBy({ left: -300, behavior: 'smooth' });
+        });
+    }
 
-    // Handle manual scroll update
-    let isScrolling;
-    slider.addEventListener('scroll', () => {
-        window.clearTimeout(isScrolling);
-        isScrolling = setTimeout(() => {
-            const slideWidth = slider.clientWidth;
-            const currentIndex = Math.round(slider.scrollLeft / slideWidth);
-            updateDots(currentIndex);
-        }, 100);
-    });
+    // --- 3. LIVE PURCHASE TOAST (SOCIAL PROOF) ---
+    const mockData = <?php echo $live_purchases_json; ?>;
+    const toast = document.getElementById('livePurchaseToast');
+    
+    if(mockData.length > 0 && toast) {
+        let toastIndex = 0;
+        
+        const showToast = () => {
+            const data = mockData[toastIndex];
+            document.getElementById('toastUser').innerText = data.user;
+            document.getElementById('toastItem').innerText = data.item;
+            document.getElementById('toastTime').innerText = data.time;
+            
+            toast.classList.remove('hidden', 'toast-exit');
+            toast.classList.add('toast-enter');
+            
+            setTimeout(() => {
+                toast.classList.remove('toast-enter');
+                toast.classList.add('toast-exit');
+                setTimeout(() => toast.classList.add('hidden'), 500);
+            }, 4000); // Show for 4 seconds
+            
+            toastIndex = (toastIndex + 1) % mockData.length;
+        };
 
-    // Pause on hover
-    slider.addEventListener('mouseenter', stopAutoScroll);
-    slider.addEventListener('mouseleave', startAutoScroll);
-
-    // Initialize
-    startAutoScroll();
+        // First toast after 5 seconds, then randomly every 15-25 seconds
+        setTimeout(() => {
+            showToast();
+            setInterval(showToast, Math.floor(Math.random() * 10000) + 15000); 
+        }, 5000);
+    }
 });
 </script>
