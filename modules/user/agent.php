@@ -50,13 +50,37 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['buy_pass'])) {
                         'Duration' => $pass['duration_days'] . ' Days'
                     ]);
 
-                    // Let's check if dummy product 0 exists, if not create it.
-                    $pdo->exec("INSERT IGNORE INTO products (id, category_id, name, price, delivery_type) VALUES (0, 1, 'System: Agent Pass Upgrade', 0, 'universal')");
+                    // FIX for SQLSTATE[23000]: Integrity constraint violation: 1452
+                    // We must ensure the dummy product (ID 0) exists before creating the order.
+                    // We need to disable foreign key checks temporarily if ID 0 conflicts with auto-increment logic,
+                    // or just use a standard INSERT IGNORE if ID 0 is allowed.
+                    
+                    // 1. Check if category 1 exists, if not, we must create a dummy category too
+                    $stmt_cat = $pdo->prepare("SELECT id FROM categories LIMIT 1");
+                    $stmt_cat->execute();
+                    $cat_id = $stmt_cat->fetchColumn() ?: 1; // Fallback to 1, but it might fail if 1 doesn't exist.
 
+                    if (!$cat_id) {
+                        $pdo->exec("INSERT IGNORE INTO categories (id, name, type) VALUES (1, 'System', 'subscription')");
+                        $cat_id = 1;
+                    }
+
+                    // 2. Safely create the dummy product (ID 0). 
+                    // Using a high ID like 99999 is safer than 0 to avoid AUTO_INCREMENT issues.
+                    $dummy_product_id = 99999;
+                    $stmt_prod = $pdo->prepare("SELECT id FROM products WHERE id = ?");
+                    $stmt_prod->execute([$dummy_product_id]);
+                    
+                    if (!$stmt_prod->fetch()) {
+                        $stmt_insert_prod = $pdo->prepare("INSERT IGNORE INTO products (id, category_id, name, price, delivery_type) VALUES (?, ?, 'System: Agent Pass Upgrade', 0, 'universal')");
+                        $stmt_insert_prod->execute([$dummy_product_id, $cat_id]);
+                    }
+
+                    // 3. Now insert the order using the safe dummy product ID
                     $sql = "INSERT INTO orders (user_id, product_id, email_delivery_type, delivery_email, form_data, transaction_last_6, proof_image_path, total_price_paid, status) 
-                            VALUES (?, 0, 'own', ?, ?, ?, ?, ?, 'pending')";
+                            VALUES (?, ?, 'own', ?, ?, ?, ?, ?, 'pending')";
                     $stmt = $pdo->prepare($sql);
-                    $stmt->execute([$user_id, $_SESSION['user_email'], $form_data, $txn_id, $target_file, $pass['price']]);
+                    $stmt->execute([$user_id, $dummy_product_id, $_SESSION['user_email'], $form_data, $txn_id, $target_file, $pass['price']]);
                     
                     $order_id = $pdo->lastInsertId();
                     
