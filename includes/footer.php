@@ -75,6 +75,12 @@
                         <div class="bg-gray-800 px-3 py-2 rounded border border-gray-700 flex items-center justify-center opacity-80 hover:opacity-100 transition cursor-pointer">
                             <span class="font-bold text-yellow-500">Wave</span>
                         </div>
+                        <div class="bg-gray-800 px-3 py-2 rounded border border-gray-700 flex items-center justify-center opacity-80 hover:opacity-100 transition cursor-pointer">
+                            <span class="font-bold text-red-400">AYAPay</span>
+                        </div>
+                        <div class="bg-gray-800 px-3 py-2 rounded border border-gray-700 flex items-center justify-center opacity-80 hover:opacity-100 transition cursor-pointer">
+                            <span class="font-bold text-purple-400">UABPay</span>
+                        </div>
                     </div>
                     <p class="text-xs text-gray-500">
                         <i class="fas fa-lock mr-1 text-green-500"></i> 

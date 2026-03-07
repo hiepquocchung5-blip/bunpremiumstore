@@ -401,8 +401,10 @@ $display_orders = max($total_orders_count, 8500);
             <div class="flex items-center gap-12 sm:gap-24 animate-marquee-slow opacity-60 hover:opacity-100 transition-opacity w-max">
                 <!-- Repeated to ensure smooth infinite scroll -->
                 <?php for($i=0; $i<3; $i++): ?>
-                    <div class="flex items-center gap-3 text-slate-400 font-bold tracking-wider uppercase text-sm"><i class="fas fa-wallet text-[#00f0ff] text-2xl"></i> KBZPay</div>
+                    <div class="flex items-center gap-3 text-slate-400 font-bold tracking-wider uppercase text-sm"><i class="fas fa-wallet text-blue-400 text-2xl"></i> KBZPay</div>
+                    <div class="flex items-center gap-3 text-slate-400 font-bold tracking-wider uppercase text-sm"><i class="fas fa-wallet text-red-400 text-2xl"></i> AYAPay</div>
                     <div class="flex items-center gap-3 text-slate-400 font-bold tracking-wider uppercase text-sm"><i class="fas fa-money-bill-wave text-yellow-400 text-2xl"></i> Wave Money</div>
+                    <div class="flex items-center gap-3 text-slate-400 font-bold tracking-wider uppercase text-sm"><i class="fas fa-credit-card text-purple-400 text-2xl"></i> UABPay</div>
                     <div class="flex items-center gap-3 text-slate-400 font-bold tracking-wider uppercase text-sm"><i class="fab fa-bitcoin text-orange-400 text-2xl"></i> Crypto (USDT)</div>
                     <div class="flex items-center gap-3 text-slate-400 font-bold tracking-wider uppercase text-sm"><i class="fas fa-qrcode text-blue-400 text-2xl"></i> Binance Pay</div>
                 <?php endfor; ?>
