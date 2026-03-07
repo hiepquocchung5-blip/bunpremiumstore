@@ -1,6 +1,6 @@
 <?php
 // modules/user/agent.php
-// PRODUCTION DEPLOYMENT v2.1 - Enhanced Mobile UI & Modal Scrolling
+// PRODUCTION DEPLOYMENT v2.2 - Agent Dashboard & Referral Stats
 
 // Auth Guard
 if (!is_logged_in()) redirect('index.php?module=auth&page=login');
@@ -99,42 +99,119 @@ $active_pass = $stmt->fetch();
 
 // Fetch Payment Methods for Modal
 $payment_methods = $pdo->query("SELECT * FROM payment_methods WHERE is_active = 1")->fetchAll();
+
+// Fetch User Data for Referral Code
+$stmt = $pdo->prepare("SELECT referral_code FROM users WHERE id = ?");
+$stmt->execute([$user_id]);
+$user_data = $stmt->fetch();
+
+$ref_link = $user_data['referral_code'] ? BASE_URL . "index.php?module=auth&page=register&ref=" . $user_data['referral_code'] : null;
+
+// Calculate Estimated Total Savings (Mock metric for engagement)
+$total_orders_stmt = $pdo->prepare("SELECT SUM(price - total_price_paid) FROM orders o JOIN products p ON o.product_id = p.id WHERE o.user_id = ? AND o.status = 'active'");
+$total_orders_stmt->execute([$user_id]);
+$total_savings = $total_orders_stmt->fetchColumn() ?: 0;
+
+// Get Active Referrals Count
+$referrals_stmt = $pdo->prepare("SELECT COUNT(*) FROM users WHERE referred_by = ?");
+$referrals_stmt->execute([$user_id]);
+$referral_count = $referrals_stmt->fetchColumn() ?: 0;
+
 ?>
 
-<div class="max-w-6xl mx-auto animate-fade-in-down px-2 sm:px-0">
+<div class="max-w-7xl mx-auto animate-fade-in-down px-4 sm:px-6 lg:px-8 py-8">
     
-    <!-- Header Section -->
-    <div class="text-center mb-10 md:mb-14 relative">
-        <div class="absolute inset-0 flex items-center justify-center opacity-10 pointer-events-none">
-            <i class="fas fa-crown text-8xl md:text-9xl text-yellow-500 blur-2xl"></i>
+    <!-- Dynamic Header -->
+    <div class="flex flex-col md:flex-row md:items-end justify-between mb-10 gap-6">
+        <div>
+            <h1 class="text-3xl md:text-5xl font-black text-transparent bg-clip-text bg-gradient-to-r from-yellow-200 via-yellow-400 to-yellow-600 drop-shadow-sm tracking-tight mb-2">
+                Agent Command Center
+            </h1>
+            <p class="text-slate-400 text-sm max-w-2xl">
+                <?php echo $active_pass ? "Manage your reseller metrics and deploy your network." : "Unlock wholesale pricing on all digital products. Start your own reselling business today."; ?>
+            </p>
         </div>
-        <h1 class="text-3xl sm:text-4xl md:text-5xl font-black mb-3 text-transparent bg-clip-text bg-gradient-to-r from-yellow-200 via-yellow-400 to-yellow-600 drop-shadow-sm tracking-tight relative z-10">
-            Agent Partnership
-        </h1>
-        <p class="text-slate-400 max-w-2xl mx-auto text-sm sm:text-base leading-relaxed relative z-10 px-4">
-            Unlock wholesale pricing on all digital products. Start your own reselling business today with our premium membership tiers.
-        </p>
+        
+        <?php if($active_pass): ?>
+            <div class="bg-yellow-500/10 border border-yellow-500/30 px-5 py-3 rounded-2xl flex items-center gap-4 shadow-[0_0_20px_rgba(234,179,8,0.15)] relative overflow-hidden">
+                <div class="absolute right-0 top-0 w-16 h-16 bg-yellow-500/20 rounded-full blur-xl pointer-events-none"></div>
+                <div class="w-12 h-12 bg-gradient-to-br from-yellow-400 to-yellow-600 rounded-full flex items-center justify-center text-slate-900 text-xl font-black shadow-lg relative z-10 shrink-0">
+                    <?php echo $active_pass['discount_percent']; ?>%
+                </div>
+                <div class="relative z-10">
+                    <p class="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Active Tier</p>
+                    <h3 class="text-lg font-black text-yellow-400"><?php echo htmlspecialchars($active_pass['name']); ?></h3>
+                </div>
+            </div>
+        <?php endif; ?>
     </div>
 
     <!-- Notifications -->
     <?php if($success): ?>
-        <div class="max-w-2xl mx-auto mb-8 bg-green-500/10 border border-green-500/30 text-green-400 p-5 md:p-6 rounded-2xl flex items-center gap-4 shadow-[0_0_20px_rgba(34,197,94,0.15)] relative z-10">
+        <div class="max-w-3xl mb-8 bg-green-500/10 border border-green-500/30 text-green-400 p-5 md:p-6 rounded-2xl flex items-center gap-4 shadow-[0_0_20px_rgba(34,197,94,0.15)] relative z-10">
             <div class="w-10 h-10 md:w-12 md:h-12 bg-green-500/20 rounded-full flex items-center justify-center text-green-400 border border-green-500/50 shrink-0">
                 <i class="fas fa-check text-lg md:text-xl"></i>
             </div>
             <div>
-                <h4 class="font-bold text-base md:text-lg">Request Submitted!</h4>
+                <h4 class="font-bold text-base md:text-lg">Deployment Authorized!</h4>
                 <p class="text-xs md:text-sm opacity-90 mt-1">Please check your <a href="index.php?module=user&page=orders" class="underline font-bold text-white hover:text-green-300">Orders Page</a> to track the status of your upgrade.</p>
             </div>
         </div>
     <?php endif; ?>
 
     <?php if($error): ?>
-        <div class="max-w-2xl mx-auto mb-8 bg-red-500/10 border border-red-500/30 text-red-400 p-4 rounded-xl flex items-center gap-3 animate-pulse relative z-10">
+        <div class="max-w-3xl mb-8 bg-red-500/10 border border-red-500/30 text-red-400 p-4 rounded-xl flex items-center gap-3 animate-pulse relative z-10">
             <i class="fas fa-exclamation-triangle text-lg shrink-0"></i>
             <span class="text-sm font-medium"><?php echo htmlspecialchars($error); ?></span>
         </div>
     <?php endif; ?>
+
+    <!-- Agent Dashboard Area (Only visible if active) -->
+    <?php if($active_pass): ?>
+    <div class="grid grid-cols-1 md:grid-cols-3 gap-6 mb-12 relative z-10">
+        
+        <!-- Referral Link Generator -->
+        <div class="md:col-span-2 bg-slate-900/80 backdrop-blur-xl border border-slate-700/50 rounded-3xl p-6 md:p-8 flex flex-col justify-center relative overflow-hidden group shadow-[0_10px_30px_rgba(0,0,0,0.5)]">
+            <div class="absolute -right-20 -top-20 w-64 h-64 bg-[#00f0ff]/5 rounded-full blur-3xl pointer-events-none group-hover:bg-[#00f0ff]/10 transition duration-700"></div>
+            
+            <h3 class="text-lg font-black text-white mb-2 flex items-center gap-3">
+                <i class="fas fa-network-wired text-[#00f0ff]"></i> Expand Your Network
+            </h3>
+            <p class="text-sm text-slate-400 mb-6">Distribute your unique referral link to clients. Earn passive commissions on their deployments.</p>
+            
+            <?php if($ref_link): ?>
+            <div class="flex flex-col sm:flex-row gap-3">
+                <div class="relative flex-1">
+                    <i class="fas fa-link absolute left-4 top-1/2 transform -translate-y-1/2 text-slate-500"></i>
+                    <input type="text" value="<?php echo $ref_link; ?>" readonly class="w-full bg-slate-950 border border-slate-600 rounded-xl py-3.5 pl-10 pr-4 text-sm text-[#00f0ff] focus:border-[#00f0ff] outline-none select-all font-mono font-bold shadow-inner">
+                </div>
+                <button onclick="navigator.clipboard.writeText('<?php echo addslashes($ref_link); ?>'); this.innerHTML='<i class=\'fas fa-check\'></i> Copied!'; setTimeout(()=>this.innerHTML='<i class=\'fas fa-copy\'></i> Copy Link', 2000);" class="bg-gradient-to-r from-blue-600 to-[#00f0ff] hover:from-blue-500 hover:to-[#00f0ff] text-slate-900 font-black px-8 py-3.5 rounded-xl transition shadow-[0_0_15px_rgba(0,240,255,0.3)] transform active:scale-95 flex items-center justify-center gap-2 uppercase tracking-widest text-xs shrink-0">
+                    <i class="fas fa-copy"></i> Copy Link
+                </button>
+            </div>
+            <?php else: ?>
+            <div class="bg-slate-800 p-4 rounded-xl border border-slate-700 text-sm text-slate-400">
+                Please visit your <a href="index.php?module=user&page=referrals" class="text-[#00f0ff] hover:underline font-bold">Referral Dashboard</a> to generate your unique link.
+            </div>
+            <?php endif; ?>
+        </div>
+
+        <!-- Lifetime Savings -->
+        <div class="bg-slate-900/80 backdrop-blur-xl border border-green-500/30 rounded-3xl p-6 md:p-8 flex flex-col items-center justify-center text-center relative overflow-hidden group shadow-[0_10px_30px_rgba(0,0,0,0.5)]">
+            <div class="absolute inset-0 bg-green-500/5 group-hover:bg-green-500/10 transition duration-500"></div>
+            <i class="fas fa-chart-line text-4xl text-green-400 mb-4 group-hover:scale-110 transition duration-300 drop-shadow-[0_0_10px_rgba(34,197,94,0.5)]"></i>
+            <p class="text-[10px] font-black text-slate-500 uppercase tracking-widest mb-1 relative z-10">Total Savings</p>
+            <h3 class="text-3xl font-black text-white relative z-10"><?php echo number_format($total_savings); ?> <span class="text-green-400 text-lg">Ks</span></h3>
+        </div>
+
+    </div>
+    <?php endif; ?>
+
+    <!-- Title For Tiers -->
+    <div class="flex items-center gap-4 mb-6 relative z-10">
+        <h2 class="text-xl font-black text-white uppercase tracking-widest">Available Tiers</h2>
+        <div class="h-px bg-slate-700 flex-1"></div>
+    </div>
 
     <!-- Plans Grid -->
     <div class="grid grid-cols-1 lg:grid-cols-3 gap-6 xl:gap-8 relative z-10 mb-10">
@@ -142,7 +219,7 @@ $payment_methods = $pdo->query("SELECT * FROM payment_methods WHERE is_active = 
         <!-- Standard / Free Tier Info -->
         <div class="bg-slate-900/80 backdrop-blur-xl p-6 sm:p-8 rounded-3xl border border-slate-700/50 flex flex-col grayscale opacity-80 hover:opacity-100 hover:grayscale-0 transition duration-500 shadow-xl">
             <div class="mb-6">
-                <span class="text-[10px] font-bold tracking-widest text-slate-500 uppercase">Current Status</span>
+                <span class="text-[10px] font-bold tracking-widest text-slate-500 uppercase">System Default</span>
                 <h3 class="text-2xl font-bold text-white mt-1 tracking-tight">Standard User</h3>
             </div>
             <ul class="space-y-4 mb-8 flex-1">
@@ -157,7 +234,7 @@ $payment_methods = $pdo->query("SELECT * FROM payment_methods WHERE is_active = 
                 </li>
             </ul>
             <button disabled class="w-full py-4 rounded-xl border border-slate-700 bg-slate-800 text-slate-500 font-bold text-sm cursor-not-allowed uppercase tracking-widest">
-                Default Plan
+                Active
             </button>
         </div>
 
@@ -178,7 +255,7 @@ $payment_methods = $pdo->query("SELECT * FROM payment_methods WHERE is_active = 
 
                     <?php if($isUpgrade && !$isActive): ?>
                         <div class="absolute top-0 right-0 bg-gradient-to-r from-yellow-500 to-yellow-600 text-slate-900 text-[10px] font-black px-4 py-1.5 rounded-bl-2xl uppercase tracking-wider shadow-lg">
-                            Recommended
+                            Upgrade
                         </div>
                     <?php endif; ?>
 
@@ -196,8 +273,8 @@ $payment_methods = $pdo->query("SELECT * FROM payment_methods WHERE is_active = 
                     </div>
 
                     <div class="space-y-5 mb-8 flex-1 relative z-10">
-                        <div class="flex items-center gap-4 bg-slate-800/80 p-3 sm:p-4 rounded-2xl border border-yellow-500/20 shadow-inner">
-                            <div class="w-12 h-12 rounded-xl bg-yellow-500/10 flex items-center justify-center text-yellow-400 font-black text-xl border border-yellow-500/30 shadow-[0_0_15px_rgba(234,179,8,0.2)] shrink-0">
+                        <div class="flex items-center gap-4 bg-slate-800/80 p-3 sm:p-4 rounded-2xl border border-yellow-500/20 shadow-inner group-hover:border-yellow-500/40 transition">
+                            <div class="w-12 h-12 rounded-xl bg-yellow-500/10 flex items-center justify-center text-yellow-400 font-black text-xl border border-yellow-500/30 shadow-[0_0_15px_rgba(234,179,8,0.2)] shrink-0 group-hover:scale-110 transition duration-300">
                                 <?php echo $pass['discount_percent']; ?>%
                             </div>
                             <div>
@@ -220,7 +297,7 @@ $payment_methods = $pdo->query("SELECT * FROM payment_methods WHERE is_active = 
                         <?php else: ?>
                             <button onclick="openCheckoutModal(<?php echo $pass['id']; ?>, '<?php echo addslashes($pass['name']); ?>', <?php echo $pass['price']; ?>)" 
                                     class="w-full py-4 rounded-xl bg-gradient-to-r from-yellow-500 to-yellow-600 hover:from-yellow-400 hover:to-yellow-500 text-slate-900 font-black text-sm uppercase tracking-wider shadow-[0_0_20px_rgba(234,179,8,0.3)] transform hover:-translate-y-1 hover:scale-[1.02] transition-all duration-300 flex items-center justify-center gap-2">
-                                Acquire Pass <i class="fas fa-arrow-right"></i>
+                                <?php echo $active_pass ? 'Upgrade Tier' : 'Acquire Pass'; ?> <i class="fas fa-arrow-right"></i>
                             </button>
                         <?php endif; ?>
                     </div>
