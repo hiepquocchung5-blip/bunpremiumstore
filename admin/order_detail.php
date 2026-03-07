@@ -1,6 +1,6 @@
 <?php
 // admin/order_detail.php
-// PRODUCTION v4.1 - AJAX Chat Fix, Mixed Content Patch & Neon UI
+// PRODUCTION v4.3 - Agent Pass UI Handling, Activation Fix & Full SPA Chat
 
 // Include Notification Services
 @include_once dirname(__DIR__) . '/includes/MailService.php';
@@ -11,11 +11,12 @@ $admin_id = $_SESSION['admin_id'];
 
 // Helper to force HTTPS on URLs to prevent Mixed Content errors
 function enforce_https($url) {
+    if (empty($url)) return $url;
     return str_replace('http://', 'https://', $url);
 }
 
 // =====================================================================================
-// 1. AJAX ENDPOINTS (Polling & Message Sending)
+// 1. AJAX ENDPOINTS (Polling & Message Sending - Standard Orders Only)
 // =====================================================================================
 
 // A. Handle Incoming Chat Message (AJAX POST)
@@ -102,9 +103,8 @@ if (isset($_GET['ajax']) && $_GET['ajax'] == 1) {
 // 2. NORMAL PAGE LOAD LOGIC
 // =====================================================================================
 
-// Quick Reply Macros
 $quick_replies = [
-    "⏳ Please wait 5-10 mins while we verify your KBZPay/Wave transaction.",
+    "⏳ Please wait 5-10 mins while we verify your transaction.",
     "✅ Payment verified! Processing your digital goods right now.",
     "🎁 Your order is complete! Thank you for choosing DigitalMarketplaceMM.",
     "⚠️ We couldn't verify the payment. Please send a clearer screenshot.",
@@ -119,7 +119,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['update_status'])) {
     $stmt = $pdo->prepare("UPDATE orders SET status = ? WHERE id = ?");
     $stmt->execute([$status, $order_id]);
     
-    // --- NEW: AUTO-ACTIVATE AGENT PASS UPON APPROVAL ---
+    // --- AUTO-ACTIVATE AGENT PASS UPON APPROVAL ---
     if ($status === 'active') {
         $stmt_check_pass = $pdo->prepare("SELECT user_id, pass_id FROM orders WHERE id = ? AND pass_id IS NOT NULL");
         $stmt_check_pass->execute([$order_id]);
@@ -129,11 +129,11 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['update_status'])) {
             // Get pass duration
             $stmt_dur = $pdo->prepare("SELECT duration_days FROM passes WHERE id = ?");
             $stmt_dur->execute([$passOrder['pass_id']]);
-            $days = $stmt_dur->fetchColumn() ?: 30; // Fallback to 30 days
+            $days = $stmt_dur->fetchColumn() ?: 30;
             
             $expires_at = date('Y-m-d H:i:s', strtotime("+$days days"));
             
-            // 1. Expire any existing passes for this user to prevent overlap
+            // 1. Expire any existing passes
             $pdo->prepare("UPDATE user_passes SET status = 'expired' WHERE user_id = ?")->execute([$passOrder['user_id']]);
             
             // 2. Insert new active pass
@@ -141,11 +141,14 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['update_status'])) {
                 ->execute([$passOrder['user_id'], $passOrder['pass_id'], $expires_at]);
         }
     }
-    // ---------------------------------------------------
 
+    // Notifications
     $stmt = $pdo->prepare("
-        SELECT o.user_id, p.name as product_name 
-        FROM orders o LEFT JOIN products p ON o.product_id = p.id WHERE o.id = ?
+        SELECT o.user_id, COALESCE(p.name, ps.name) as product_name 
+        FROM orders o 
+        LEFT JOIN products p ON o.product_id = p.id 
+        LEFT JOIN passes ps ON o.pass_id = ps.id
+        WHERE o.id = ?
     ");
     $stmt->execute([$order_id]);
     $ord_meta = $stmt->fetch();
@@ -174,15 +177,20 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['update_status'])) {
     exit;
 }
 
-// 3. Fetch Full Order Data
+// 3. Fetch Full Order Data (Handling both Product and Pass)
 $stmt = $pdo->prepare("
     SELECT o.*, u.username, u.email as user_account_email, u.phone, 
-           p.name as product_name, p.price, p.delivery_type, p.universal_content, p.id as product_id, p.image_path,
-           c.image_url as cat_image
+           COALESCE(p.name, ps.name) as product_name, 
+           COALESCE(p.price, ps.price) as price, 
+           COALESCE(p.delivery_type, 'universal') as delivery_type, 
+           p.universal_content, p.id as product_id, p.image_path,
+           c.image_url as cat_image,
+           o.pass_id
     FROM orders o 
     JOIN users u ON o.user_id = u.id 
-    JOIN products p ON o.product_id = p.id 
+    LEFT JOIN products p ON o.product_id = p.id 
     LEFT JOIN categories c ON p.category_id = c.id
+    LEFT JOIN passes ps ON o.pass_id = ps.id
     WHERE o.id = ?
 ");
 $stmt->execute([$order_id]);
@@ -193,18 +201,17 @@ if (!$order) {
     return;
 }
 
-// 4. Fetch Available Keys
+$is_pass_order = !empty($order['pass_id']);
+
+// 4. Fetch Available Keys (Only for standard products)
 $available_keys = [];
-if ($order['delivery_type'] === 'unique') {
+if (!$is_pass_order && $order['delivery_type'] === 'unique' && !empty($order['product_id'])) {
     $stmt = $pdo->prepare("SELECT id, key_content FROM product_keys WHERE product_id = ? AND is_sold = 0 LIMIT 10");
     $stmt->execute([$order['product_id']]);
     $available_keys = $stmt->fetchAll();
 }
 
-// Ensure images are using HTTPS to prevent Mixed Content
 $secure_main_url = enforce_https(defined('MAIN_SITE_URL') ? MAIN_SITE_URL : BASE_URL);
-
-// Legacy Data Patch: Check if category image is actually a font awesome icon class string
 $is_cat_image_legacy_icon = !empty($order['cat_image']) && strpos($order['cat_image'], 'fa-') === 0;
 
 ?>
@@ -228,15 +235,18 @@ $is_cat_image_legacy_icon = !empty($order['cat_image']) && strpos($order['cat_im
     <div class="lg:col-span-1 space-y-6 overflow-y-auto pr-2 custom-scrollbar pb-6">
         
         <!-- Header Card -->
-        <div class="bg-slate-900/80 p-6 rounded-2xl border border-[#00f0ff]/30 shadow-[0_0_20px_rgba(0,240,255,0.1)] relative overflow-hidden group">
-            <div class="absolute -right-10 -top-10 w-40 h-40 bg-[#00f0ff]/10 rounded-full blur-3xl pointer-events-none group-hover:bg-[#00f0ff]/20 transition-colors duration-500"></div>
+        <div class="bg-slate-900/80 p-6 rounded-2xl border <?php echo $is_pass_order ? 'border-yellow-500/30 shadow-[0_0_20px_rgba(234,179,8,0.1)]' : 'border-[#00f0ff]/30 shadow-[0_0_20px_rgba(0,240,255,0.1)]'; ?> relative overflow-hidden group">
+            <div class="absolute -right-10 -top-10 w-40 h-40 <?php echo $is_pass_order ? 'bg-yellow-500/10' : 'bg-[#00f0ff]/10'; ?> rounded-full blur-3xl pointer-events-none group-hover:opacity-100 transition-opacity duration-500"></div>
             
             <div class="flex justify-between items-start mb-6 relative z-10">
                 <div>
+                    <?php if($is_pass_order): ?>
+                        <span class="text-[9px] font-black text-yellow-500 uppercase tracking-widest bg-yellow-500/10 px-2 py-0.5 rounded border border-yellow-500/20 inline-block mb-2">Agent Upgrade Protocol</span>
+                    <?php endif; ?>
                     <h2 class="text-2xl font-black text-white flex items-center gap-2 tracking-tight">
                         Order #<?php echo $order['id']; ?>
                     </h2>
-                    <p class="text-xs text-[#00f0ff] mt-1 flex items-center gap-1 font-mono tracking-wider">
+                    <p class="text-xs <?php echo $is_pass_order ? 'text-yellow-400' : 'text-[#00f0ff]'; ?> mt-1 flex items-center gap-1 font-mono tracking-wider">
                         <i class="far fa-clock"></i> <?php echo date('M j, Y • H:i', strtotime($order['created_at'])); ?>
                     </p>
                 </div>
@@ -245,29 +255,34 @@ $is_cat_image_legacy_icon = !empty($order['cat_image']) && strpos($order['cat_im
                 </a>
             </div>
 
-            <!-- Product Mini Info (Mixed Content & Legacy Fixes Applied) -->
+            <!-- Product Mini Info -->
             <div class="flex items-center gap-4 mb-6 p-4 bg-slate-800/60 rounded-xl border border-slate-700 relative z-10 shadow-inner">
-                <div class="w-14 h-14 bg-slate-900 rounded-xl flex items-center justify-center shrink-0 overflow-hidden border border-[#00f0ff]/30 shadow-[0_0_10px_rgba(0,240,255,0.2)]">
-                    <?php if(!empty($order['image_path'])): ?>
+                <div class="w-14 h-14 bg-slate-900 rounded-xl flex items-center justify-center shrink-0 overflow-hidden border <?php echo $is_pass_order ? 'border-yellow-500/30 shadow-[0_0_10px_rgba(234,179,8,0.2)]' : 'border-[#00f0ff]/30 shadow-[0_0_10px_rgba(0,240,255,0.2)]'; ?>">
+                    <?php if($is_pass_order): ?>
+                        <i class="fas fa-crown text-yellow-500 text-2xl"></i>
+                    <?php elseif(!empty($order['image_path'])): ?>
                         <img src="<?php echo $secure_main_url . $order['image_path']; ?>" class="w-full h-full object-cover">
                     <?php elseif(!empty($order['cat_image']) && !$is_cat_image_legacy_icon): ?>
                         <img src="<?php echo $secure_main_url . $order['cat_image']; ?>" class="w-full h-full object-cover">
                     <?php else: ?>
-                        <!-- Fallback gracefully handles 'fa-shield-alt' injected into image_url -->
                         <i class="fas <?php echo htmlspecialchars($is_cat_image_legacy_icon ? $order['cat_image'] : 'fa-cube'); ?> text-[#00f0ff] text-2xl"></i>
                     <?php endif; ?>
                 </div>
-                <div class="min-w-0">
+                <div class="min-w-0 flex-1">
                     <div class="text-white font-bold text-sm truncate"><?php echo htmlspecialchars($order['product_name']); ?></div>
                     <div class="flex gap-2 mt-1.5">
-                        <span class="text-[9px] font-black text-slate-400 uppercase bg-slate-900 px-2 py-0.5 rounded border border-slate-700 tracking-widest"><?php echo $order['delivery_type']; ?></span>
+                        <?php if(!$is_pass_order): ?>
+                            <span class="text-[9px] font-black text-slate-400 uppercase bg-slate-900 px-2 py-0.5 rounded border border-slate-700 tracking-widest"><?php echo $order['delivery_type']; ?></span>
+                        <?php endif; ?>
                         <span class="text-[10px] text-green-400 font-mono font-bold bg-green-900/20 px-2 py-0.5 rounded border border-green-900/30">
                             <?php echo number_format($order['total_price_paid']); ?> Ks
                         </span>
                     </div>
                 </div>
             </div>
-
+            
+            <!-- Hide manual status manager here if it's a pass order (moved to right panel) -->
+            <?php if(!$is_pass_order): ?>
             <!-- Status Manager -->
             <form method="POST" class="space-y-3 relative z-10">
                 <label class="text-[10px] font-black text-slate-500 uppercase tracking-widest">System Status</label>
@@ -282,11 +297,12 @@ $is_cat_image_legacy_icon = !empty($order['cat_image']) && strpos($order['cat_im
                     </button>
                 </div>
             </form>
+            <?php endif; ?>
         </div>
 
         <!-- Customer & Payment Data -->
         <div class="bg-slate-900/60 p-6 rounded-2xl border border-slate-700 shadow-lg space-y-5">
-            <h3 class="font-bold text-[#00f0ff] text-xs uppercase tracking-widest border-b border-slate-700/50 pb-3 flex items-center gap-2">
+            <h3 class="font-bold <?php echo $is_pass_order ? 'text-yellow-500' : 'text-[#00f0ff]'; ?> text-xs uppercase tracking-widest border-b border-slate-700/50 pb-3 flex items-center gap-2">
                 <i class="fas fa-fingerprint"></i> Identity & Payment
             </h3>
             
@@ -297,7 +313,7 @@ $is_cat_image_legacy_icon = !empty($order['cat_image']) && strpos($order['cat_im
                 </div>
                 <div class="bg-slate-800/50 p-3 rounded-xl border border-slate-700/50">
                     <span class="block text-slate-500 text-[10px] font-bold uppercase tracking-wider mb-1">Txn ID</span>
-                    <span class="font-mono text-yellow-400 font-bold select-all"><?php echo $order['transaction_last_6']; ?></span>
+                    <span class="font-mono text-yellow-400 font-bold select-all"><?php echo htmlspecialchars($order['transaction_last_6']); ?></span>
                 </div>
             </div>
 
@@ -312,7 +328,7 @@ $is_cat_image_legacy_icon = !empty($order['cat_image']) && strpos($order['cat_im
                     ?>
                         <div class="bg-slate-800/80 p-3 rounded-xl border border-slate-600 shadow-inner flex flex-col gap-1">
                             <span class="text-[10px] text-slate-400 uppercase font-bold tracking-wider"><?php echo htmlspecialchars($key); ?></span>
-                            <span class="text-sm text-[#00f0ff] font-mono font-bold select-all"><?php echo htmlspecialchars($val); ?></span>
+                            <span class="text-sm <?php echo $is_pass_order ? 'text-yellow-400' : 'text-[#00f0ff]'; ?> font-mono font-bold select-all"><?php echo htmlspecialchars($val); ?></span>
                         </div>
                     <?php 
                             endforeach; 
@@ -328,7 +344,6 @@ $is_cat_image_legacy_icon = !empty($order['cat_image']) && strpos($order['cat_im
             <h3 class="font-bold text-slate-400 mb-3 text-xs uppercase tracking-widest flex items-center gap-2"><i class="fas fa-file-invoice"></i> Verification Image</h3>
             <?php if(!empty($order['proof_image_path'])): ?>
                 <div class="relative group overflow-hidden rounded-xl border border-slate-600 cursor-zoom-in bg-slate-950 aspect-video flex items-center justify-center" onclick="openLightbox('<?php echo $secure_main_url . $order['proof_image_path']; ?>')">
-                    <!-- Secure HTTPS path implementation -->
                     <img src="<?php echo $secure_main_url . $order['proof_image_path']; ?>" class="w-full h-full object-contain group-hover:opacity-50 transition duration-300">
                     <div class="absolute inset-0 flex items-center justify-center opacity-0 group-hover:opacity-100 transition duration-300">
                         <span class="bg-[#00f0ff] text-slate-900 font-black text-xs uppercase tracking-widest px-4 py-2 rounded-lg shadow-[0_0_15px_rgba(0,240,255,0.5)]"><i class="fas fa-expand-alt mr-2"></i> Enlarge</span>
@@ -347,94 +362,133 @@ $is_cat_image_legacy_icon = !empty($order['cat_image']) && strpos($order['cat_im
     <!-- RIGHT COLUMN: Chat & Fulfillment -->
     <div class="lg:col-span-2 flex flex-col gap-6 h-full overflow-hidden pb-6">
         
-        <!-- Fulfillment Helper Panel -->
-        <div class="bg-slate-900 border border-[#00f0ff]/30 rounded-2xl p-5 shrink-0 shadow-[0_0_20px_rgba(0,240,255,0.05)] relative overflow-hidden">
-            <div class="absolute inset-0 bg-[url('data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iNDAiIGhlaWdodD0iNDAiIHhtbG5zPSJodHRwOi8vd3d3LnczLm9yZy8yMDAwL3N2ZyI+PGRlZnM+PHBhdHRlcm4gaWQ9ImdyaWQiIHdpZHRoPSI0MCIgaGVpZ2h0PSI0MCIgcGF0dGVyblVuaXRzPSJ1c2VyU3BhY2VPblVzZSI+PHBhdGggZD0iTSAwIDEwIEwgNDAgMTAgTSAxMCAwIEwgMTAgNDAiIGZpbGw9Im5vbmUiIHN0cm9rZT0icmdiYSgwLCAyNDAsIDI1NSwgMC4wNSkiIHN0cm9rZS13aWR0aD0iMSIvPjwvcGF0dGVybj48L2RlZnM+PHJlY3Qgd2lkdGg9IjEwMCUiIGhlaWdodD0iMTAwJSIgZmlsbD0idXJsKCNncmlkKSIvPjwvc3ZnPg==')] opacity-50"></div>
-            
-            <div class="flex justify-between items-center mb-4 relative z-10">
-                <h3 class="text-xs font-black text-[#00f0ff] uppercase tracking-widest flex items-center gap-2">
-                    <i class="fas fa-bolt animate-pulse"></i> Auto-Fulfillment Hub
-                </h3>
-            </div>
-            
-            <div class="relative z-10">
-                <?php if($order['delivery_type'] === 'unique'): ?>
-                    <div class="flex gap-3 overflow-x-auto pb-2 custom-scrollbar">
-                        <?php if(empty($available_keys)): ?>
-                            <div class="w-full p-4 bg-red-900/20 border border-red-500/50 rounded-xl text-red-400 text-sm font-bold flex items-center justify-between shadow-inner">
-                                <span class="flex items-center gap-2"><i class="fas fa-exclamation-triangle"></i> Inventory Depleted!</span>
-                                <a href="index.php?page=keys&product_id=<?php echo $order['product_id']; ?>" class="bg-red-600 text-white px-4 py-1.5 rounded-lg text-xs hover:bg-red-500 transition">Replenish</a>
-                            </div>
-                        <?php else: ?>
-                            <?php foreach($available_keys as $k): ?>
-                                <button type="button" onclick="autoPasteKey('<?php echo addslashes($k['key_content']); ?>')" class="bg-slate-800/80 border border-slate-600 rounded-xl p-3 min-w-[220px] flex justify-between items-center group hover:bg-slate-800 hover:border-[#00f0ff]/50 hover:shadow-[0_0_15px_rgba(0,240,255,0.1)] transition-all cursor-pointer text-left">
-                                    <code class="text-xs text-green-400 font-mono font-bold truncate mr-3 group-hover:text-[#00f0ff] transition"><?php echo htmlspecialchars($k['key_content']); ?></code>
-                                    <i class="fas fa-share text-slate-500 group-hover:text-[#00f0ff] transition"></i>
-                                </button>
-                            <?php endforeach; ?>
-                        <?php endif; ?>
-                    </div>
-                <?php elseif($order['delivery_type'] === 'universal'): ?>
-                    <div class="bg-slate-800/80 border border-slate-600 rounded-xl p-4 flex justify-between items-center group shadow-inner hover:border-[#00f0ff]/30 transition">
-                        <div class="text-xs text-slate-300 font-mono font-bold break-all line-clamp-2 pr-4"><?php echo htmlspecialchars($order['universal_content']); ?></div>
-                        <button type="button" onclick="autoPasteKey('<?php echo addslashes($order['universal_content']); ?>')" class="bg-slate-700 hover:bg-[#00f0ff] hover:text-slate-900 text-[#00f0ff] text-xs font-black px-4 py-2 rounded-lg transition shadow-lg shrink-0 uppercase tracking-wider flex items-center gap-2">
-                            <i class="fas fa-paste"></i> Inject
-                        </button>
-                    </div>
-                <?php else: ?>
-                    <div class="text-xs font-bold uppercase tracking-widest text-purple-400 bg-purple-900/10 p-4 rounded-xl border border-purple-500/20 text-center flex items-center justify-center gap-2">
-                        <i class="fas fa-user-edit"></i> Manual Injection Required (See Form Data)
-                    </div>
-                <?php endif; ?>
-            </div>
-        </div>
-
-        <!-- Dynamic SPA Chat System -->
-        <div class="flex-grow bg-slate-900/60 rounded-2xl border border-slate-700 flex flex-col shadow-2xl overflow-hidden relative backdrop-blur-xl">
-            <!-- Messages List -->
-            <div class="flex-grow overflow-y-auto p-4 md:p-6 bg-slate-900/40 scroll-smooth custom-scrollbar relative" id="chatBox">
-                <!-- Data populated by AJAX -->
-                <div class="flex items-center justify-center h-full text-slate-500">
-                    <i class="fas fa-circle-notch fa-spin text-3xl text-[#00f0ff]"></i>
-                </div>
-            </div>
-
-            <!-- Input Area -->
-            <form id="adminChatForm" class="border-t border-slate-700/80 bg-slate-800/90 backdrop-blur shrink-0 z-20 flex flex-col">
-                <!-- FIX: Hidden order_id correctly appended to FormData -->
-                <input type="hidden" name="order_id" value="<?php echo $order_id; ?>">
+        <?php if($is_pass_order): ?>
+            <!-- Agent Pass Control Panel (Replaces Chat & Fulfillment) -->
+            <div class="flex-grow bg-slate-900/80 rounded-2xl border border-yellow-500/30 flex flex-col items-center justify-center shadow-[0_20px_50px_rgba(0,0,0,0.5)] relative backdrop-blur-xl p-8 text-center overflow-hidden">
                 
-                <!-- Quick Replies -->
-                <div class="px-4 py-3 flex gap-2 overflow-x-auto custom-scrollbar border-b border-slate-700/50">
-                    <?php foreach($quick_replies as $qr): ?>
-                        <button type="button" onclick="insertQuickReply('<?php echo addslashes($qr); ?>')" class="whitespace-nowrap bg-slate-900 hover:bg-[#00f0ff]/10 text-slate-400 hover:text-[#00f0ff] border border-slate-700 hover:border-[#00f0ff]/30 rounded-lg px-3 py-1.5 text-[10px] font-bold tracking-wide transition-all shrink-0 shadow-sm">
-                            <?php echo htmlspecialchars((strlen($qr) > 30 ? substr($qr, 0, 30).'...' : $qr)); ?>
-                        </button>
-                    <?php endforeach; ?>
+                <!-- Background FX -->
+                <div class="absolute inset-0 bg-[url('data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iNDAiIGhlaWdodD0iNDAiIHhtbG5zPSJodHRwOi8vd3d3LnczLm9yZy8yMDAwL3N2ZyI+PGRlZnM+PHBhdHRlcm4gaWQ9ImdyaWQiIHdpZHRoPSI0MCIgaGVpZ2h0PSI0MCIgcGF0dGVyblVuaXRzPSJ1c2VyU3BhY2VPblVzZSI+PHBhdGggZD0iTSAwIDEwIEwgNDAgMTAgTSAxMCAwIEwgMTAgNDAiIGZpbGw9Im5vbmUiIHN0cm9rZT0icmdiYSgyMzQsIDE3OSwgOCwgMC4wNSkiIHN0cm9rZS13aWR0aD0iMSIvPjwvcGF0dGVybj48L2RlZnM+PHJlY3Qgd2lkdGg9IjEwMCUiIGhlaWdodD0iMTAwJSIgZmlsbD0idXJsKCNncmlkKSIvPjwvc3ZnPg==')] opacity-50"></div>
+                <div class="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 w-96 h-96 bg-yellow-500/10 rounded-full blur-[100px] pointer-events-none"></div>
+
+                <div class="w-24 h-24 bg-slate-900 rounded-full flex items-center justify-center text-yellow-500 text-5xl mb-6 border border-yellow-500/50 shadow-[0_0_30px_rgba(234,179,8,0.3)] relative z-10">
+                    <i class="fas fa-crown"></i>
                 </div>
+                
+                <h3 class="text-3xl font-black text-white mb-2 relative z-10 tracking-tight">Agent Tier Authorization</h3>
+                <p class="text-slate-400 max-w-md mx-auto mb-10 relative z-10 leading-relaxed">
+                    Verify the payment screenshot. If correct, approve the request to automatically grant reseller privileges to this user. No chat is required for this automated setup.
+                </p>
 
-                <div class="p-3 md:p-4 relative flex items-end gap-3">
-                    <!-- AI Enhance Tool -->
-                    <button type="button" onclick="enhanceText()" title="Auto-Format Syntax" class="text-purple-400 hover:text-[#00f0ff] transition p-2 bg-slate-900 rounded-xl border border-slate-700 hover:border-[#00f0ff]/50 shadow-inner mb-0.5 shrink-0 h-12 w-12 flex items-center justify-center">
-                        <i class="fas fa-magic text-lg"></i>
-                    </button>
-
-                    <div class="relative flex-grow bg-slate-900 border border-slate-600 rounded-2xl focus-within:border-[#00f0ff] focus-within:shadow-[0_0_15px_rgba(0,240,255,0.15)] transition-all flex items-center overflow-hidden">
-                        <textarea id="chatInput" name="message" rows="1" placeholder="Transmit response..." required class="w-full bg-transparent py-3.5 pl-4 pr-2 text-sm text-white outline-none resize-none custom-scrollbar font-medium" style="min-height: 48px; max-height: 120px;" oninput="this.style.height = ''; this.style.height = this.scrollHeight + 'px'"></textarea>
+                <div class="w-full max-w-md bg-slate-900/90 p-6 md:p-8 rounded-2xl border border-slate-700 shadow-inner relative z-10">
+                    <div class="flex items-center justify-center gap-2 mb-6">
+                        <p class="text-xs font-bold text-slate-500 uppercase tracking-widest">Current Status:</p>
+                        <span class="px-2.5 py-1 rounded text-[10px] font-black uppercase tracking-wider <?php echo $order['status'] == 'pending' ? 'bg-yellow-500/20 text-yellow-400' : ($order['status'] == 'active' ? 'bg-green-500/20 text-green-400' : 'bg-red-500/20 text-red-400'); ?>">
+                            <?php echo $order['status']; ?>
+                        </span>
+                    </div>
+                    
+                    <form method="POST" class="grid grid-cols-2 gap-4">
+                        <button type="submit" name="update_status" value="active" <?php echo $order['status'] == 'active' ? 'disabled' : ''; ?> onclick="return confirm('Authorize this Agent Pass? This will apply global discounts to their account.')" class="bg-gradient-to-r from-green-600 to-emerald-600 hover:from-green-500 hover:to-emerald-500 text-white font-bold py-3.5 rounded-xl shadow-[0_0_15px_rgba(16,185,129,0.3)] transition transform active:scale-95 flex items-center justify-center gap-2 <?php echo $order['status'] == 'active' ? 'opacity-50 cursor-not-allowed' : ''; ?>">
+                            <i class="fas fa-check-circle"></i> Approve
+                        </button>
                         
-                        <div class="flex items-center gap-2 pr-2 shrink-0">
-                            <label class="cursor-pointer text-slate-500 hover:text-[#00f0ff] transition flex items-center justify-center w-10 h-10 rounded-xl hover:bg-slate-800" title="Encrypt as Credential">
-                                <input type="checkbox" id="secureToggle" name="is_credential" value="1" class="hidden peer">
-                                <i class="fas fa-lock peer-checked:text-[#00f0ff] peer-checked:animate-pulse text-lg"></i>
-                            </label>
-                            <button type="submit" class="bg-gradient-to-r from-blue-600 to-[#00f0ff] hover:from-blue-500 hover:to-[#00f0ff] text-slate-900 w-10 h-10 rounded-xl flex items-center justify-center shadow-lg transition transform active:scale-95">
-                                <i class="fas fa-paper-plane"></i>
+                        <button type="submit" name="update_status" value="rejected" <?php echo $order['status'] == 'rejected' ? 'disabled' : ''; ?> onclick="return confirm('Reject this request? User will have to submit a new payment.')" class="bg-slate-800 hover:bg-red-600 text-slate-300 hover:text-white font-bold py-3.5 rounded-xl border border-slate-700 hover:border-red-500 transition shadow-lg flex items-center justify-center gap-2 <?php echo $order['status'] == 'rejected' ? 'opacity-50 cursor-not-allowed' : ''; ?>">
+                            <i class="fas fa-times-circle"></i> Reject
+                        </button>
+                    </form>
+                </div>
+            </div>
+
+        <?php else: ?>
+            <!-- Standard Product View (Fulfillment + Chat) -->
+            
+            <div class="bg-slate-900 border border-[#00f0ff]/30 rounded-2xl p-5 shrink-0 shadow-[0_0_20px_rgba(0,240,255,0.05)] relative overflow-hidden">
+                <div class="absolute inset-0 bg-[url('data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iNDAiIGhlaWdodD0iNDAiIHhtbG5zPSJodHRwOi8vd3d3LnczLm9yZy8yMDAwL3N2ZyI+PGRlZnM+PHBhdHRlcm4gaWQ9ImdyaWQiIHdpZHRoPSI0MCIgaGVpZ2h0PSI0MCIgcGF0dGVyblVuaXRzPSJ1c2VyU3BhY2VPblVzZSI+PHBhdGggZD0iTSAwIDEwIEwgNDAgMTAgTSAxMCAwIEwgMTAgNDAiIGZpbGw9Im5vbmUiIHN0cm9rZT0icmdiYSgwLCAyNDAsIDI1NSwgMC4wNSkiIHN0cm9rZS13aWR0aD0iMSIvPjwvcGF0dGVybj48L2RlZnM+PHJlY3Qgd2lkdGg9IjEwMCUiIGhlaWdodD0iMTAwJSIgZmlsbD0idXJsKCNncmlkKSIvPjwvc3ZnPg==')] opacity-50"></div>
+                
+                <div class="flex justify-between items-center mb-4 relative z-10">
+                    <h3 class="text-xs font-black text-[#00f0ff] uppercase tracking-widest flex items-center gap-2">
+                        <i class="fas fa-bolt animate-pulse"></i> Auto-Fulfillment Hub
+                    </h3>
+                </div>
+                
+                <div class="relative z-10">
+                    <?php if($order['delivery_type'] === 'unique'): ?>
+                        <div class="flex gap-3 overflow-x-auto pb-2 custom-scrollbar">
+                            <?php if(empty($available_keys)): ?>
+                                <div class="w-full p-4 bg-red-900/20 border border-red-500/50 rounded-xl text-red-400 text-sm font-bold flex items-center justify-between shadow-inner">
+                                    <span class="flex items-center gap-2"><i class="fas fa-exclamation-triangle"></i> Inventory Depleted!</span>
+                                    <a href="index.php?page=keys&product_id=<?php echo $order['product_id']; ?>" class="bg-red-600 text-white px-4 py-1.5 rounded-lg text-xs hover:bg-red-500 transition">Replenish</a>
+                                </div>
+                            <?php else: ?>
+                                <?php foreach($available_keys as $k): ?>
+                                    <button type="button" onclick="autoPasteKey('<?php echo addslashes($k['key_content']); ?>')" class="bg-slate-800/80 border border-slate-600 rounded-xl p-3 min-w-[220px] flex justify-between items-center group hover:bg-slate-800 hover:border-[#00f0ff]/50 hover:shadow-[0_0_15px_rgba(0,240,255,0.1)] transition-all cursor-pointer text-left">
+                                        <code class="text-xs text-green-400 font-mono font-bold truncate mr-3 group-hover:text-[#00f0ff] transition"><?php echo htmlspecialchars($k['key_content']); ?></code>
+                                        <i class="fas fa-share text-slate-500 group-hover:text-[#00f0ff] transition"></i>
+                                    </button>
+                                <?php endforeach; ?>
+                            <?php endif; ?>
+                        </div>
+                    <?php elseif($order['delivery_type'] === 'universal'): ?>
+                        <div class="bg-slate-800/80 border border-slate-600 rounded-xl p-4 flex justify-between items-center group shadow-inner hover:border-[#00f0ff]/30 transition">
+                            <div class="text-xs text-slate-300 font-mono font-bold break-all line-clamp-2 pr-4"><?php echo htmlspecialchars($order['universal_content']); ?></div>
+                            <button type="button" onclick="autoPasteKey('<?php echo addslashes($order['universal_content']); ?>')" class="bg-slate-700 hover:bg-[#00f0ff] hover:text-slate-900 text-[#00f0ff] text-xs font-black px-4 py-2 rounded-lg transition shadow-lg shrink-0 uppercase tracking-wider flex items-center gap-2">
+                                <i class="fas fa-paste"></i> Inject
                             </button>
                         </div>
+                    <?php else: ?>
+                        <div class="text-xs font-bold uppercase tracking-widest text-purple-400 bg-purple-900/10 p-4 rounded-xl border border-purple-500/20 text-center flex items-center justify-center gap-2">
+                            <i class="fas fa-user-edit"></i> Manual Injection Required (See Form Data)
+                        </div>
+                    <?php endif; ?>
+                </div>
+            </div>
+
+            <!-- Dynamic SPA Chat System -->
+            <div class="flex-grow bg-slate-900/60 rounded-2xl border border-slate-700 flex flex-col shadow-2xl overflow-hidden relative backdrop-blur-xl">
+                <!-- Messages List -->
+                <div class="flex-grow overflow-y-auto p-4 md:p-6 bg-slate-900/40 scroll-smooth custom-scrollbar relative" id="chatBox">
+                    <!-- Data populated by AJAX -->
+                    <div class="flex items-center justify-center h-full text-slate-500">
+                        <i class="fas fa-circle-notch fa-spin text-3xl text-[#00f0ff]"></i>
                     </div>
                 </div>
-            </form>
-        </div>
+
+                <!-- Input Area -->
+                <form id="adminChatForm" class="border-t border-slate-700/80 bg-slate-800/90 backdrop-blur shrink-0 z-20 flex flex-col">
+                    <input type="hidden" name="order_id" value="<?php echo $order_id; ?>">
+                    
+                    <!-- Quick Replies -->
+                    <div class="px-4 py-3 flex gap-2 overflow-x-auto custom-scrollbar border-b border-slate-700/50">
+                        <?php foreach($quick_replies as $qr): ?>
+                            <button type="button" onclick="insertQuickReply('<?php echo addslashes($qr); ?>')" class="whitespace-nowrap bg-slate-900 hover:bg-[#00f0ff]/10 text-slate-400 hover:text-[#00f0ff] border border-slate-700 hover:border-[#00f0ff]/30 rounded-lg px-3 py-1.5 text-[10px] font-bold tracking-wide transition-all shrink-0 shadow-sm">
+                                <?php echo htmlspecialchars((strlen($qr) > 30 ? substr($qr, 0, 30).'...' : $qr)); ?>
+                            </button>
+                        <?php endforeach; ?>
+                    </div>
+
+                    <div class="p-3 md:p-4 relative flex items-end gap-3">
+                        <!-- AI Enhance Tool -->
+                        <button type="button" onclick="enhanceText()" title="Auto-Format Syntax" class="text-purple-400 hover:text-[#00f0ff] transition p-2 bg-slate-900 rounded-xl border border-slate-700 hover:border-[#00f0ff]/50 shadow-inner mb-0.5 shrink-0 h-12 w-12 flex items-center justify-center">
+                            <i class="fas fa-magic text-lg"></i>
+                        </button>
+
+                        <div class="relative flex-grow bg-slate-900 border border-slate-600 rounded-2xl focus-within:border-[#00f0ff] focus-within:shadow-[0_0_15px_rgba(0,240,255,0.15)] transition-all flex items-center overflow-hidden">
+                            <textarea id="chatInput" name="message" rows="1" placeholder="Transmit response..." required class="w-full bg-transparent py-3.5 pl-4 pr-2 text-sm text-white outline-none resize-none custom-scrollbar font-medium" style="min-height: 48px; max-height: 120px;" oninput="this.style.height = ''; this.style.height = this.scrollHeight + 'px'"></textarea>
+                            
+                            <div class="flex items-center gap-2 pr-2 shrink-0">
+                                <label class="cursor-pointer text-slate-500 hover:text-[#00f0ff] transition flex items-center justify-center w-10 h-10 rounded-xl hover:bg-slate-800" title="Encrypt as Credential">
+                                    <input type="checkbox" id="secureToggle" name="is_credential" value="1" class="hidden peer">
+                                    <i class="fas fa-lock peer-checked:text-[#00f0ff] peer-checked:animate-pulse text-lg"></i>
+                                </label>
+                                <button type="submit" class="bg-gradient-to-r from-blue-600 to-[#00f0ff] hover:from-blue-500 hover:to-[#00f0ff] text-slate-900 w-10 h-10 rounded-xl flex items-center justify-center shadow-lg transition transform active:scale-95">
+                                    <i class="fas fa-paper-plane"></i>
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                </form>
+            </div>
+        <?php endif; ?>
     </div>
 </div>
 
@@ -446,6 +500,7 @@ $is_cat_image_legacy_icon = !empty($order['cat_image']) && strpos($order['cat_im
 
 <script>
     const orderId = <?php echo $order_id; ?>;
+    const isPassOrder = <?php echo $is_pass_order ? 'true' : 'false'; ?>;
     const chatBox = document.getElementById('chatBox');
     const chatInput = document.getElementById('chatInput');
     const secureToggle = document.getElementById('secureToggle');
@@ -453,94 +508,101 @@ $is_cat_image_legacy_icon = !empty($order['cat_image']) && strpos($order['cat_im
     let isUserScrolling = false;
     let lastChatHtml = '';
 
-    // Scroll Detection
-    if(chatBox) {
-        chatBox.addEventListener('scroll', () => {
-            const isAtBottom = chatBox.scrollHeight - chatBox.scrollTop <= chatBox.clientHeight + 50;
-            isUserScrolling = !isAtBottom;
-        });
-    }
-
-    // AJAX Polling (Uses correct fetch URL parameter for ID)
-    function fetchChat() {
-        if(!orderId) return;
-        
-        fetch(`index.php?page=order_detail&id=${orderId}&ajax=1&_=${Date.now()}`)
-            .then(res => res.text())
-            .then(html => {
-                if(html.trim() !== '' && html !== lastChatHtml) {
-                    chatBox.innerHTML = html;
-                    lastChatHtml = html;
-                    if(!isUserScrolling) {
-                        chatBox.scrollTop = chatBox.scrollHeight;
-                    }
-                }
-            })
-            .catch(err => console.error('Sync Error:', err));
-    }
-
-    // Start Polling
-    fetchChat();
-    setInterval(fetchChat, 3000);
-
-    // AJAX Message Submission (Fixed URL logic to include order ID parameter)
-    document.getElementById('adminChatForm').addEventListener('submit', async function(e) {
-        e.preventDefault();
-        if(!chatInput.value.trim()) return;
-
-        const formData = new FormData(this);
-        formData.append('ajax_msg', '1');
-        
-        chatInput.value = ''; 
-        chatInput.style.height = '48px'; // Reset height
-        
-        try {
-            // FIX: Added id to query string so the server captures it correctly
-            await fetch(`index.php?page=order_detail&id=${orderId}`, {
-                method: 'POST',
-                body: formData,
-                headers: { 'X-Requested-With': 'XMLHttpRequest' }
+    // Only run Chat logic if it's not a Pass Order
+    if (!isPassOrder) {
+        if(chatBox) {
+            chatBox.addEventListener('scroll', () => {
+                const isAtBottom = chatBox.scrollHeight - chatBox.scrollTop <= chatBox.clientHeight + 50;
+                isUserScrolling = !isAtBottom;
             });
-            isUserScrolling = false;
-            secureToggle.checked = false; // Reset secure toggle
-            fetchChat(); 
-        } catch(err) { console.error('Transmission failed:', err); }
-    });
+        }
+
+        function fetchChat() {
+            if(!orderId) return;
+            
+            fetch(`index.php?page=order_detail&id=${orderId}&ajax=1&_=${Date.now()}`)
+                .then(res => res.text())
+                .then(html => {
+                    if(html.trim() !== '' && html !== lastChatHtml) {
+                        chatBox.innerHTML = html;
+                        lastChatHtml = html;
+                        if(!isUserScrolling) {
+                            chatBox.scrollTop = chatBox.scrollHeight;
+                        }
+                    }
+                })
+                .catch(err => console.error('Sync Error:', err));
+        }
+
+        fetchChat();
+        setInterval(fetchChat, 3000);
+
+        const chatForm = document.getElementById('adminChatForm');
+        if (chatForm) {
+            chatForm.addEventListener('submit', async function(e) {
+                e.preventDefault();
+                if(!chatInput.value.trim()) return;
+
+                const formData = new FormData(this);
+                formData.append('ajax_msg', '1');
+                
+                chatInput.value = ''; 
+                chatInput.style.height = '48px'; 
+                
+                try {
+                    await fetch(`index.php?page=order_detail&id=${orderId}`, {
+                        method: 'POST',
+                        body: formData,
+                        headers: { 'X-Requested-With': 'XMLHttpRequest' }
+                    });
+                    isUserScrolling = false;
+                    secureToggle.checked = false;
+                    fetchChat(); 
+                } catch(err) { console.error('Transmission failed:', err); }
+            });
+        }
+    }
 
     // Helpers
     function insertQuickReply(text) {
-        chatInput.value = text;
-        chatInput.focus();
-        chatInput.style.height = '';
-        chatInput.style.height = chatInput.scrollHeight + 'px';
-        secureToggle.checked = false;
+        if(chatInput) {
+            chatInput.value = text;
+            chatInput.focus();
+            chatInput.style.height = '';
+            chatInput.style.height = chatInput.scrollHeight + 'px';
+            secureToggle.checked = false;
+        }
     }
 
     function autoPasteKey(keyText) {
-        chatInput.value = keyText;
-        chatInput.focus();
-        chatInput.style.height = '';
-        chatInput.style.height = chatInput.scrollHeight + 'px';
-        secureToggle.checked = true;
-        chatInput.classList.add('border-[#00f0ff]', 'shadow-[0_0_15px_rgba(0,240,255,0.2)]');
-        setTimeout(() => {
-            chatInput.classList.remove('border-[#00f0ff]', 'shadow-[0_0_15px_rgba(0,240,255,0.2)]');
-        }, 500);
+        if(chatInput) {
+            chatInput.value = keyText;
+            chatInput.focus();
+            chatInput.style.height = '';
+            chatInput.style.height = chatInput.scrollHeight + 'px';
+            secureToggle.checked = true;
+            chatInput.classList.add('border-[#00f0ff]', 'shadow-[0_0_15px_rgba(0,240,255,0.2)]');
+            setTimeout(() => {
+                chatInput.classList.remove('border-[#00f0ff]', 'shadow-[0_0_15px_rgba(0,240,255,0.2)]');
+            }, 500);
+        }
     }
 
     function enhanceText() {
-        let val = chatInput.value.trim();
-        if(val.length > 2) {
-            val = val.charAt(0).toUpperCase() + val.slice(1);
-            if(!val.endsWith('.') && !val.endsWith('!') && !val.endsWith('?')) val += '.';
-            if(!val.includes('Thank')) val += '\n\nThank you for choosing DigitalMarketplaceMM!';
-            
-            chatInput.value = val;
-            chatInput.style.height = '';
-            chatInput.style.height = chatInput.scrollHeight + 'px';
-            
-            chatInput.classList.add('ring-2', 'ring-purple-500');
-            setTimeout(() => chatInput.classList.remove('ring-2', 'ring-purple-500'), 400);
+        if(chatInput) {
+            let val = chatInput.value.trim();
+            if(val.length > 2) {
+                val = val.charAt(0).toUpperCase() + val.slice(1);
+                if(!val.endsWith('.') && !val.endsWith('!') && !val.endsWith('?')) val += '.';
+                if(!val.includes('Thank')) val += '\n\nThank you for choosing DigitalMarketplaceMM!';
+                
+                chatInput.value = val;
+                chatInput.style.height = '';
+                chatInput.style.height = chatInput.scrollHeight + 'px';
+                
+                chatInput.classList.add('ring-2', 'ring-purple-500');
+                setTimeout(() => chatInput.classList.remove('ring-2', 'ring-purple-500'), 400);
+            }
         }
     }
 
