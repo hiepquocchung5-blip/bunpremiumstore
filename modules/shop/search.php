@@ -1,121 +1,103 @@
 <?php
 // modules/shop/search.php
+// PRODUCTION v2.0 - Auto-Redirect, Neon UI & Image URL Fix
 
 $query = isset($_GET['q']) ? trim($_GET['q']) : '';
 
-// 1. Perform Search
-if ($query) {
-    $search_term = "%$query%";
-    $stmt = $pdo->prepare("
-        SELECT p.*, c.name as cat_name, c.icon_class 
-        FROM products p 
-        JOIN categories c ON p.category_id = c.id 
-        WHERE p.name LIKE ? OR c.name LIKE ? 
-        ORDER BY p.id DESC
-    ");
-    $stmt->execute([$search_term, $search_term]);
-    $results = $stmt->fetchAll();
-} else {
-    $results = [];
+// 1. FEATURE: Redirect empty search to the Global Store Hub
+if (empty($query)) {
+    redirect('index.php?module=shop&page=category');
 }
 
-// 2. Get Agent Discount
+// 2. Perform Search (Includes Name, Description, and Category Name)
+$search_term = "%$query%";
+$stmt = $pdo->prepare("
+    SELECT p.*, c.name as cat_name, c.image_url as cat_image 
+    FROM products p 
+    JOIN categories c ON p.category_id = c.id 
+    WHERE p.name LIKE ? OR c.name LIKE ? OR p.description LIKE ?
+    ORDER BY p.id DESC
+");
+$stmt->execute([$search_term, $search_term, $search_term]);
+$results = $stmt->fetchAll();
+
+// 3. Get Agent Discount
 $discount = is_logged_in() ? get_user_discount($_SESSION['user_id']) : 0;
 ?>
 
 <style>
-    .glass-card {
-        background: rgba(31, 41, 55, 0.7);
-        backdrop-filter: blur(12px);
-        border: 1px solid rgba(255, 255, 255, 0.08);
-        box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
+    /* Animated Blob Backgrounds */
+    @keyframes blob {
+        0% { transform: translate(0px, 0px) scale(1); }
+        33% { transform: translate(30px, -50px) scale(1.1); }
+        66% { transform: translate(-20px, 20px) scale(0.9); }
+        100% { transform: translate(0px, 0px) scale(1); }
     }
+    .animate-blob { animation: blob 7s infinite; }
+    .animation-delay-2000 { animation-delay: 2s; }
+    .animation-delay-4000 { animation-delay: 4s; }
 </style>
 
-<div class="mb-8">
-    <h2 class="text-3xl font-bold text-white mb-2">Search Results</h2>
-    <?php if($query): ?>
-        <p class="text-gray-400">Found <?php echo count($results); ?> results for <span class="text-white font-bold">"<?php echo htmlspecialchars($query); ?>"</span></p>
-    <?php else: ?>
-        <p class="text-gray-400">Please enter a keyword to search.</p>
-    <?php endif; ?>
-</div>
+<!-- Animated Cyberpunk Background -->
+<div class="fixed inset-0 w-full h-full bg-slate-950 -z-20 pointer-events-none"></div>
+<div class="fixed top-0 -left-4 w-96 h-96 bg-[#00f0ff] rounded-full mix-blend-multiply filter blur-[128px] opacity-10 animate-blob -z-10 pointer-events-none"></div>
+<div class="fixed top-40 -right-4 w-96 h-96 bg-purple-600 rounded-full mix-blend-multiply filter blur-[128px] opacity-10 animate-blob animation-delay-2000 -z-10 pointer-events-none"></div>
 
-<?php if (empty($results) && !empty($query)): ?>
-    <div class="glass p-12 rounded-2xl text-center border border-gray-700/50">
-        <div class="w-20 h-20 bg-gray-800 rounded-full flex items-center justify-center mx-auto mb-6 shadow-inner">
-            <i class="fas fa-search text-4xl text-gray-600"></i>
-        </div>
-        <h3 class="text-xl font-bold text-white mb-2">No products found</h3>
-        <p class="text-gray-500 max-w-sm mx-auto mb-6">We couldn't find any products matching your search. Try different keywords or browse our categories.</p>
-        <a href="index.php" class="bg-blue-600 hover:bg-blue-500 text-white px-6 py-2.5 rounded-lg font-bold transition shadow-lg inline-flex items-center gap-2">
-            <i class="fas fa-store"></i> Browse Store
-        </a>
-    </div>
-<?php elseif (!empty($results)): ?>
-    <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-        <?php foreach($results as $product): ?>
-            <?php 
-                $base_price = $product['sale_price'] ?: $product['price'];
-                $final_price = $base_price * ((100 - $discount) / 100);
-            ?>
-            <div class="glass-card p-0 rounded-xl overflow-hidden group hover:border-blue-500/50 transition duration-300 relative flex flex-col h-full">
-                
-                <!-- Badges -->
-                <div class="absolute top-3 right-3 flex flex-col items-end gap-1 z-10">
-                    <?php if($discount > 0): ?>
-                        <span class="bg-yellow-500 text-black text-[10px] font-bold px-2 py-1 rounded shadow-lg">
-                            -<?php echo $discount; ?>% AGENT
-                        </span>
-                    <?php endif; ?>
-                    <?php if($product['sale_price']): ?>
-                        <span class="bg-red-500 text-white text-[10px] font-bold px-2 py-1 rounded shadow-lg">SALE</span>
-                    <?php endif; ?>
-                </div>
+<div class="max-w-7xl mx-auto px-4 pb-12 relative z-10">
 
-                <!-- Product Body -->
-                <div class="p-6 flex-grow flex flex-col">
-                    <div class="flex items-start justify-between mb-4">
-                        <div class="w-12 h-12 bg-gray-800 rounded-lg flex items-center justify-center text-2xl text-blue-500 group-hover:scale-110 transition border border-gray-700">
-                            <i class="fas <?php echo htmlspecialchars($product['icon_class'] ?? 'fa-cube'); ?>"></i>
-                        </div>
-                        <span class="text-[10px] uppercase font-bold tracking-wider text-gray-500 bg-gray-800 px-2 py-1 rounded border border-gray-700">
-                            <?php echo htmlspecialchars($product['cat_name']); ?>
-                        </span>
-                    </div>
-
-                    <h3 class="text-lg font-bold text-white mb-2 line-clamp-2 group-hover:text-blue-400 transition">
-                        <?php echo htmlspecialchars($product['name']); ?>
-                    </h3>
-                    
-                    <?php if($product['user_instruction']): ?>
-                        <p class="text-xs text-gray-400 line-clamp-2 mb-4 bg-gray-800/50 p-2 rounded border border-gray-700/50">
-                            <i class="fas fa-info-circle mr-1 text-blue-400"></i> <?php echo htmlspecialchars($product['user_instruction']); ?>
-                        </p>
-                    <?php else: ?>
-                        <p class="text-xs text-gray-500 mb-4 h-8">Instant delivery available.</p>
-                    <?php endif; ?>
-
-                    <!-- Price & Action -->
-                    <div class="mt-auto pt-4 border-t border-gray-700 flex items-center justify-between">
-                        <div>
-                            <p class="text-xs text-gray-500 mb-0.5">Price</p>
-                            <div class="flex items-baseline gap-2">
-                                <?php if($product['sale_price'] || $discount > 0): ?>
-                                    <span class="text-xs line-through text-gray-500"><?php echo format_price($product['price']); ?></span>
-                                <?php endif; ?>
-                                <span class="text-xl font-bold <?php echo ($discount > 0 || $product['sale_price']) ? 'text-yellow-400' : 'text-white'; ?>">
-                                    <?php echo format_price($final_price); ?>
-                                </span>
-                            </div>
-                        </div>
-                        <a href="index.php?module=shop&page=checkout&id=<?php echo $product['id']; ?>" 
-                           class="bg-blue-600 hover:bg-blue-500 text-white w-10 h-10 rounded-full flex items-center justify-center shadow-lg transform group-hover:scale-110 transition">
-                            <i class="fas fa-shopping-cart text-sm"></i>
-                        </a>
-                    </div>
-                </div>
+    <!-- Search Header -->
+    <div class="mb-10 text-center relative pt-8 md:pt-12">
+        <div class="inline-block mb-4 relative group">
+            <div class="absolute inset-0 bg-[#00f0ff]/20 blur-xl rounded-full group-hover:bg-[#00f0ff]/40 transition duration-500"></div>
+            <div class="w-16 h-16 bg-slate-900 rounded-2xl flex items-center justify-center border border-[#00f0ff]/50 shadow-[0_0_20px_rgba(0,240,255,0.2)] relative z-10">
+                <i class="fas fa-search text-3xl text-[#00f0ff]"></i>
             </div>
-        <?php endforeach; ?>
+        </div>
+        
+        <h2 class="text-3xl md:text-5xl font-black text-white mb-4 tracking-tight">Database Query</h2>
+        <p class="text-slate-400 font-medium text-sm md:text-base">
+            Retrieved <span class="text-[#00f0ff] font-bold mx-1 bg-[#00f0ff]/10 px-2 py-0.5 rounded border border-[#00f0ff]/20"><?php echo count($results); ?></span> records matching <span class="text-white font-bold font-mono">"<?php echo htmlspecialchars($query); ?>"</span>
+        </p>
     </div>
-<?php endif; ?>
+
+    <!-- Refine Search Bar -->
+    <div class="max-w-2xl mx-auto mb-12">
+        <form action="index.php" method="GET" class="relative group">
+            <input type="hidden" name="module" value="shop">
+            <input type="hidden" name="page" value="search">
+            
+            <div class="absolute inset-y-0 left-0 pl-5 flex items-center pointer-events-none">
+                <i class="fas fa-terminal text-[#00f0ff]/50 group-focus-within:text-[#00f0ff] transition-colors"></i>
+            </div>
+            
+            <input type="text" name="q" value="<?php echo htmlspecialchars($query); ?>" 
+                   class="w-full bg-slate-900/80 border border-slate-700 focus:border-[#00f0ff] rounded-2xl py-4 pl-12 pr-32 text-white placeholder-slate-500 outline-none shadow-inner backdrop-blur-sm transition-all focus:shadow-[0_0_20px_rgba(0,240,255,0.15)] font-mono">
+            
+            <button type="submit" class="absolute right-2 top-2 bottom-2 bg-gradient-to-r from-blue-600 to-[#00f0ff] hover:from-blue-500 hover:to-[#00f0ff] text-slate-900 font-black px-6 rounded-xl transition-all shadow-[0_0_15px_rgba(0,240,255,0.2)] transform active:scale-95 text-xs uppercase tracking-widest flex items-center gap-2">
+                <span class="hidden sm:inline">Execute</span> <i class="fas fa-arrow-right"></i>
+            </button>
+        </form>
+    </div>
+
+    <!-- Results Grid -->
+    <?php if (empty($results)): ?>
+        <div class="glass p-10 md:p-14 rounded-3xl text-center border border-slate-700/50 bg-slate-900/60 backdrop-blur-xl shadow-2xl max-w-2xl mx-auto">
+            <div class="w-24 h-24 bg-slate-800 rounded-full flex items-center justify-center mx-auto mb-6 shadow-inner border border-slate-700">
+                <i class="fas fa-ghost text-5xl text-slate-600"></i>
+            </div>
+            <h3 class="text-2xl font-black text-white mb-3 tracking-tight">Null Reference</h3>
+            <p class="text-slate-400 max-w-sm mx-auto mb-8 text-sm leading-relaxed">No digital assets match your query parameter. Adjust your search logic or browse the master directory.</p>
+            <a href="index.php?module=shop&page=category" class="bg-slate-800 hover:bg-slate-700 border border-slate-600 text-white px-8 py-3.5 rounded-xl font-bold transition shadow-lg inline-flex items-center gap-2 uppercase tracking-widest text-sm">
+                <i class="fas fa-network-wired text-[#00f0ff]"></i> Access Directory
+            </a>
+        </div>
+    <?php else: ?>
+        <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6 xl:gap-8">
+            <?php foreach($results as $product): ?>
+                <!-- Reusing the master product card component -->
+                <?php include __DIR__ . '/../home/product_card.php'; ?>
+            <?php endforeach; ?>
+        </div>
+    <?php endif; ?>
+
+</div>
