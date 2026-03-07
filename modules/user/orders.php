@@ -1,6 +1,6 @@
 <?php
 // modules/user/orders.php
-// PRODUCTION DEPLOYMENT v3.1 - AJAX SPA Navigation & SQL Image Fix
+// PRODUCTION DEPLOYMENT v3.2 - Decoupled DB Architecture Safe Joins
 
 if (!is_logged_in()) redirect('index.php?module=auth&page=login');
 
@@ -98,12 +98,15 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['message']) && !isset(
 // =====================================================================================
 
 // Fetch All Orders for Sidebar
-// FIX: Using c.image_url instead of c.icon_class
+// FIX: Safe LEFT JOIN to prevent Pass Orders from disappearing due to NULL product_id
 $stmt = $pdo->prepare("
-    SELECT o.id, o.status, o.total_price_paid, o.created_at, p.name, p.image_path, c.image_url as cat_image
+    SELECT o.id, o.status, o.total_price_paid, o.created_at, 
+           COALESCE(p.name, CONCAT('Agent Tier: ', ps.name)) as name, 
+           p.image_path, c.image_url as cat_image
     FROM orders o 
-    JOIN products p ON o.product_id = p.id 
+    LEFT JOIN products p ON o.product_id = p.id 
     LEFT JOIN categories c ON p.category_id = c.id
+    LEFT JOIN passes ps ON o.pass_id = ps.id
     WHERE o.user_id = ? 
     ORDER BY o.created_at DESC
 ");
@@ -120,9 +123,13 @@ if (!$active_chat_id && count($ordersList) > 0 && !$is_mobile) {
 $active_order = null;
 if ($active_chat_id) {
     $stmt = $pdo->prepare("
-        SELECT o.*, p.name, p.delivery_type, p.universal_content, p.id as product_id
+        SELECT o.*, 
+               COALESCE(p.name, CONCAT('Agent Tier: ', ps.name)) as name, 
+               COALESCE(p.delivery_type, 'universal') as delivery_type, 
+               p.universal_content, p.id as product_id
         FROM orders o 
-        JOIN products p ON o.product_id = p.id 
+        LEFT JOIN products p ON o.product_id = p.id 
+        LEFT JOIN passes ps ON o.pass_id = ps.id
         WHERE o.id = ? AND o.user_id = ?
     ");
     $stmt->execute([$active_chat_id, $user_id]);
@@ -509,3 +516,6 @@ $main_display = $active_chat_id ? 'flex' : 'hidden md:flex';
         }
     });
 </script>
+<?php
+// End of file
+?>
