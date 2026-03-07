@@ -1,27 +1,41 @@
 <?php
 // modules/shop/category.php
-// PRODUCTION v2.0 - Advanced Category Hub with Sidebar & Sorting
+// PRODUCTION v3.0 - Dynamic Global Hub, Trending & Recommendations
 
 $cat_id = isset($_GET['id']) ? (int)$_GET['id'] : 0;
 $sort = isset($_GET['sort']) ? $_GET['sort'] : 'newest';
 
-// 1. Fetch Current Category Details
-$stmt = $pdo->prepare("SELECT * FROM categories WHERE id = ?");
-$stmt->execute([$cat_id]);
-$current_category = $stmt->fetch();
+$trending_products = [];
+$recommended_products = [];
 
-if (!$current_category) {
-    echo "
-    <div class='flex flex-col items-center justify-center min-h-[60vh] text-center px-4 relative'>
-        <div class='absolute inset-0 bg-red-500/10 blur-3xl rounded-full w-64 h-64 mx-auto'></div>
-        <i class='fas fa-database text-7xl mb-4 text-red-500 relative z-10 animate-pulse'></i>
-        <h2 class='text-3xl font-black text-white mb-2 relative z-10'>Sector Offline</h2>
-        <p class='text-slate-400 max-w-md mb-6 relative z-10'>The requested category matrix could not be located in the database.</p>
-        <a href='index.php' class='bg-gradient-to-r from-blue-600 to-[#00f0ff] hover:from-blue-500 hover:to-[#00f0ff] text-slate-900 font-black px-8 py-3 rounded-xl shadow-[0_0_20px_rgba(0,240,255,0.3)] transition transform hover:-translate-y-1 relative z-10'>
-            Return to Hub
-        </a>
-    </div>";
-    return;
+// 1. Fetch Current Category Details or Set to Global View
+if ($cat_id > 0) {
+    $stmt = $pdo->prepare("SELECT * FROM categories WHERE id = ?");
+    $stmt->execute([$cat_id]);
+    $current_category = $stmt->fetch();
+
+    if (!$current_category) {
+        echo "
+        <div class='flex flex-col items-center justify-center min-h-[60vh] text-center px-4 relative'>
+            <div class='absolute inset-0 bg-red-500/10 blur-3xl rounded-full w-64 h-64 mx-auto'></div>
+            <i class='fas fa-database text-7xl mb-4 text-red-500 relative z-10 animate-pulse'></i>
+            <h2 class='text-3xl font-black text-white mb-2 relative z-10'>Sector Offline</h2>
+            <p class='text-slate-400 max-w-md mb-6 relative z-10'>The requested category matrix could not be located in the database.</p>
+            <a href='index.php' class='bg-gradient-to-r from-blue-600 to-[#00f0ff] hover:from-blue-500 hover:to-[#00f0ff] text-slate-900 font-black px-8 py-3 rounded-xl shadow-[0_0_20px_rgba(0,240,255,0.3)] transition transform hover:-translate-y-1 relative z-10'>
+                Return to Hub
+            </a>
+        </div>";
+        return;
+    }
+} else {
+    // Virtual Category for "All Products"
+    $current_category = [
+        'id' => 0,
+        'name' => 'Global Store Network',
+        'type' => 'omni',
+        'icon_class' => 'fa-globe',
+        'description' => 'Browse all active digital assets, trending items, and recommended nodes across every sector in the network.'
+    ];
 }
 
 // 2. Fetch ALL Categories for Sidebar (with product counts)
@@ -41,16 +55,49 @@ switch ($sort) {
     case 'name_asc':   $order_sql = "ORDER BY p.name ASC"; break;
 }
 
-// 4. Fetch Products for Current Category
-$stmt = $pdo->prepare("
-    SELECT p.*, c.name as cat_name, c.icon_class 
-    FROM products p 
-    JOIN categories c ON p.category_id = c.id 
-    WHERE p.category_id = ? 
-    $order_sql
-");
-$stmt->execute([$cat_id]);
-$products = $stmt->fetchAll();
+// 4. Fetch Products based on Context (Category or Global)
+if ($cat_id > 0) {
+    $stmt = $pdo->prepare("
+        SELECT p.*, c.name as cat_name, c.icon_class 
+        FROM products p 
+        JOIN categories c ON p.category_id = c.id 
+        WHERE p.category_id = ? 
+        $order_sql
+    ");
+    $stmt->execute([$cat_id]);
+    $products = $stmt->fetchAll();
+} else {
+    // Fetch ALL products for Global View
+    $stmt = $pdo->prepare("
+        SELECT p.*, c.name as cat_name, c.icon_class 
+        FROM products p 
+        JOIN categories c ON p.category_id = c.id 
+        $order_sql
+    ");
+    $stmt->execute();
+    $products = $stmt->fetchAll();
+
+    // Fetch "Trending" (Most Sold)
+    $stmt_trend = $pdo->query("
+        SELECT p.*, c.name as cat_name, c.icon_class, COUNT(o.id) as sales_count
+        FROM products p 
+        JOIN categories c ON p.category_id = c.id 
+        LEFT JOIN orders o ON p.id = o.product_id AND o.status = 'active'
+        GROUP BY p.id
+        ORDER BY sales_count DESC LIMIT 3
+    ");
+    $trending_products = $stmt_trend->fetchAll();
+
+    // Fetch "Recommended" (Flash Sales / Hot Deals)
+    $stmt_rec = $pdo->query("
+        SELECT p.*, c.name as cat_name, c.icon_class 
+        FROM products p 
+        JOIN categories c ON p.category_id = c.id 
+        WHERE p.sale_price IS NOT NULL AND p.sale_price < p.price
+        ORDER BY RAND() LIMIT 3
+    ");
+    $recommended_products = $stmt_rec->fetchAll();
+}
 
 // 5. Get User Discount
 $discount = is_logged_in() ? get_user_discount($_SESSION['user_id']) : 0;
@@ -99,6 +146,22 @@ $discount = is_logged_in() ? get_user_discount($_SESSION['user_id']) : 0;
                 </h3>
                 
                 <ul class="space-y-1.5">
+                    <!-- Global/All Link -->
+                    <li>
+                        <a href="index.php?module=shop&page=category" 
+                           class="flex items-center justify-between p-3 rounded-xl transition-all duration-300 group <?php echo $cat_id == 0 ? 'bg-[#00f0ff]/10 border border-[#00f0ff]/30 shadow-[0_0_15px_rgba(0,240,255,0.05)]' : 'hover:bg-slate-800 border border-transparent'; ?>">
+                            <div class="flex items-center gap-3">
+                                <div class="w-8 h-8 rounded-lg flex items-center justify-center <?php echo $cat_id == 0 ? 'bg-[#00f0ff] text-slate-900 shadow-[0_0_10px_rgba(0,240,255,0.5)]' : 'bg-slate-800 text-slate-400 group-hover:text-[#00f0ff] transition-colors'; ?>">
+                                    <i class="fas fa-globe text-sm"></i>
+                                </div>
+                                <span class="font-bold text-sm <?php echo $cat_id == 0 ? 'text-white' : 'text-slate-300 group-hover:text-white transition-colors'; ?>">All Products</span>
+                            </div>
+                        </a>
+                    </li>
+
+                    <li class="my-2 border-b border-slate-700/50"></li>
+
+                    <!-- Individual Categories -->
                     <?php foreach($all_categories as $cat): ?>
                         <li>
                             <a href="index.php?module=shop&page=category&id=<?php echo $cat['id']; ?>" 
@@ -140,9 +203,8 @@ $discount = is_logged_in() ? get_user_discount($_SESSION['user_id']) : 0;
         <!-- ========================================== -->
         <div class="lg:col-span-3 space-y-6">
             
-            <!-- Dynamic Category Hero -->
+            <!-- Dynamic Hero -->
             <div class="relative rounded-3xl overflow-hidden border border-[#00f0ff]/20 shadow-[0_20px_50px_rgba(0,0,0,0.5)] bg-slate-900/80 backdrop-blur-xl">
-                <!-- Tech Pattern Background -->
                 <div class="absolute inset-0 bg-[url('data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iNDAiIGhlaWdodD0iNDAiIHhtbG5zPSJodHRwOi8vd3d3LnczLm9yZy8yMDAwL3N2ZyI+PGRlZnM+PHBhdHRlcm4gaWQ9ImdyaWQiIHdpZHRoPSI0MCIgaGVpZ2h0PSI0MCIgcGF0dGVyblVuaXRzPSJ1c2VyU3BhY2VPblVzZSI+PHBhdGggZD0iTSAwIDEwIEwgNDAgMTAgTSAxMCAwIEwgMTAgNDAiIGZpbGw9Im5vbmUiIHN0cm9rZT0icmdiYSgwLCAyNDAsIDI1NSwgMC4wNSkiIHN0cm9rZS13aWR0aD0iMSIvPjwvcGF0dGVybj48L2RlZnM+PHJlY3Qgd2lkdGg9IjEwMCUiIGhlaWdodD0iMTAwJSIgZmlsbD0idXJsKCNncmlkKSIvPjwvc3ZnPg==')] opacity-50"></div>
                 <div class="absolute -right-20 -top-20 w-64 h-64 bg-[#00f0ff]/10 rounded-full blur-3xl pointer-events-none"></div>
                 
@@ -166,31 +228,76 @@ $discount = is_logged_in() ? get_user_discount($_SESSION['user_id']) : 0;
                 </div>
             </div>
 
+            <!-- Global View Extras: Trending & Recommendations -->
+            <?php if ($cat_id == 0): ?>
+                
+                <?php if(!empty($trending_products)): ?>
+                    <div class="mb-8 pt-4">
+                        <div class="flex items-center gap-3 mb-6">
+                            <div class="w-10 h-10 rounded-xl bg-orange-500/10 flex items-center justify-center border border-orange-500/20">
+                                <i class="fas fa-fire text-orange-500 text-lg"></i>
+                            </div>
+                            <h3 class="text-xl font-black text-white tracking-tight">Trending Nodes</h3>
+                        </div>
+                        <div class="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-6 relative z-10">
+                            <?php foreach($trending_products as $product): ?>
+                                <?php include __DIR__ . '/../home/product_card.php'; ?>
+                            <?php endforeach; ?>
+                        </div>
+                    </div>
+                <?php endif; ?>
+                
+                <?php if(!empty($recommended_products)): ?>
+                    <div class="mb-10 border-t border-slate-700/50 pt-8">
+                        <div class="flex items-center gap-3 mb-6">
+                            <div class="w-10 h-10 rounded-xl bg-yellow-500/10 flex items-center justify-center border border-yellow-500/20">
+                                <i class="fas fa-star text-yellow-400 text-lg"></i>
+                            </div>
+                            <h3 class="text-xl font-black text-white tracking-tight">Recommended Deals</h3>
+                        </div>
+                        <div class="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-6 relative z-10">
+                            <?php foreach($recommended_products as $product): ?>
+                                <?php include __DIR__ . '/../home/product_card.php'; ?>
+                            <?php endforeach; ?>
+                        </div>
+                    </div>
+                <?php endif; ?>
+                
+                <!-- Separator before the main grid -->
+                <div class="flex items-center gap-3 mb-6 border-t border-slate-700/50 pt-8">
+                    <div class="w-10 h-10 rounded-xl bg-[#00f0ff]/10 flex items-center justify-center border border-[#00f0ff]/20">
+                        <i class="fas fa-layer-group text-[#00f0ff] text-lg"></i>
+                    </div>
+                    <h3 class="text-xl font-black text-white tracking-tight">All Active Deployments</h3>
+                </div>
+
+            <?php endif; ?>
+
             <!-- Toolbar (Sorting & Meta) -->
             <div class="bg-slate-900/60 backdrop-blur-md border border-slate-700/50 rounded-xl p-3 flex flex-col sm:flex-row justify-between items-center gap-4 z-10 relative">
                 <p class="text-xs text-slate-400 font-medium">
-                    Showing <span class="text-white font-bold"><?php echo count($products); ?></span> active nodes
+                    Showing <span class="text-white font-bold"><?php echo count($products); ?></span> items
                 </p>
                 
                 <div class="flex items-center gap-2">
                     <label class="text-xs text-slate-500 font-bold uppercase tracking-wider">Sort:</label>
                     <select onchange="window.location.href=this.value" class="bg-slate-800 border border-slate-600 rounded-lg px-3 py-1.5 text-xs text-white focus:border-[#00f0ff] outline-none cursor-pointer appearance-none pr-8 relative">
-                        <option value="index.php?module=shop&page=category&id=<?php echo $cat_id; ?>&sort=newest" <?php echo $sort == 'newest' ? 'selected' : ''; ?>>Newest Deployments</option>
-                        <option value="index.php?module=shop&page=category&id=<?php echo $cat_id; ?>&sort=price_asc" <?php echo $sort == 'price_asc' ? 'selected' : ''; ?>>Price (Low to High)</option>
-                        <option value="index.php?module=shop&page=category&id=<?php echo $cat_id; ?>&sort=price_desc" <?php echo $sort == 'price_desc' ? 'selected' : ''; ?>>Price (High to Low)</option>
-                        <option value="index.php?module=shop&page=category&id=<?php echo $cat_id; ?>&sort=name_asc" <?php echo $sort == 'name_asc' ? 'selected' : ''; ?>>Alphabetical (A-Z)</option>
+                        <option value="index.php?module=shop&page=category<?php echo $cat_id ? '&id='.$cat_id : ''; ?>&sort=newest" <?php echo $sort == 'newest' ? 'selected' : ''; ?>>Newest Deployments</option>
+                        <option value="index.php?module=shop&page=category<?php echo $cat_id ? '&id='.$cat_id : ''; ?>&sort=price_asc" <?php echo $sort == 'price_asc' ? 'selected' : ''; ?>>Price (Low to High)</option>
+                        <option value="index.php?module=shop&page=category<?php echo $cat_id ? '&id='.$cat_id : ''; ?>&sort=price_desc" <?php echo $sort == 'price_desc' ? 'selected' : ''; ?>>Price (High to Low)</option>
+                        <option value="index.php?module=shop&page=category<?php echo $cat_id ? '&id='.$cat_id : ''; ?>&sort=name_asc" <?php echo $sort == 'name_asc' ? 'selected' : ''; ?>>Alphabetical (A-Z)</option>
                     </select>
                 </div>
             </div>
 
-            <!-- Product Grid -->
+            <!-- Main Product Grid -->
             <?php if (empty($products)): ?>
                 <div class="glass p-12 rounded-3xl text-center border border-slate-700/50 bg-slate-900/60 backdrop-blur-xl shadow-2xl relative z-10">
                     <div class="w-24 h-24 bg-slate-800 rounded-full flex items-center justify-center mx-auto mb-6 shadow-inner border border-slate-700">
                         <i class="fas fa-ghost text-5xl text-slate-600"></i>
                     </div>
                     <h3 class="text-2xl font-black text-white mb-2 tracking-tight">Sector Empty</h3>
-                    <p class="text-slate-400 max-w-sm mx-auto mb-8 text-sm leading-relaxed">No digital assets are currently active in this sector. Try checking another category.</p>
+                    <p class="text-slate-400 max-w-sm mx-auto mb-8 text-sm leading-relaxed">No digital assets are currently active in this view.</p>
                 </div>
             <?php else: ?>
                 <div class="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-6 relative z-10">
