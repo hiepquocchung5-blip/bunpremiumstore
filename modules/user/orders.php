@@ -1,6 +1,6 @@
 <?php
 // modules/user/orders.php
-// PRODUCTION DEPLOYMENT v3.3 - Decoupled DB Architecture Safe Joins & UI Polishing
+// PRODUCTION DEPLOYMENT v4.0 - Agent Pass Chat UI & Database Sync
 
 if (!is_logged_in()) redirect('index.php?module=auth&page=login');
 
@@ -126,7 +126,8 @@ if ($active_chat_id) {
         SELECT o.*, 
                COALESCE(p.name, ps.name) as name, 
                COALESCE(p.delivery_type, 'universal') as delivery_type, 
-               p.universal_content, p.id as product_id
+               p.universal_content, p.id as product_id,
+               o.pass_id
         FROM orders o 
         LEFT JOIN products p ON o.product_id = p.id 
         LEFT JOIN passes ps ON o.pass_id = ps.id
@@ -231,7 +232,7 @@ $main_display = $active_chat_id ? 'flex' : 'hidden md:flex';
                 <div class="flex justify-between items-start md:items-center">
                     <div class="min-w-0 pr-4 flex-1">
                         <?php if($isActivePass): ?>
-                            <span class="inline-flex items-center gap-1.5 text-[9px] font-black text-yellow-500 uppercase tracking-widest mb-1.5 bg-yellow-500/10 px-2 py-0.5 rounded border border-yellow-500/20">
+                            <span class="inline-flex items-center gap-1.5 text-[9px] font-black text-yellow-500 uppercase tracking-widest mb-1.5 bg-yellow-500/10 px-2 py-0.5 rounded border border-yellow-500/20 shadow-[0_0_10px_rgba(234,179,8,0.2)]">
                                 <i class="fas fa-crown"></i> Agent Upgrade Protocol
                             </span>
                         <?php endif; ?>
@@ -281,7 +282,7 @@ $main_display = $active_chat_id ? 'flex' : 'hidden md:flex';
                         ?>
                             <div class="bg-slate-800 border border-slate-600 rounded px-2.5 py-1 text-xs flex items-center shadow-sm">
                                 <span class="text-slate-400 mr-2"><?php echo htmlspecialchars($key); ?>:</span>
-                                <span class="text-[#00f0ff] font-mono font-medium"><?php echo htmlspecialchars($val); ?></span>
+                                <span class="<?php echo $isActivePass ? 'text-yellow-400' : 'text-[#00f0ff]'; ?> font-mono font-medium"><?php echo htmlspecialchars($val); ?></span>
                             </div>
                         <?php 
                             endforeach; 
