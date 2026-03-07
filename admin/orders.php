@@ -26,10 +26,13 @@ if ($search_query) {
 $where_sql = count($where) > 0 ? 'WHERE ' . implode(' AND ', $where) : '';
 
 // 2. Fetch Orders
-$sql = "SELECT o.*, u.username, p.name as product_name 
+// FIX: Using COALESCE to fallback to the Pass name if product_id is NULL
+$sql = "SELECT o.*, u.username, 
+               COALESCE(p.name, ps.name) as product_name 
         FROM orders o 
         JOIN users u ON o.user_id = u.id 
-        JOIN products p ON o.product_id = p.id 
+        LEFT JOIN products p ON o.product_id = p.id 
+        LEFT JOIN passes ps ON o.pass_id = ps.id
         $where_sql
         ORDER BY o.created_at DESC";
 
@@ -71,7 +74,7 @@ $orders = $stmt->fetchAll();
                 <tr>
                     <th class="p-4 pl-6">Order ID</th>
                     <th class="p-4">Customer</th>
-                    <th class="p-4">Product</th>
+                    <th class="p-4">Product / Pass</th>
                     <th class="p-4">Txn ID</th>
                     <th class="p-4">Amount</th>
                     <th class="p-4">Status</th>
@@ -79,11 +82,20 @@ $orders = $stmt->fetchAll();
                 </tr>
             </thead>
             <tbody class="divide-y divide-slate-700/50">
-                <?php foreach($orders as $o): ?>
+                <?php foreach($orders as $o): 
+                    $isPass = !empty($o['pass_id']);
+                ?>
                     <tr class="hover:bg-slate-700/30 transition group">
                         <td class="p-4 pl-6 text-slate-500 font-mono">#<?php echo $o['id']; ?></td>
                         <td class="p-4 font-medium text-white"><?php echo htmlspecialchars($o['username']); ?></td>
-                        <td class="p-4 text-slate-300"><?php echo htmlspecialchars($o['product_name']); ?></td>
+                        <td class="p-4">
+                            <span class="<?php echo $isPass ? 'text-yellow-400' : 'text-slate-300'; ?>">
+                                <?php echo htmlspecialchars($o['product_name']); ?>
+                            </span>
+                            <?php if($isPass): ?>
+                                <span class="ml-2 text-[9px] bg-yellow-500/20 text-yellow-500 px-1.5 py-0.5 rounded border border-yellow-500/30 uppercase font-black tracking-widest"><i class="fas fa-crown"></i> Pass</span>
+                            <?php endif; ?>
+                        </td>
                         <td class="p-4 font-mono text-yellow-500 select-all"><?php echo $o['transaction_last_6']; ?></td>
                         <td class="p-4 font-mono text-green-400"><?php echo format_admin_currency($o['total_price_paid']); ?></td>
                         <td class="p-4"><?php echo format_status_badge($o['status']); ?></td>
