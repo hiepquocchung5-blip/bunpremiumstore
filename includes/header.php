@@ -52,6 +52,8 @@ $curr_symbol = $curr_currency == 'USD' ? '$' : 'Ks';
     <meta property="og:description" content="Instant delivery for Game Keys, Software, and Premium Accounts in Myanmar.">
     <meta property="og:image" content="<?php echo BASE_URL; ?>assets/images/og-image.jpg">
 
+    <link rel="icon" type="image/x-icon" href="assets/images/favicon.ico">
+
     <title>DigitalMarketplaceMM | Premium Digital Store</title>
     
     <!-- CSS Dependencies -->

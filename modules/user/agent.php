@@ -1,6 +1,6 @@
 <?php
 // modules/user/agent.php
-// PRODUCTION DEPLOYMENT v3.0 - Decoupled DB Architecture (pass_id integration)
+// PRODUCTION DEPLOYMENT v3.1 - Interactive Payment Nodes & Timer
 
 // Auth Guard
 if (!is_logged_in()) redirect('index.php?module=auth&page=login');
@@ -10,7 +10,7 @@ $error = '';
 $success = '';
 
 // =====================================================================================
-// 1. HANDLE PASS PURCHASE (Direct pass_id insertion)
+// 1. HANDLE PASS PURCHASE
 // =====================================================================================
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['buy_pass'])) {
     if (!hash_equals($_SESSION['csrf_token'], $_POST['csrf_token'])) die("Invalid Token");
@@ -50,7 +50,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['buy_pass'])) {
                     ]);
 
                     // FIX: Clean Architecture - Inserting pass_id, product_id is strictly NULL
-                    // This relies on the database_pass_fix.sql patch
                     $sql = "INSERT INTO orders (user_id, product_id, pass_id, email_delivery_type, delivery_email, form_data, transaction_last_6, proof_image_path, total_price_paid, status) 
                             VALUES (?, NULL, ?, 'own', ?, ?, ?, ?, ?, 'pending')";
                     $stmt = $pdo->prepare($sql);
@@ -63,13 +62,13 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['buy_pass'])) {
                         send_telegram_alert($order_id, "Agent Pass Upgrade: " . $pass['name'], $pass['price'], $_SESSION['user_name']);
                     }
                     
-                    $success = "Upgrade requested! Admin will verify your payment and activate your pass shortly.";
+                    $success = "Upgrade sequence initiated! Admin will verify your transfer and authorize access shortly.";
                     
                 } catch (PDOException $e) {
                     $error = "System error processing request: " . $e->getMessage();
                 }
             } else {
-                $error = "Failed to upload proof. Check folder permissions.";
+                $error = "Failed to upload proof. Check directory permissions.";
             }
         } else {
             $error = "Invalid file type. Only images allowed.";
@@ -105,15 +104,10 @@ $user_data = $stmt->fetch();
 
 $ref_link = $user_data['referral_code'] ? BASE_URL . "index.php?module=auth&page=register&ref=" . $user_data['referral_code'] : null;
 
-// Calculate Estimated Total Savings (Mock metric for engagement based on active orders)
+// Calculate Estimated Total Savings
 $total_orders_stmt = $pdo->prepare("SELECT SUM(price - total_price_paid) FROM orders o JOIN products p ON o.product_id = p.id WHERE o.user_id = ? AND o.status = 'active'");
 $total_orders_stmt->execute([$user_id]);
 $total_savings = $total_orders_stmt->fetchColumn() ?: 0;
-
-// Get Active Referrals Count
-$referrals_stmt = $pdo->prepare("SELECT COUNT(*) FROM users WHERE referred_by = ?");
-$referrals_stmt->execute([$user_id]);
-$referral_count = $referrals_stmt->fetchColumn() ?: 0;
 
 ?>
 
@@ -249,7 +243,6 @@ $referral_count = $referrals_stmt->fetchColumn() ?: 0;
                 
                 <div class="relative bg-slate-900/90 backdrop-blur-xl p-6 sm:p-8 rounded-3xl border border-yellow-500/30 flex flex-col h-full shadow-2xl overflow-hidden">
                     
-                    <!-- Decorative Background -->
                     <div class="absolute -right-10 -top-10 w-32 h-32 bg-yellow-500/10 rounded-full blur-3xl pointer-events-none"></div>
 
                     <?php if($isUpgrade && !$isActive): ?>
@@ -307,7 +300,7 @@ $referral_count = $referrals_stmt->fetchColumn() ?: 0;
 </div>
 
 <!-- ===================================================================================== -->
-<!-- PASS CHECKOUT MODAL (Responsive Mobile Scrolling)                                     -->
+<!-- PASS CHECKOUT MODAL (Interactive Session Timer & Nodes)                               -->
 <!-- ===================================================================================== -->
 <div id="checkoutModal" class="fixed inset-0 z-[100] hidden items-center justify-center p-3 sm:p-4">
     <!-- Backdrop -->
@@ -325,9 +318,18 @@ $referral_count = $referrals_stmt->fetchColumn() ?: 0;
                 </h3>
                 <p class="text-[10px] sm:text-xs text-slate-400 mt-1 font-medium tracking-wide" id="modalPassName">Loading...</p>
             </div>
-            <button onclick="closeCheckoutModal()" class="text-slate-400 hover:text-white bg-slate-800 hover:bg-slate-700 w-8 h-8 sm:w-10 sm:h-10 rounded-full flex items-center justify-center transition relative z-10 border border-slate-600">
-                <i class="fas fa-times"></i>
-            </button>
+            
+            <div class="flex items-center gap-4 relative z-10">
+                 <!-- 5 Minute Session Timer (Hidden initially) -->
+                 <div id="sessionTimerContainer" class="hidden bg-red-900/20 border border-red-500/50 px-3 py-1.5 rounded-lg items-center gap-2 shadow-inner">
+                    <i class="fas fa-stopwatch text-red-500 animate-pulse"></i>
+                    <span id="sessionTimer" class="font-mono text-red-400 font-bold text-sm tracking-widest">05:00</span>
+                </div>
+
+                <button onclick="closeCheckoutModal()" class="text-slate-400 hover:text-white bg-slate-900 hover:bg-slate-700 w-8 h-8 sm:w-10 sm:h-10 rounded-full flex items-center justify-center transition border border-slate-600">
+                    <i class="fas fa-times"></i>
+                </button>
+            </div>
         </div>
 
         <!-- Scrollable Form Body -->
@@ -342,41 +344,48 @@ $referral_count = $referrals_stmt->fetchColumn() ?: 0;
                 <span class="text-2xl sm:text-3xl font-black text-yellow-400 tracking-tight drop-shadow-[0_0_10px_rgba(234,179,8,0.3)]" id="modalPassPrice">0 Ks</span>
             </div>
 
-            <!-- Payment Methods Grid -->
-            <div>
-                <label class="block text-[10px] font-black text-slate-500 uppercase tracking-widest mb-3">1. Transfer Funds To</label>
-                <div class="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4">
+            <!-- Payment Nodes Grid -->
+            <div class="mb-8">
+                <label class="block text-[10px] font-black text-slate-500 uppercase tracking-widest mb-3">1. Select Payment Node</label>
+                <div class="grid grid-cols-2 gap-3 sm:gap-4" id="paymentNodesGrid">
                     <?php foreach($payment_methods as $pm): ?>
-                        <div class="bg-slate-800/50 border border-slate-700 p-4 rounded-2xl relative overflow-hidden group hover:border-[#00f0ff]/30 transition-colors">
-                            <div class="absolute top-0 right-0 w-16 h-16 bg-blue-500/5 rounded-full blur-xl pointer-events-none"></div>
-                            <div class="flex items-center gap-3 mb-2 relative z-10">
-                                <div class="w-8 h-8 rounded-lg bg-slate-900 border border-slate-700 flex items-center justify-center shrink-0">
-                                    <i class="<?php echo $pm['logo_class']; ?> text-[#00f0ff] text-sm"></i>
+                        <div class="payment-node cursor-pointer bg-slate-800/50 border border-slate-700 p-4 rounded-2xl relative overflow-hidden transition-all group"
+                             onclick="selectPaymentNode(<?php echo htmlspecialchars(json_encode($pm)); ?>, this)">
+                            <div class="flex items-center gap-3 relative z-10">
+                                <div class="w-8 h-8 rounded-lg bg-slate-900 border border-slate-700 flex items-center justify-center shrink-0 group-hover:border-[#00f0ff]/50 transition-colors node-icon-box">
+                                    <i class="<?php echo $pm['logo_class']; ?> text-slate-500 group-hover:text-[#00f0ff] text-sm transition-colors node-icon"></i>
                                 </div>
-                                <span class="font-bold text-white text-sm tracking-wide"><?php echo htmlspecialchars($pm['bank_name']); ?></span>
-                            </div>
-                            <div class="relative z-10 bg-slate-900/50 p-2.5 rounded-xl border border-slate-700/50 mt-3">
-                                <p class="text-[10px] text-slate-400 uppercase font-bold tracking-wider mb-1 truncate"><?php echo htmlspecialchars($pm['account_name']); ?></p>
-                                <div class="flex items-center justify-between gap-2">
-                                    <code class="text-sm sm:text-base font-mono font-bold text-green-400 select-all truncate"><?php echo htmlspecialchars($pm['account_number']); ?></code>
-                                    <button type="button" onclick="navigator.clipboard.writeText('<?php echo addslashes($pm['account_number']); ?>'); this.innerHTML='<i class=\'fas fa-check\'></i>'; setTimeout(()=>this.innerHTML='<i class=\'fas fa-copy\'></i>', 2000);" class="text-slate-500 hover:text-white bg-slate-800 p-1.5 rounded-lg transition shrink-0">
-                                        <i class="fas fa-copy text-xs"></i>
-                                    </button>
-                                </div>
+                                <span class="font-bold text-slate-300 group-hover:text-white text-sm tracking-wide transition-colors node-text"><?php echo htmlspecialchars($pm['bank_name']); ?></span>
                             </div>
                         </div>
                     <?php endforeach; ?>
                 </div>
+
+                <!-- Hidden Details Panel (Revealed on click) -->
+                <div id="paymentDetailsPanel" class="hidden bg-slate-900/80 border border-yellow-500/30 rounded-2xl p-4 sm:p-5 mt-4 relative overflow-hidden animate-fade-in-down shadow-[0_0_15px_rgba(234,179,8,0.05)]">
+                    <div class="absolute right-0 top-0 w-32 h-32 bg-yellow-500/10 rounded-full blur-3xl pointer-events-none"></div>
+                    
+                    <p class="text-[10px] text-slate-400 uppercase font-bold tracking-wider mb-1 truncate">Receiver: <span class="text-white" id="nodeAccountName">...</span></p>
+                    <div class="flex items-center justify-between gap-2 bg-black/40 p-2 sm:p-3 rounded-xl border border-slate-700/50">
+                        <code class="text-base sm:text-xl font-mono font-bold text-green-400 select-all truncate" id="nodeAccountNumber">...</code>
+                        <button type="button" onclick="navigator.clipboard.writeText(document.getElementById('nodeAccountNumber').innerText); this.innerHTML='<i class=\'fas fa-check text-green-400\'></i>'; setTimeout(()=>this.innerHTML='<i class=\'fas fa-copy\'></i>', 2000);" class="text-slate-500 hover:text-white bg-slate-800 p-2 rounded-lg transition shrink-0 border border-slate-700 shadow-sm">
+                            <i class="fas fa-copy"></i>
+                        </button>
+                    </div>
+                </div>
             </div>
 
-            <!-- Verification Inputs -->
-            <div class="bg-slate-800/40 border border-slate-700/50 p-5 rounded-2xl space-y-5">
+            <!-- Verification Inputs (Locked until Node is selected) -->
+            <div id="verificationContainer" class="bg-slate-800/40 border border-slate-700/50 p-5 rounded-2xl space-y-5 opacity-50 pointer-events-none transition-all duration-300">
                 <label class="block text-[10px] font-black text-slate-500 uppercase tracking-widest border-b border-slate-700 pb-2 mb-4">2. Submit Verification</label>
                 
                 <div>
                     <label class="block text-xs font-bold text-slate-400 mb-2">Last 6 Digits of Transaction ID</label>
-                    <input type="text" name="txn_id" placeholder="e.g. 123456" required maxlength="6" pattern="\d{6}"
-                           class="w-full bg-slate-900 border border-slate-600 rounded-xl p-4 text-white font-mono tracking-widest text-center text-lg focus:border-yellow-500 focus:ring-1 focus:ring-yellow-500 outline-none transition shadow-inner">
+                    <div class="relative">
+                        <i class="fas fa-hashtag absolute left-4 top-1/2 transform -translate-y-1/2 text-slate-500"></i>
+                        <input type="text" name="txn_id" placeholder="123456" required maxlength="6" pattern="\d{6}"
+                               class="w-full bg-slate-900 border border-slate-600 rounded-xl p-4 pl-10 text-white font-mono tracking-[0.5em] text-lg focus:border-yellow-500 focus:ring-1 focus:ring-yellow-500 outline-none transition shadow-inner">
+                    </div>
                 </div>
 
                 <div>
@@ -391,8 +400,8 @@ $referral_count = $referrals_stmt->fetchColumn() ?: 0;
             </div>
 
             <div class="pt-2 pb-4">
-                <button type="submit" class="w-full bg-gradient-to-r from-blue-600 to-[#00f0ff] hover:from-blue-500 hover:to-[#00f0ff] text-slate-900 font-black py-4 rounded-xl text-sm uppercase tracking-wider shadow-[0_0_20px_rgba(0,240,255,0.3)] transform transition active:scale-[0.98] flex items-center justify-center gap-2">
-                    <i class="fas fa-lock"></i> Initialize Secure Checkout
+                <button type="submit" id="submitBtn" disabled class="w-full bg-slate-800 border border-slate-700 text-slate-500 font-black py-4 rounded-xl text-sm uppercase tracking-wider shadow-inner transition duration-300 cursor-not-allowed flex items-center justify-center gap-2">
+                    <i class="fas fa-lock"></i> Awaiting Transfer
                 </button>
                 <p class="text-center text-[9px] sm:text-[10px] text-slate-500 mt-4 flex items-center justify-center gap-1.5 font-medium">
                     <i class="fas fa-shield-alt text-red-400"></i> Payments are manually verified. Fraud results in a ban.
@@ -403,7 +412,91 @@ $referral_count = $referrals_stmt->fetchColumn() ?: 0;
 </div>
 
 <script>
-    // Modal Logic with Body Scroll Lock
+    // Global Timer Vars
+    let sessionTimer;
+    let timeLeft = 300; // 5 minutes
+
+    // UI Elements
+    const verificationContainer = document.getElementById('verificationContainer');
+    const submitBtn = document.getElementById('submitBtn');
+    const timerContainer = document.getElementById('sessionTimerContainer');
+    const timerDisplay = document.getElementById('sessionTimer');
+    const paymentNodes = document.querySelectorAll('.payment-node');
+    const detailsPanel = document.getElementById('paymentDetailsPanel');
+
+    // Select Payment Node Logic
+    function selectPaymentNode(data, element) {
+        // Reset all nodes
+        paymentNodes.forEach(node => {
+            node.classList.remove('border-yellow-500', 'bg-yellow-500/10', 'shadow-[0_0_15px_rgba(234,179,8,0.15)]');
+            node.classList.add('border-slate-700', 'bg-slate-800/50');
+            node.querySelector('.node-icon').classList.remove('text-yellow-400');
+            node.querySelector('.node-icon').classList.add('text-slate-500');
+            node.querySelector('.node-text').classList.remove('text-yellow-400');
+            node.querySelector('.node-text').classList.add('text-slate-300');
+            node.querySelector('.node-icon-box').classList.remove('border-yellow-500/50');
+            node.querySelector('.node-icon-box').classList.add('border-slate-700');
+        });
+
+        // Activate selected node (Using Yellow styling for Agent theme)
+        element.classList.remove('border-slate-700', 'bg-slate-800/50');
+        element.classList.add('border-yellow-500', 'bg-yellow-500/10', 'shadow-[0_0_15px_rgba(234,179,8,0.15)]');
+        element.querySelector('.node-icon').classList.remove('text-slate-500');
+        element.querySelector('.node-icon').classList.add('text-yellow-400');
+        element.querySelector('.node-text').classList.remove('text-slate-300');
+        element.querySelector('.node-text').classList.add('text-yellow-400');
+        element.querySelector('.node-icon-box').classList.remove('border-slate-700');
+        element.querySelector('.node-icon-box').classList.add('border-yellow-500/50');
+
+        // Populate and show details
+        document.getElementById('nodeAccountName').innerText = data.account_name;
+        document.getElementById('nodeAccountNumber').innerText = data.account_number;
+        detailsPanel.classList.remove('hidden');
+
+        // Unlock Step 2
+        verificationContainer.classList.remove('opacity-50', 'pointer-events-none');
+        
+        // Unlock Submit Button
+        submitBtn.disabled = false;
+        submitBtn.classList.remove('bg-slate-800', 'border-slate-700', 'text-slate-500', 'cursor-not-allowed', 'shadow-inner');
+        submitBtn.classList.add('bg-gradient-to-r', 'from-blue-600', 'to-[#00f0ff]', 'hover:from-blue-500', 'hover:to-[#00f0ff]', 'text-slate-900', 'shadow-[0_0_20px_rgba(0,240,255,0.3)]', 'transform', 'active:scale-[0.98]');
+        submitBtn.innerHTML = '<i class="fas fa-satellite-dish"></i> Execute Upgrade Protocol';
+
+        // Start 5 min session timer
+        startSessionTimer();
+    }
+
+    function startSessionTimer() {
+        clearInterval(sessionTimer);
+        timeLeft = 300;
+        
+        timerContainer.classList.remove('hidden');
+        timerContainer.classList.add('flex');
+        timerDisplay.classList.remove('text-red-500', 'scale-110');
+        timerDisplay.classList.add('text-red-400');
+
+        sessionTimer = setInterval(() => {
+            if(timeLeft <= 0) {
+                clearInterval(sessionTimer);
+                alert("Secure session expired. Please refresh the matrix.");
+                window.location.reload();
+                return;
+            }
+            
+            let m = Math.floor(timeLeft / 60);
+            let s = timeLeft % 60;
+            timerDisplay.innerText = `${m < 10 ? '0' : ''}${m}:${s < 10 ? '0' : ''}${s}`;
+            
+            // Visual warning at 60s
+            if(timeLeft <= 60) {
+                timerDisplay.classList.remove('text-red-400');
+                timerDisplay.classList.add('text-red-500', 'scale-110', 'transition-transform');
+            }
+            timeLeft--;
+        }, 1000);
+    }
+
+    // Modal Logic
     function openCheckoutModal(id, name, price) {
         document.getElementById('modalPassId').value = id;
         document.getElementById('modalPassName').innerText = name + ' Protocol';
@@ -414,9 +507,8 @@ $referral_count = $referrals_stmt->fetchColumn() ?: 0;
         
         modal.classList.remove('hidden');
         modal.classList.add('flex');
-        document.body.style.overflow = 'hidden'; // Lock background scrolling
+        document.body.style.overflow = 'hidden';
         
-        // Small delay for animation
         setTimeout(() => {
             content.classList.remove('scale-95', 'opacity-0');
             content.classList.add('scale-100', 'opacity-100');
@@ -433,11 +525,16 @@ $referral_count = $referrals_stmt->fetchColumn() ?: 0;
         setTimeout(() => {
             modal.classList.add('hidden');
             modal.classList.remove('flex');
-            document.body.style.overflow = ''; // Restore background scrolling
+            document.body.style.overflow = '';
+            
+            // Reset state if they cancel
+            clearInterval(sessionTimer);
+            timerContainer.classList.remove('flex');
+            timerContainer.classList.add('hidden');
         }, 300);
     }
 
-    // File Upload UI Update
+    // File Upload UI
     const proofInput = document.getElementById('proofInput');
     const fileNameDisplay = document.getElementById('fileNameDisplay');
     const uploadWrapper = document.getElementById('uploadWrapper');
@@ -448,7 +545,6 @@ $referral_count = $referrals_stmt->fetchColumn() ?: 0;
                 fileNameDisplay.innerHTML = `<span class="text-green-400 flex items-center justify-center gap-2 font-black tracking-wide"><i class="fas fa-check-circle"></i> ${this.files[0].name}</span>`;
                 uploadWrapper.classList.add('border-green-500/50', 'bg-green-500/10');
             } else {
-                // Reset if user cancels file selection
                 fileNameDisplay.innerHTML = `Tap to browse or drag file`;
                 uploadWrapper.classList.remove('border-green-500/50', 'bg-green-500/10');
             }
