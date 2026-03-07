@@ -1,6 +1,6 @@
 <?php
 // modules/user/orders.php
-// PRODUCTION DEPLOYMENT v3.2 - Decoupled DB Architecture Safe Joins
+// PRODUCTION DEPLOYMENT v3.3 - Decoupled DB Architecture Safe Joins & UI Polishing
 
 if (!is_logged_in()) redirect('index.php?module=auth&page=login');
 
@@ -98,10 +98,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['message']) && !isset(
 // =====================================================================================
 
 // Fetch All Orders for Sidebar
-// FIX: Safe LEFT JOIN to prevent Pass Orders from disappearing due to NULL product_id
+// FIX: Using COALESCE to gracefully fallback to the Pass name if product is NULL
 $stmt = $pdo->prepare("
-    SELECT o.id, o.status, o.total_price_paid, o.created_at, 
-           COALESCE(p.name, CONCAT('Agent Tier: ', ps.name)) as name, 
+    SELECT o.id, o.status, o.total_price_paid, o.created_at, o.pass_id,
+           COALESCE(p.name, ps.name) as name, 
            p.image_path, c.image_url as cat_image
     FROM orders o 
     LEFT JOIN products p ON o.product_id = p.id 
@@ -124,7 +124,7 @@ $active_order = null;
 if ($active_chat_id) {
     $stmt = $pdo->prepare("
         SELECT o.*, 
-               COALESCE(p.name, CONCAT('Agent Tier: ', ps.name)) as name, 
+               COALESCE(p.name, ps.name) as name, 
                COALESCE(p.delivery_type, 'universal') as delivery_type, 
                p.universal_content, p.id as product_id
         FROM orders o 
@@ -166,6 +166,7 @@ $main_display = $active_chat_id ? 'flex' : 'hidden md:flex';
             <?php else: ?>
                 <?php foreach($ordersList as $ord): 
                     $isActive = ($ord['id'] == $active_chat_id);
+                    $isPass = !empty($ord['pass_id']);
                     $statusColor = match($ord['status']) {
                         'completed', 'active' => 'text-green-400 bg-green-500/10 border-green-500/20',
                         'pending' => 'text-yellow-400 bg-yellow-500/10 border-yellow-500/20',
@@ -177,11 +178,21 @@ $main_display = $active_chat_id ? 'flex' : 'hidden md:flex';
                    id="order-item-<?php echo $ord['id']; ?>"
                    onclick="switchOrder(event, <?php echo $ord['id']; ?>)"
                    class="order-sidebar-item block p-4 rounded-xl border transition-all duration-300 group <?php echo $isActive ? 'bg-slate-800/80 border-[#00f0ff]/50 shadow-[0_0_15px_rgba(0,240,255,0.05)]' : 'bg-slate-900/50 border-slate-800 hover:border-slate-600 hover:bg-slate-800/50'; ?>">
+                    
                     <div class="flex justify-between items-start mb-2">
-                        <span class="order-id-span text-xs font-mono <?php echo $isActive ? 'text-[#00f0ff]' : 'text-slate-500 group-hover:text-slate-300'; ?>">#<?php echo $ord['id']; ?></span>
+                        <div class="flex items-center gap-2">
+                            <span class="order-id-span text-xs font-mono <?php echo $isActive ? 'text-[#00f0ff]' : 'text-slate-500 group-hover:text-slate-300'; ?>">#<?php echo $ord['id']; ?></span>
+                            <?php if($isPass): ?>
+                                <span class="text-[8px] bg-yellow-500/20 text-yellow-500 px-1.5 py-0.5 rounded border border-yellow-500/30 uppercase font-black"><i class="fas fa-crown"></i> Pass</span>
+                            <?php endif; ?>
+                        </div>
                         <span class="text-[9px] font-bold uppercase px-2 py-0.5 rounded border tracking-wider <?php echo $statusColor; ?>"><?php echo $ord['status']; ?></span>
                     </div>
-                    <div class="text-sm font-bold text-white truncate group-hover:text-[#00f0ff] transition"><?php echo htmlspecialchars($ord['name']); ?></div>
+                    
+                    <div class="text-sm font-bold text-white truncate <?php echo $isPass ? 'text-yellow-400 group-hover:text-yellow-300' : 'group-hover:text-[#00f0ff]'; ?> transition">
+                        <?php echo htmlspecialchars($ord['name']); ?>
+                    </div>
+                    
                     <div class="flex justify-between items-center mt-2 text-xs text-slate-500">
                         <span><?php echo date('M d', strtotime($ord['created_at'])); ?></span>
                         <span class="font-mono font-medium text-slate-300"><?php echo number_format($ord['total_price_paid']); ?> Ks</span>
@@ -209,6 +220,8 @@ $main_display = $active_chat_id ? 'flex' : 'hidden md:flex';
             </div>
         <?php else: ?>
             
+            <?php $isActivePass = !empty($active_order['pass_id']); ?>
+
             <!-- Order Header -->
             <div class="p-5 border-b border-slate-700/50 bg-slate-800/80 backdrop-blur shrink-0 flex flex-col z-20 shadow-sm relative">
                 <button onclick="showMobileSidebar()" class="md:hidden text-slate-400 hover:text-white text-xs mb-3 flex items-center gap-2 w-max bg-slate-900 px-3 py-1.5 rounded-lg border border-slate-700 transition">
@@ -216,8 +229,17 @@ $main_display = $active_chat_id ? 'flex' : 'hidden md:flex';
                 </button>
 
                 <div class="flex justify-between items-start md:items-center">
-                    <div class="min-w-0 pr-4">
-                        <h2 class="text-lg md:text-xl font-bold text-white truncate leading-tight"><?php echo htmlspecialchars($active_order['name']); ?></h2>
+                    <div class="min-w-0 pr-4 flex-1">
+                        <?php if($isActivePass): ?>
+                            <span class="inline-flex items-center gap-1.5 text-[9px] font-black text-yellow-500 uppercase tracking-widest mb-1.5 bg-yellow-500/10 px-2 py-0.5 rounded border border-yellow-500/20">
+                                <i class="fas fa-crown"></i> Agent Upgrade Protocol
+                            </span>
+                        <?php endif; ?>
+                        
+                        <h2 class="text-lg md:text-xl font-bold <?php echo $isActivePass ? 'text-yellow-400' : 'text-white'; ?> truncate leading-tight">
+                            <?php echo htmlspecialchars($active_order['name']); ?>
+                        </h2>
+                        
                         <div class="flex items-center gap-3 mt-1.5">
                             <span class="text-xs text-[#00f0ff] font-mono bg-[#00f0ff]/10 px-2 py-0.5 rounded border border-[#00f0ff]/20">#<?php echo $active_order['id']; ?></span>
                             <span class="text-xs text-slate-400"><i class="far fa-clock"></i> <?php echo date('M d, Y', strtotime($active_order['created_at'])); ?></span>
@@ -270,7 +292,7 @@ $main_display = $active_chat_id ? 'flex' : 'hidden md:flex';
             <?php endif; ?>
 
             <!-- AUTO-DELIVERY CONTENT BOX -->
-            <?php if($active_order['delivery_type'] == 'universal' && in_array($active_order['status'], ['active', 'completed'])): ?>
+            <?php if($active_order['delivery_type'] == 'universal' && in_array($active_order['status'], ['active', 'completed']) && !empty($active_order['universal_content'])): ?>
                 <div class="bg-blue-900/10 border-b border-[#00f0ff]/30 p-5 shrink-0 relative overflow-hidden z-10">
                     <div class="absolute inset-0 bg-[url('data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iNDAiIGhlaWdodD0iNDAiIHhtbG5zPSJodHRwOi8vd3d3LnczLm9yZy8yMDAwL3N2ZyI+PGRlZnM+PHBhdHRlcm4gaWQ9ImdyaWQiIHdpZHRoPSI0MCIgaGVpZ2h0PSI0MCIgcGF0dGVyblVuaXRzPSJ1c2VyU3BhY2VPblVzZSI+PHBhdGggZD0iTSAwIDEwIEwgNDAgMTAgTSAxMCAwIEwgMTAgNDAiIGZpbGw9Im5vbmUiIHN0cm9rZT0icmdiYSgwLCAyNDAsIDI1NSwgMC4wNSkiIHN0cm9rZS13aWR0aD0iMSIvPjwvcGF0dGVybj48L2RlZnM+PHJlY3Qgd2lkdGg9IjEwMCUiIGhlaWdodD0iMTAwJSIgZmlsbD0idXJsKCNncmlkKSIvPjwvc3ZnPg==')] opacity-50"></div>
                     
@@ -300,9 +322,15 @@ $main_display = $active_chat_id ? 'flex' : 'hidden md:flex';
                     <p class="text-slate-400 text-sm max-w-sm mb-8 relative z-10 leading-relaxed">
                         Payment verification failed or submitted details were incorrect. The secure channel has been closed.
                     </p>
-                    <a href="index.php?module=shop&page=checkout&id=<?php echo $active_order['product_id']; ?>" class="bg-gradient-to-r from-red-600 to-red-500 hover:from-red-500 hover:to-red-400 text-white px-8 py-3.5 rounded-xl font-bold shadow-[0_0_20px_rgba(239,68,68,0.3)] transition transform hover:-translate-y-1 relative z-10 flex items-center gap-2">
-                        <i class="fas fa-redo"></i> Initialize New Request
-                    </a>
+                    <?php if($isActivePass): ?>
+                        <a href="index.php?module=user&page=agent" class="bg-gradient-to-r from-red-600 to-red-500 hover:from-red-500 hover:to-red-400 text-white px-8 py-3.5 rounded-xl font-bold shadow-[0_0_20px_rgba(239,68,68,0.3)] transition transform hover:-translate-y-1 relative z-10 flex items-center gap-2">
+                            <i class="fas fa-redo"></i> Initialize New Request
+                        </a>
+                    <?php else: ?>
+                        <a href="index.php?module=shop&page=checkout&id=<?php echo $active_order['product_id']; ?>" class="bg-gradient-to-r from-red-600 to-red-500 hover:from-red-500 hover:to-red-400 text-white px-8 py-3.5 rounded-xl font-bold shadow-[0_0_20px_rgba(239,68,68,0.3)] transition transform hover:-translate-y-1 relative z-10 flex items-center gap-2">
+                            <i class="fas fa-redo"></i> Initialize New Request
+                        </a>
+                    <?php endif; ?>
                 </div>
             <?php else: ?>
                 <!-- LIVE CHAT AREA -->
@@ -516,6 +544,3 @@ $main_display = $active_chat_id ? 'flex' : 'hidden md:flex';
         }
     });
 </script>
-<?php
-// End of file
-?>
