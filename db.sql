@@ -191,3 +191,11 @@ CREATE TABLE email_logs (
     status ENUM('sent', 'failed') DEFAULT 'sent',
     sent_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
+
+-- Fix the products table to support emojis
+ALTER TABLE products CONVERT TO CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
+
+-- Ensure specific text columns are utf8mb4
+ALTER TABLE products MODIFY description TEXT CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci DEFAULT NULL;
+ALTER TABLE products MODIFY user_instruction TEXT CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci DEFAULT NULL;
+ALTER TABLE products MODIFY universal_content TEXT CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci DEFAULT NULL;
