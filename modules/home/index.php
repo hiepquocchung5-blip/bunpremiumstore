@@ -413,7 +413,7 @@ $display_orders = max($total_orders_count, 8500);
 </div>
 
 <!-- Floating Live Purchase Toast (Gemini Social Proof Feature) -->
-<div id="livePurchaseToast" class="fixed bottom-24 left-4 md:bottom-8 md:left-8 z-50 hidden max-w-xs">
+<!-- <div id="livePurchaseToast" class="fixed bottom-24 left-4 md:bottom-8 md:left-8 z-50 hidden max-w-xs">
     <div class="bg-slate-900/95 backdrop-blur-xl border border-[#00f0ff]/40 p-3 rounded-2xl shadow-[0_10px_40px_rgba(0,240,255,0.2)] flex items-center gap-4 relative overflow-hidden">
         <div class="absolute top-0 left-0 w-1 h-full bg-gradient-to-b from-[#00f0ff] to-blue-600"></div>
         <div class="w-10 h-10 bg-[#00f0ff]/10 rounded-xl flex items-center justify-center text-[#00f0ff] shrink-0 border border-[#00f0ff]/20">
@@ -425,7 +425,7 @@ $display_orders = max($total_orders_count, 8500);
             <p class="text-[9px] text-slate-500 font-mono mt-1" id="toastTime">Just now</p>
         </div>
     </div>
-</div>
+</div> -->
 
 <!-- SCRIPTS: Sliders & Popups -->
 <script>
