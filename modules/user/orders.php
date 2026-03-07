@@ -1,28 +1,49 @@
 <?php
 // modules/user/orders.php
-// PRODUCTION DEPLOYMENT v2.1 - Fully Mobile Responsive & Math Fix
+// PRODUCTION DEPLOYMENT v3.1 - AJAX SPA Navigation & SQL Image Fix
 
 if (!is_logged_in()) redirect('index.php?module=auth&page=login');
 
 $user_id = $_SESSION['user_id'];
-// Set active chat ID from GET, or 0 if none
 $active_chat_id = isset($_GET['view_chat']) ? (int)$_GET['view_chat'] : 0;
 
 // =====================================================================================
-// 1. AJAX ENDPOINT FOR LIVE CHAT POLLING
+// 1. AJAX ENDPOINTS (Polling & Message Sending)
 // =====================================================================================
-if (isset($_GET['ajax']) && $_GET['ajax'] == 1 && $active_chat_id > 0) {
-    // FIX: Clear the output buffer to remove the site header that was already loaded by index.php
-    if (ob_get_length()) {
-        ob_clean();
-    }
 
-    // Prevent AJAX caching for real-time updates
+// A. Handle Incoming Chat Message (AJAX POST)
+if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['ajax_msg'])) {
+    if (ob_get_length()) ob_clean();
+    header('Content-Type: application/json');
+    
+    if (hash_equals($_SESSION['csrf_token'], $_POST['csrf_token'])) {
+        $msg = trim($_POST['message']);
+        $oid = (int)$_POST['order_id'];
+        
+        $stmt = $pdo->prepare("SELECT status FROM orders WHERE id = ? AND user_id = ?");
+        $stmt->execute([$oid, $user_id]);
+        $order_check = $stmt->fetch();
+        
+        if ($order_check && $msg !== '' && $order_check['status'] !== 'rejected') {
+            try {
+                $pdo->exec("SET NAMES 'utf8mb4'");
+                $stmt = $pdo->prepare("INSERT INTO order_messages (order_id, sender_type, message) VALUES (?, 'user', ?)");
+                $stmt->execute([$oid, $msg]);
+                echo json_encode(['success' => true]);
+                exit;
+            } catch (Exception $e) {}
+        }
+    }
+    echo json_encode(['success' => false]);
+    exit;
+}
+
+// B. Handle Live Chat Polling (AJAX GET)
+if (isset($_GET['ajax']) && $_GET['ajax'] == 1 && $active_chat_id > 0) {
+    if (ob_get_length()) ob_clean();
     header("Cache-Control: no-store, no-cache, must-revalidate, max-age=0");
-    header("Cache-Control: post-check=0, pre-check=0", false);
     header("Pragma: no-cache");
 
-    // Verify ownership
     $stmt = $pdo->prepare("SELECT id FROM orders WHERE id = ? AND user_id = ?");
     $stmt->execute([$active_chat_id, $user_id]);
     if (!$stmt->fetch()) { http_response_code(403); exit; }
@@ -54,41 +75,32 @@ if (isset($_GET['ajax']) && $_GET['ajax'] == 1 && $active_chat_id > 0) {
         echo "<span class='text-[10px] text-slate-500 mt-1.5 px-1 font-medium'>{$time}</span>";
         echo "</div></div>";
     }
-    // Stop script execution so the footer isn't loaded either
     exit;
 }
 
-// =====================================================================================
-// 2. NORMAL PAGE LOAD LOGIC
-// =====================================================================================
-
-// Handle New Message Submission
-if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['message'])) {
+// C. Fallback Standard POST (If JS is disabled)
+if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['message']) && !isset($_POST['ajax_msg'])) {
     if (hash_equals($_SESSION['csrf_token'], $_POST['csrf_token'])) {
         $msg = trim($_POST['message']);
         $oid = (int)$_POST['order_id'];
-        
-        // Verify Ownership & Status
         $stmt = $pdo->prepare("SELECT status FROM orders WHERE id = ? AND user_id = ?");
         $stmt->execute([$oid, $user_id]);
-        $order_check = $stmt->fetch();
-        
-        // Only allow messaging if not rejected
-        if ($order_check && $msg !== '' && $order_check['status'] !== 'rejected') {
-            try {
-                $pdo->exec("SET NAMES 'utf8mb4'"); // Support emojis
-                $stmt = $pdo->prepare("INSERT INTO order_messages (order_id, sender_type, message) VALUES (?, 'user', ?)");
-                $stmt->execute([$oid, $msg]);
-            } catch (Exception $e) {}
-            redirect("index.php?module=user&page=orders&view_chat=" . $oid);
+        if ($stmt->fetch() && $msg !== '') {
+            $pdo->exec("SET NAMES 'utf8mb4'");
+            $pdo->prepare("INSERT INTO order_messages (order_id, sender_type, message) VALUES (?, 'user', ?)")->execute([$oid, $msg]);
         }
+        redirect("index.php?module=user&page=orders&view_chat=" . $oid);
     }
 }
 
+// =====================================================================================
+// 2. NORMAL PAGE LOAD & UI RENDER
+// =====================================================================================
+
 // Fetch All Orders for Sidebar
-// FIX: Ensure total_price_paid is selected to reflect the actual paid amount
+// FIX: Using c.image_url instead of c.icon_class
 $stmt = $pdo->prepare("
-    SELECT o.id, o.status, o.total_price_paid, o.created_at, p.name, p.image_path, c.icon_class
+    SELECT o.id, o.status, o.total_price_paid, o.created_at, p.name, p.image_path, c.image_url as cat_image
     FROM orders o 
     JOIN products p ON o.product_id = p.id 
     LEFT JOIN categories c ON p.category_id = c.id
@@ -99,7 +111,6 @@ $stmt->execute([$user_id]);
 $ordersList = $stmt->fetchAll();
 
 // Default to latest order if none selected AND user is on desktop
-// On mobile, we prefer showing the list first if no chat is explicitly selected.
 $is_mobile = preg_match("/(android|avantgo|blackberry|bolt|boost|cricket|docomo|fone|hiptop|mini|mobi|palm|phone|pie|tablet|up\.browser|up\.link|webos|wos)/i", $_SERVER["HTTP_USER_AGENT"]);
 if (!$active_chat_id && count($ordersList) > 0 && !$is_mobile) {
     $active_chat_id = $ordersList[0]['id'];
@@ -128,7 +139,7 @@ $main_display = $active_chat_id ? 'flex' : 'hidden md:flex';
     <!-- ========================================== -->
     <!-- LEFT SIDEBAR: Order List                   -->
     <!-- ========================================== -->
-    <div class="w-full md:w-1/3 lg:w-1/4 flex-col bg-slate-900/80 backdrop-blur-xl border border-slate-700/50 rounded-2xl shadow-xl overflow-hidden shrink-0 h-full <?php echo $sidebar_display; ?>">
+    <div id="left-sidebar" class="w-full md:w-1/3 lg:w-1/4 flex-col bg-slate-900/80 backdrop-blur-xl border border-slate-700/50 rounded-2xl shadow-xl overflow-hidden shrink-0 h-full <?php echo $sidebar_display; ?>">
         <div class="p-5 border-b border-slate-700/50 bg-slate-800/30 shrink-0 flex justify-between items-center">
             <h2 class="text-lg font-bold text-white flex items-center gap-2">
                 <i class="fas fa-history text-[#00f0ff]"></i> My Orders
@@ -156,15 +167,16 @@ $main_display = $active_chat_id ? 'flex' : 'hidden md:flex';
                     };
                 ?>
                 <a href="index.php?module=user&page=orders&view_chat=<?php echo $ord['id']; ?>" 
-                   class="block p-4 rounded-xl border transition-all duration-300 group <?php echo $isActive ? 'bg-slate-800/80 border-[#00f0ff]/50 shadow-[0_0_15px_rgba(0,240,255,0.05)]' : 'bg-slate-900/50 border-slate-800 hover:border-slate-600 hover:bg-slate-800/50'; ?>">
+                   id="order-item-<?php echo $ord['id']; ?>"
+                   onclick="switchOrder(event, <?php echo $ord['id']; ?>)"
+                   class="order-sidebar-item block p-4 rounded-xl border transition-all duration-300 group <?php echo $isActive ? 'bg-slate-800/80 border-[#00f0ff]/50 shadow-[0_0_15px_rgba(0,240,255,0.05)]' : 'bg-slate-900/50 border-slate-800 hover:border-slate-600 hover:bg-slate-800/50'; ?>">
                     <div class="flex justify-between items-start mb-2">
-                        <span class="text-xs font-mono <?php echo $isActive ? 'text-[#00f0ff]' : 'text-slate-500 group-hover:text-slate-300'; ?>">#<?php echo $ord['id']; ?></span>
+                        <span class="order-id-span text-xs font-mono <?php echo $isActive ? 'text-[#00f0ff]' : 'text-slate-500 group-hover:text-slate-300'; ?>">#<?php echo $ord['id']; ?></span>
                         <span class="text-[9px] font-bold uppercase px-2 py-0.5 rounded border tracking-wider <?php echo $statusColor; ?>"><?php echo $ord['status']; ?></span>
                     </div>
-                    <div class="text-sm font-bold text-white truncate group-hover:text-blue-400 transition"><?php echo htmlspecialchars($ord['name']); ?></div>
+                    <div class="text-sm font-bold text-white truncate group-hover:text-[#00f0ff] transition"><?php echo htmlspecialchars($ord['name']); ?></div>
                     <div class="flex justify-between items-center mt-2 text-xs text-slate-500">
                         <span><?php echo date('M d', strtotime($ord['created_at'])); ?></span>
-                        <!-- FIX: Display total_price_paid to show the final discounted amount -->
                         <span class="font-mono font-medium text-slate-300"><?php echo number_format($ord['total_price_paid']); ?> Ks</span>
                     </div>
                 </a>
@@ -176,7 +188,7 @@ $main_display = $active_chat_id ? 'flex' : 'hidden md:flex';
     <!-- ========================================== -->
     <!-- RIGHT MAIN: Chat & Order Details           -->
     <!-- ========================================== -->
-    <div class="w-full md:w-2/3 lg:w-3/4 flex-col bg-slate-900/80 backdrop-blur-xl border border-slate-700/50 rounded-2xl shadow-xl overflow-hidden h-full relative <?php echo $main_display; ?>">
+    <div id="right-pane" class="w-full md:w-2/3 lg:w-3/4 flex-col bg-slate-900/80 backdrop-blur-xl border border-slate-700/50 rounded-2xl shadow-xl overflow-hidden h-full relative <?php echo $main_display; ?>">
         
         <?php if(!$active_order): ?>
             <!-- Empty State for Desktop -->
@@ -184,18 +196,17 @@ $main_display = $active_chat_id ? 'flex' : 'hidden md:flex';
                 <div class="absolute inset-0 bg-[url('data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iNDAiIGhlaWdodD0iNDAiIHhtbG5zPSJodHRwOi8vd3d3LnczLm9yZy8yMDAwL3N2ZyI+PGRlZnM+PHBhdHRlcm4gaWQ9ImdyaWQiIHdpZHRoPSI0MCIgaGVpZ2h0PSI0MCIgcGF0dGVyblVuaXRzPSJ1c2VyU3BhY2VPblVzZSI+PHBhdGggZD0iTSAwIDEwIEwgNDAgMTAgTSAxMCAwIEwgMTAgNDAiIGZpbGw9Im5vbmUiIHN0cm9rZT0icmdiYSgyNTUsIDI1NSwgMjU1LCAwLjAyKSIgc3Ryb2tlLXdpZHRoPSIxIi8+PC9wYXR0ZXJuPjwvZGVmcz48cmVjdCB3aWR0aD0iMTAwJSIgaGVpZ2h0PSIxMDAlIiBmaWxsPSJ1cmwoI2dyaWQpIi8+PC9zdmc+')] opacity-50"></div>
                 <div class="relative z-10 text-center">
                     <i class="fas fa-comments text-6xl mb-6 opacity-20 text-[#00f0ff]"></i>
-                    <p class="font-medium text-slate-300">Select an order from the list</p>
-                    <p class="text-sm mt-1">to view details and communicate with support.</p>
+                    <p class="font-medium text-slate-300">Select an order from the directory</p>
+                    <p class="text-sm mt-1">to initialize secure communications.</p>
                 </div>
             </div>
         <?php else: ?>
             
             <!-- Order Header -->
             <div class="p-5 border-b border-slate-700/50 bg-slate-800/80 backdrop-blur shrink-0 flex flex-col z-20 shadow-sm relative">
-                <!-- Mobile Back Button -->
-                <a href="index.php?module=user&page=orders" class="md:hidden text-slate-400 hover:text-white text-xs mb-3 flex items-center gap-2 w-max bg-slate-900 px-3 py-1.5 rounded-lg border border-slate-700">
-                    <i class="fas fa-arrow-left"></i> Back to List
-                </a>
+                <button onclick="showMobileSidebar()" class="md:hidden text-slate-400 hover:text-white text-xs mb-3 flex items-center gap-2 w-max bg-slate-900 px-3 py-1.5 rounded-lg border border-slate-700 transition">
+                    <i class="fas fa-arrow-left"></i> Directory
+                </button>
 
                 <div class="flex justify-between items-start md:items-center">
                     <div class="min-w-0 pr-4">
@@ -217,13 +228,12 @@ $main_display = $active_chat_id ? 'flex' : 'hidden md:flex';
                             $is_active = in_array($active_order['status'], ['active', 'completed']);
                             $is_rejected = ($active_order['status'] === 'rejected');
                         ?>
-                        <span class="text-blue-400 z-10 bg-slate-800 pr-2">Payment Received</span>
+                        <span class="text-blue-400 z-10 bg-slate-800 pr-2">Funds Received</span>
                         <span class="<?php echo $is_active ? 'text-blue-400' : ($is_rejected ? 'text-red-400' : 'text-yellow-400 animate-pulse'); ?> z-10 bg-slate-800 px-2">Processing</span>
                         <span class="<?php echo $is_active ? 'text-green-400' : 'text-slate-600'; ?> z-10 bg-slate-800 pl-2">Delivered</span>
                         
                         <!-- Background Line -->
                         <div class="absolute left-0 right-0 top-1/2 h-0.5 bg-slate-700 -z-0 transform -translate-y-1/2">
-                            <!-- Fill Line -->
                             <div class="h-full <?php echo $is_active ? 'bg-green-500 w-full' : ($is_rejected ? 'bg-red-500 w-1/2' : 'bg-blue-500 w-1/2'); ?> transition-all duration-1000 shadow-[0_0_10px_currentColor]"></div>
                         </div>
                     </div>
@@ -233,7 +243,7 @@ $main_display = $active_chat_id ? 'flex' : 'hidden md:flex';
             <!-- Submitted Form Data Review -->
             <?php if(!empty($active_order['form_data'])): ?>
                 <div class="bg-slate-900/50 border-b border-slate-700/50 p-4 shrink-0 z-10">
-                    <p class="text-[10px] font-bold text-slate-500 uppercase tracking-widest mb-2">Your Submitted Details</p>
+                    <p class="text-[10px] font-bold text-slate-500 uppercase tracking-widest mb-2">Input Parameters</p>
                     <div class="flex flex-wrap gap-2">
                         <?php 
                         $formData = json_decode($active_order['form_data'], true);
@@ -252,10 +262,9 @@ $main_display = $active_chat_id ? 'flex' : 'hidden md:flex';
                 </div>
             <?php endif; ?>
 
-            <!-- AUTO-DELIVERY CONTENT BOX (The Goods) -->
+            <!-- AUTO-DELIVERY CONTENT BOX -->
             <?php if($active_order['delivery_type'] == 'universal' && in_array($active_order['status'], ['active', 'completed'])): ?>
                 <div class="bg-blue-900/10 border-b border-[#00f0ff]/30 p-5 shrink-0 relative overflow-hidden z-10">
-                    <!-- Tech Pattern Background -->
                     <div class="absolute inset-0 bg-[url('data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iNDAiIGhlaWdodD0iNDAiIHhtbG5zPSJodHRwOi8vd3d3LnczLm9yZy8yMDAwL3N2ZyI+PGRlZnM+PHBhdHRlcm4gaWQ9ImdyaWQiIHdpZHRoPSI0MCIgaGVpZ2h0PSI0MCIgcGF0dGVyblVuaXRzPSJ1c2VyU3BhY2VPblVzZSI+PHBhdGggZD0iTSAwIDEwIEwgNDAgMTAgTSAxMCAwIEwgMTAgNDAiIGZpbGw9Im5vbmUiIHN0cm9rZT0icmdiYSgwLCAyNDAsIDI1NSwgMC4wNSkiIHN0cm9rZS13aWR0aD0iMSIvPjwvcGF0dGVybj48L2RlZnM+PHJlY3Qgd2lkdGg9IjEwMCUiIGhlaWdodD0iMTAwJSIgZmlsbD0idXJsKCNncmlkKSIvPjwvc3ZnPg==')] opacity-50"></div>
                     
                     <div class="relative z-10">
@@ -273,22 +282,19 @@ $main_display = $active_chat_id ? 'flex' : 'hidden md:flex';
                 </div>
             <?php endif; ?>
 
-            <!-- ========================================== -->
-            <!-- CHAT AREA OR REJECTED STATE                -->
-            <!-- ========================================== -->
+            <!-- CHAT AREA OR REJECTED STATE -->
             <?php if($active_order['status'] === 'rejected'): ?>
-                <!-- REJECTED STATE UI -->
                 <div class="flex-grow flex flex-col items-center justify-center p-8 text-center relative overflow-hidden bg-slate-900/50">
                     <div class="absolute inset-0 bg-gradient-to-t from-red-900/10 to-transparent pointer-events-none"></div>
                     <div class="w-24 h-24 bg-red-500/10 rounded-full flex items-center justify-center mb-6 border border-red-500/30 shadow-[0_0_30px_rgba(239,68,68,0.15)] relative z-10">
                         <i class="fas fa-times text-5xl text-red-500"></i>
                     </div>
-                    <h3 class="text-2xl font-bold text-white mb-2 relative z-10 tracking-tight">Order Rejected</h3>
+                    <h3 class="text-2xl font-bold text-white mb-2 relative z-10 tracking-tight">Deployment Rejected</h3>
                     <p class="text-slate-400 text-sm max-w-sm mb-8 relative z-10 leading-relaxed">
-                        We could not verify your payment or the submitted details were incorrect. The secure channel has been closed.
+                        Payment verification failed or submitted details were incorrect. The secure channel has been closed.
                     </p>
                     <a href="index.php?module=shop&page=checkout&id=<?php echo $active_order['product_id']; ?>" class="bg-gradient-to-r from-red-600 to-red-500 hover:from-red-500 hover:to-red-400 text-white px-8 py-3.5 rounded-xl font-bold shadow-[0_0_20px_rgba(239,68,68,0.3)] transition transform hover:-translate-y-1 relative z-10 flex items-center gap-2">
-                        <i class="fas fa-redo"></i> Try Buying Again
+                        <i class="fas fa-redo"></i> Initialize New Request
                     </a>
                 </div>
             <?php else: ?>
@@ -300,23 +306,21 @@ $main_display = $active_chat_id ? 'flex' : 'hidden md:flex';
                         </div>
                     </div>
                     
-                    <!-- Messages Container (Populated by AJAX) -->
                     <div id="chatMessagesContainer" class="space-y-4">
-                        <!-- Fallback loading state -->
                         <div class="text-center py-4 text-slate-500 text-xs flex justify-center items-center gap-2">
-                            <i class="fas fa-circle-notch fa-spin text-[#00f0ff]"></i> Syncing messages...
+                            <i class="fas fa-circle-notch fa-spin text-[#00f0ff]"></i> Syncing logs...
                         </div>
                     </div>
                 </div>
 
                 <!-- CHAT INPUT -->
-                <form method="POST" class="p-3 md:p-4 border-t border-slate-700/80 bg-slate-800/95 backdrop-blur shrink-0 relative z-20">
+                <form id="chatForm" class="p-3 md:p-4 border-t border-slate-700/80 bg-slate-800/95 backdrop-blur shrink-0 relative z-20">
                     <input type="hidden" name="csrf_token" value="<?php echo generate_csrf_token(); ?>">
                     <input type="hidden" name="order_id" value="<?php echo $active_chat_id; ?>">
                     
                     <div class="relative flex items-center gap-2">
                         <div class="relative flex-grow group">
-                            <input type="text" name="message" id="chatInput" placeholder="Type a message to support..." required autocomplete="off"
+                            <input type="text" name="message" id="chatInput" placeholder="Transmit secure message..." required autocomplete="off"
                                    class="w-full bg-slate-900 border border-slate-600 rounded-full py-3.5 pl-5 pr-14 text-sm text-white focus:border-[#00f0ff] focus:ring-1 focus:ring-[#00f0ff] focus:outline-none transition shadow-inner placeholder-slate-500">
                             <button type="submit" class="absolute right-1.5 top-1.5 bg-gradient-to-r from-blue-600 to-[#00f0ff] hover:from-blue-500 hover:to-[#00f0ff] text-slate-900 w-10 h-10 rounded-full flex items-center justify-center shadow-[0_0_10px_rgba(0,240,255,0.3)] transition transform active:scale-95 group-focus-within:shadow-[0_0_15px_rgba(0,240,255,0.5)]">
                                 <i class="fas fa-paper-plane text-sm"></i>
@@ -324,58 +328,184 @@ $main_display = $active_chat_id ? 'flex' : 'hidden md:flex';
                         </div>
                     </div>
                 </form>
-
-                <!-- LIVE AJAX SCRIPT -->
-                <script>
-                    const chatBox = document.getElementById('chatBox');
-                    const msgContainer = document.getElementById('chatMessagesContainer');
-                    const orderId = <?php echo $active_chat_id; ?>;
-                    let isUserScrolling = false;
-
-                    // Detect if user is scrolling up to prevent auto-scroll jumps
-                    if(chatBox) {
-                        chatBox.addEventListener('scroll', () => {
-                            // Check if within 50px of bottom
-                            const isAtBottom = chatBox.scrollHeight - chatBox.scrollTop <= chatBox.clientHeight + 50;
-                            isUserScrolling = !isAtBottom;
-                        });
-                    }
-
-                    function fetchChat() {
-                        if(!orderId) return;
-                        
-                        // Added timestamp to prevent browser caching the request
-                        fetch(`index.php?module=user&page=orders&view_chat=${orderId}&ajax=1&_=${Date.now()}`)
-                            .then(response => {
-                                if(!response.ok) throw new Error('Network response error');
-                                return response.text();
-                            })
-                            .then(html => {
-                                // Only update DOM if there's content to avoid flicker
-                                if(html.trim() !== '') {
-                                    msgContainer.innerHTML = html;
-                                    if (!isUserScrolling) {
-                                        chatBox.scrollTop = chatBox.scrollHeight;
-                                    }
-                                } else if (msgContainer.innerHTML.includes('Syncing')) {
-                                     msgContainer.innerHTML = '<div class="text-center py-4 text-slate-500 text-xs">Send a message to start the conversation.</div>';
-                                }
-                            })
-                            .catch(err => console.error('Chat Sync Error:', err));
-                    }
-
-                    // Initial fetch & set interval (3s polling)
-                    fetchChat();
-                    const pollInterval = setInterval(fetchChat, 3000); 
-
-                    // Focus input on load (Desktop only)
-                    if(window.innerWidth > 768) {
-                        const input = document.getElementById('chatInput');
-                        if(input) input.focus();
-                    }
-                </script>
             <?php endif; ?>
-            
         <?php endif; ?>
     </div>
 </div>
+
+<!-- ===================================================================================== -->
+<!-- SPA GLOBAL LOGIC (Loaded Once)                                                        -->
+<!-- ===================================================================================== -->
+<script>
+    let currentOrderId = <?php echo $active_chat_id; ?>;
+    let isUserScrolling = false;
+    let lastChatHtml = '';
+    let pollInterval = null;
+
+    // 1. Scroll Detection Setup
+    document.addEventListener('scroll', function(e) {
+        if(e.target && e.target.id === 'chatBox') {
+            const chatBox = e.target;
+            const isAtBottom = chatBox.scrollHeight - chatBox.scrollTop <= chatBox.clientHeight + 50;
+            isUserScrolling = !isAtBottom;
+        }
+    }, true);
+
+    // 2. Chat Polling Logic (Optimized to prevent DOM flicker)
+    function fetchChat() {
+        if(!currentOrderId) return;
+        
+        fetch(`index.php?module=user&page=orders&view_chat=${currentOrderId}&ajax=1&_=${Date.now()}`)
+            .then(res => {
+                if(!res.ok) throw new Error('Network error');
+                return res.text();
+            })
+            .then(html => {
+                const container = document.getElementById('chatMessagesContainer');
+                if(!container) return;
+                
+                // Only update DOM if the content actually changed
+                if(html.trim() !== '' && html !== lastChatHtml) {
+                    container.innerHTML = html;
+                    lastChatHtml = html;
+                    
+                    if(!isUserScrolling) {
+                        const chatBox = document.getElementById('chatBox');
+                        if(chatBox) chatBox.scrollTop = chatBox.scrollHeight;
+                    }
+                } else if(html.trim() === '' && container.innerHTML.includes('Syncing')) {
+                    container.innerHTML = '<div class="text-center py-4 text-slate-500 text-xs">Send a message to initialize communications.</div>';
+                }
+            })
+            .catch(err => console.error('Sync Error:', err));
+    }
+
+    // 3. Start Initial Polling
+    if(currentOrderId) {
+        fetchChat();
+        pollInterval = setInterval(fetchChat, 3000);
+        
+        // Focus input on desktop
+        if(window.innerWidth > 768) {
+            const input = document.getElementById('chatInput');
+            if(input) input.focus();
+        }
+    }
+
+    // 4. Handle AJAX Message Submission
+    document.addEventListener('submit', async function(e) {
+        if(e.target && e.target.id === 'chatForm') {
+            e.preventDefault();
+            const form = e.target;
+            const input = document.getElementById('chatInput');
+            if(!input || !input.value.trim()) return;
+
+            const formData = new FormData(form);
+            formData.append('ajax_msg', '1');
+            
+            // Optimistic clear to make UI feel instant
+            input.value = ''; 
+            
+            try {
+                await fetch('index.php?module=user&page=orders', {
+                    method: 'POST',
+                    body: formData,
+                    headers: { 'X-Requested-With': 'XMLHttpRequest' }
+                });
+                
+                // Force scroll down and trigger immediate fetch
+                isUserScrolling = false;
+                fetchChat(); 
+            } catch(err) { 
+                console.error('Transmission failed:', err); 
+            }
+        }
+    });
+
+    // 5. Handle Order Switching (PJAX/SPA style)
+    async function switchOrder(e, id) {
+        e.preventDefault();
+        
+        // Update State
+        currentOrderId = id;
+        lastChatHtml = '';
+        isUserScrolling = false;
+
+        // Update URL without reloading
+        window.history.pushState({id}, '', `index.php?module=user&page=orders&view_chat=${id}`);
+
+        // Update Sidebar UI active states
+        document.querySelectorAll('.order-sidebar-item').forEach(el => {
+            el.classList.remove('bg-slate-800/80', 'border-[#00f0ff]/50', 'shadow-[0_0_15px_rgba(0,240,255,0.05)]');
+            el.classList.add('bg-slate-900/50', 'border-slate-800');
+            const span = el.querySelector('.order-id-span');
+            if(span) { span.classList.remove('text-[#00f0ff]'); span.classList.add('text-slate-500'); }
+        });
+        
+        const activeEl = document.getElementById('order-item-' + id);
+        if(activeEl) {
+            activeEl.classList.remove('bg-slate-900/50', 'border-slate-800');
+            activeEl.classList.add('bg-slate-800/80', 'border-[#00f0ff]/50', 'shadow-[0_0_15px_rgba(0,240,255,0.05)]');
+            const span = activeEl.querySelector('.order-id-span');
+            if(span) { span.classList.add('text-[#00f0ff]'); span.classList.remove('text-slate-500'); }
+        }
+
+        // Show Loading State in Right Pane
+        const rightPane = document.getElementById('right-pane');
+        rightPane.innerHTML = `
+            <div class="flex-1 flex flex-col items-center justify-center text-slate-500 h-full animate-pulse">
+                <i class="fas fa-circle-notch fa-spin text-4xl text-[#00f0ff] mb-4"></i>
+                <p class="font-medium tracking-widest uppercase text-xs">Establishing Secure Link...</p>
+            </div>
+        `;
+
+        // Mobile handling: hide sidebar, show pane
+        if(window.innerWidth < 768) {
+            document.getElementById('left-sidebar').classList.add('hidden');
+            document.getElementById('left-sidebar').classList.remove('flex');
+            rightPane.classList.remove('hidden');
+            rightPane.classList.add('flex');
+        }
+
+        // Fetch New Pane HTML
+        try {
+            const res = await fetch(`index.php?module=user&page=orders&view_chat=${id}`);
+            const text = await res.text();
+            
+            // Extract the right-pane content from the response
+            const doc = new DOMParser().parseFromString(text, 'text/html');
+            const newPane = doc.getElementById('right-pane');
+            
+            if(newPane) {
+                rightPane.innerHTML = newPane.innerHTML;
+                
+                // Restart polling
+                clearInterval(pollInterval);
+                fetchChat();
+                pollInterval = setInterval(fetchChat, 3000);
+            }
+        } catch(err) {
+            rightPane.innerHTML = '<div class="p-8 text-red-500 text-center flex flex-col items-center"><i class="fas fa-exclamation-triangle text-4xl mb-3"></i><p>Connection lost. Please refresh the matrix.</p></div>';
+        }
+    }
+
+    // 6. Mobile Back Button Function
+    function showMobileSidebar() {
+        document.getElementById('left-sidebar').classList.remove('hidden');
+        document.getElementById('left-sidebar').classList.add('flex');
+        document.getElementById('right-pane').classList.add('hidden');
+        document.getElementById('right-pane').classList.remove('flex');
+        
+        // Clear URL state so refresh doesn't lock into chat view
+        window.history.pushState({}, '', 'index.php?module=user&page=orders');
+    }
+    
+    // Handle Browser Back Button smoothly
+    window.addEventListener('popstate', (e) => {
+        if(e.state && e.state.id) {
+            switchOrder({preventDefault:()=>{}}, e.state.id);
+        } else {
+            if(window.innerWidth < 768) showMobileSidebar();
+        }
+    });
+</script>
