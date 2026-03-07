@@ -85,7 +85,7 @@ if (isset($_GET['delete'])) {
 $categories = $pdo->query("SELECT * FROM categories ORDER BY name ASC")->fetchAll();
 $regions = $pdo->query("SELECT * FROM regions ORDER BY name ASC")->fetchAll();
 $products = $pdo->query("
-    SELECT p.*, c.name as cat_name,
+    SELECT p.*, c.name as cat_name, c.image_url as cat_image,
     (SELECT COUNT(*) FROM product_keys WHERE product_id = p.id AND is_sold = 0) as stock_count
     FROM products p 
     JOIN categories c ON p.category_id = c.id 
@@ -236,6 +236,8 @@ $products = $pdo->query("
                     <td class="p-4">
                         <?php if($p['image_path']): ?>
                             <img src="<?php echo MAIN_SITE_URL . $p['image_path']; ?>" class="w-10 h-10 rounded object-cover bg-black">
+                        <?php elseif(!empty($p['cat_image'])): ?>
+                            <img src="<?php echo MAIN_SITE_URL . $p['cat_image']; ?>" class="w-10 h-10 rounded object-cover bg-black opacity-50">
                         <?php else: ?>
                             <div class="w-10 h-10 rounded bg-slate-700 flex items-center justify-center text-slate-500"><i class="fas fa-image"></i></div>
                         <?php endif; ?>
