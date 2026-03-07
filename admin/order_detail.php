@@ -1,6 +1,6 @@
 <?php
 // admin/order_detail.php
-// PRODUCTION v4.0 - AJAX Chat, Image URLs & Neon UI
+// PRODUCTION v4.1 - AJAX Chat Fix, Mixed Content Patch & Neon UI
 
 // Include Notification Services
 @include_once dirname(__DIR__) . '/includes/MailService.php';
@@ -8,6 +8,11 @@
 
 $order_id = isset($_GET['id']) ? (int)$_GET['id'] : 0;
 $admin_id = $_SESSION['admin_id'];
+
+// Helper to force HTTPS on URLs to prevent Mixed Content errors
+function enforce_https($url) {
+    return str_replace('http://', 'https://', $url);
+}
 
 // =====================================================================================
 // 1. AJAX ENDPOINTS (Polling & Message Sending)
@@ -21,7 +26,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['ajax_msg'])) {
     $msg = trim($_POST['message']);
     $is_cred = isset($_POST['is_credential']) ? 1 : 0;
     
-    if (!empty($msg)) {
+    if (!empty($msg) && $order_id > 0) {
         try {
             $pdo->exec("SET NAMES 'utf8mb4'");
             $stmt = $pdo->prepare("INSERT INTO order_messages (order_id, sender_type, message, is_credential) VALUES (?, 'admin', ?, ?)");
@@ -43,7 +48,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['ajax_msg'])) {
             exit;
         }
     }
-    echo json_encode(['success' => false]);
+    echo json_encode(['success' => false, 'error' => 'Invalid order ID or empty message']);
     exit;
 }
 
@@ -124,7 +129,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['update_status'])) {
     if ($ord_meta) {
         $status_title = "Order Updated";
         $status_msg = "Your order #$order_id status is now: " . ucfirst($status);
-        $url = BASE_URL . "index.php?module=user&page=orders&view_chat=$order_id";
+        $url = enforce_https(BASE_URL) . "index.php?module=user&page=orders&view_chat=$order_id";
 
         if ($status === 'active') {
             $status_title = "Order Complete! ✅";
@@ -145,7 +150,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['update_status'])) {
     exit;
 }
 
-// 3. Fetch Full Order Data (UPDATED SQL FOR IMAGE URL)
+// 3. Fetch Full Order Data
 $stmt = $pdo->prepare("
     SELECT o.*, u.username, u.email as user_account_email, u.phone, 
            p.name as product_name, p.price, p.delivery_type, p.universal_content, p.id as product_id, p.image_path,
@@ -171,6 +176,13 @@ if ($order['delivery_type'] === 'unique') {
     $stmt->execute([$order['product_id']]);
     $available_keys = $stmt->fetchAll();
 }
+
+// Ensure images are using HTTPS to prevent Mixed Content
+$secure_main_url = enforce_https(defined('MAIN_SITE_URL') ? MAIN_SITE_URL : BASE_URL);
+
+// Legacy Data Patch: Check if category image is actually a font awesome icon class string
+$is_cat_image_legacy_icon = !empty($order['cat_image']) && strpos($order['cat_image'], 'fa-') === 0;
+
 ?>
 
 <style>
@@ -209,15 +221,16 @@ if ($order['delivery_type'] === 'unique') {
                 </a>
             </div>
 
-            <!-- Product Mini Info (Updated for Dynamic Images) -->
+            <!-- Product Mini Info (Mixed Content & Legacy Fixes Applied) -->
             <div class="flex items-center gap-4 mb-6 p-4 bg-slate-800/60 rounded-xl border border-slate-700 relative z-10 shadow-inner">
                 <div class="w-14 h-14 bg-slate-900 rounded-xl flex items-center justify-center shrink-0 overflow-hidden border border-[#00f0ff]/30 shadow-[0_0_10px_rgba(0,240,255,0.2)]">
                     <?php if(!empty($order['image_path'])): ?>
-                        <img src="<?php echo MAIN_SITE_URL . $order['image_path']; ?>" class="w-full h-full object-cover">
-                    <?php elseif(!empty($order['cat_image'])): ?>
-                        <img src="<?php echo MAIN_SITE_URL . $order['cat_image']; ?>" class="w-full h-full object-cover">
+                        <img src="<?php echo $secure_main_url . $order['image_path']; ?>" class="w-full h-full object-cover">
+                    <?php elseif(!empty($order['cat_image']) && !$is_cat_image_legacy_icon): ?>
+                        <img src="<?php echo $secure_main_url . $order['cat_image']; ?>" class="w-full h-full object-cover">
                     <?php else: ?>
-                        <i class="fas fa-cube text-[#00f0ff] text-2xl"></i>
+                        <!-- Fallback gracefully handles 'fa-shield-alt' injected into image_url -->
+                        <i class="fas <?php echo htmlspecialchars($is_cat_image_legacy_icon ? $order['cat_image'] : 'fa-cube'); ?> text-[#00f0ff] text-2xl"></i>
                     <?php endif; ?>
                 </div>
                 <div class="min-w-0">
@@ -290,8 +303,9 @@ if ($order['delivery_type'] === 'unique') {
         <div class="bg-slate-900/60 p-5 rounded-2xl border border-slate-700 shadow-lg">
             <h3 class="font-bold text-slate-400 mb-3 text-xs uppercase tracking-widest flex items-center gap-2"><i class="fas fa-file-invoice"></i> Verification Image</h3>
             <?php if(!empty($order['proof_image_path'])): ?>
-                <div class="relative group overflow-hidden rounded-xl border border-slate-600 cursor-zoom-in bg-slate-950 aspect-video flex items-center justify-center" onclick="openLightbox('<?php echo MAIN_SITE_URL . $order['proof_image_path']; ?>')">
-                    <img src="<?php echo MAIN_SITE_URL . $order['proof_image_path']; ?>" class="w-full h-full object-contain group-hover:opacity-50 transition duration-300">
+                <div class="relative group overflow-hidden rounded-xl border border-slate-600 cursor-zoom-in bg-slate-950 aspect-video flex items-center justify-center" onclick="openLightbox('<?php echo $secure_main_url . $order['proof_image_path']; ?>')">
+                    <!-- Secure HTTPS path implementation -->
+                    <img src="<?php echo $secure_main_url . $order['proof_image_path']; ?>" class="w-full h-full object-contain group-hover:opacity-50 transition duration-300">
                     <div class="absolute inset-0 flex items-center justify-center opacity-0 group-hover:opacity-100 transition duration-300">
                         <span class="bg-[#00f0ff] text-slate-900 font-black text-xs uppercase tracking-widest px-4 py-2 rounded-lg shadow-[0_0_15px_rgba(0,240,255,0.5)]"><i class="fas fa-expand-alt mr-2"></i> Enlarge</span>
                     </div>
@@ -363,6 +377,7 @@ if ($order['delivery_type'] === 'unique') {
 
             <!-- Input Area -->
             <form id="adminChatForm" class="border-t border-slate-700/80 bg-slate-800/90 backdrop-blur shrink-0 z-20 flex flex-col">
+                <!-- FIX: Hidden order_id correctly appended to FormData -->
                 <input type="hidden" name="order_id" value="<?php echo $order_id; ?>">
                 
                 <!-- Quick Replies -->
@@ -422,7 +437,7 @@ if ($order['delivery_type'] === 'unique') {
         });
     }
 
-    // AJAX Polling
+    // AJAX Polling (Uses correct fetch URL parameter for ID)
     function fetchChat() {
         if(!orderId) return;
         
@@ -444,7 +459,7 @@ if ($order['delivery_type'] === 'unique') {
     fetchChat();
     setInterval(fetchChat, 3000);
 
-    // AJAX Message Submission
+    // AJAX Message Submission (Fixed URL logic to include order ID parameter)
     document.getElementById('adminChatForm').addEventListener('submit', async function(e) {
         e.preventDefault();
         if(!chatInput.value.trim()) return;
@@ -456,7 +471,8 @@ if ($order['delivery_type'] === 'unique') {
         chatInput.style.height = '48px'; // Reset height
         
         try {
-            await fetch('index.php?page=order_detail', {
+            // FIX: Added id to query string so the server captures it correctly
+            await fetch(`index.php?page=order_detail&id=${orderId}`, {
                 method: 'POST',
                 body: formData,
                 headers: { 'X-Requested-With': 'XMLHttpRequest' }
