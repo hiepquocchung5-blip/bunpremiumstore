@@ -311,6 +311,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                     <?php elseif(!empty($product['cat_image'])): ?>
                         <img src="<?php echo BASE_URL . $product['cat_image']; ?>" alt="Category" class="w-full h-full object-cover relative z-10">
                     <?php else: ?>
+                        <!-- Fallback icon -->
                         <i class="fas fa-cube relative z-10 drop-shadow-[0_0_10px_rgba(0,240,255,0.8)]"></i>
                     <?php endif; ?>
                 </div>
