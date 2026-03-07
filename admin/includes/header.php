@@ -80,6 +80,13 @@ $current_page = isset($_GET['page']) ? $_GET['page'] : 'dashboard';
             <a href="<?php echo admin_url('payments'); ?>" class="nav-item flex items-center px-6 py-3 text-sm font-medium text-gray-400 <?php echo $current_page=='payments'?'active':''; ?>">
                 <i class="fas fa-wallet w-5 mr-3 text-center"></i> Payment Methods
             </a>
+            
+            <!-- NEW AGENT PASSES LINK -->
+            <a href="<?php echo admin_url('passes'); ?>" class="nav-item flex items-center px-6 py-3 text-sm font-medium text-gray-400 <?php echo $current_page=='passes'?'active':''; ?>">
+                <i class="fas fa-crown w-5 mr-3 text-center"></i> Agent Tiers
+            </a>
+            <!-- --------------------- -->
+
             <a href="<?php echo admin_url('users'); ?>" class="nav-item flex items-center px-6 py-3 text-sm font-medium text-gray-400 <?php echo $current_page=='users'?'active':''; ?>">
                 <i class="fas fa-users w-5 mr-3 text-center"></i> Customers
             </a>

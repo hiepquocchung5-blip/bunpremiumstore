@@ -119,9 +119,33 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['update_status'])) {
     $stmt = $pdo->prepare("UPDATE orders SET status = ? WHERE id = ?");
     $stmt->execute([$status, $order_id]);
     
+    // --- NEW: AUTO-ACTIVATE AGENT PASS UPON APPROVAL ---
+    if ($status === 'active') {
+        $stmt_check_pass = $pdo->prepare("SELECT user_id, pass_id FROM orders WHERE id = ? AND pass_id IS NOT NULL");
+        $stmt_check_pass->execute([$order_id]);
+        $passOrder = $stmt_check_pass->fetch();
+        
+        if ($passOrder) {
+            // Get pass duration
+            $stmt_dur = $pdo->prepare("SELECT duration_days FROM passes WHERE id = ?");
+            $stmt_dur->execute([$passOrder['pass_id']]);
+            $days = $stmt_dur->fetchColumn() ?: 30; // Fallback to 30 days
+            
+            $expires_at = date('Y-m-d H:i:s', strtotime("+$days days"));
+            
+            // 1. Expire any existing passes for this user to prevent overlap
+            $pdo->prepare("UPDATE user_passes SET status = 'expired' WHERE user_id = ?")->execute([$passOrder['user_id']]);
+            
+            // 2. Insert new active pass
+            $pdo->prepare("INSERT INTO user_passes (user_id, pass_id, expires_at, status) VALUES (?, ?, ?, 'active')")
+                ->execute([$passOrder['user_id'], $passOrder['pass_id'], $expires_at]);
+        }
+    }
+    // ---------------------------------------------------
+
     $stmt = $pdo->prepare("
         SELECT o.user_id, p.name as product_name 
-        FROM orders o JOIN products p ON o.product_id = p.id WHERE o.id = ?
+        FROM orders o LEFT JOIN products p ON o.product_id = p.id WHERE o.id = ?
     ");
     $stmt->execute([$order_id]);
     $ord_meta = $stmt->fetch();

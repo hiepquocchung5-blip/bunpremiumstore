@@ -62,6 +62,7 @@ function get_admin_view() {
         'payments'     => 'payments.php',
         'payment_edit' => 'payment_edit.php',  // NEW
         'settings'     => 'settings.php',
+        'passes'       => 'passes.php', 
         'admins'       => 'admins.php'        
     ];
 
