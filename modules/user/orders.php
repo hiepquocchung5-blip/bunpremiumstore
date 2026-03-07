@@ -1,6 +1,6 @@
 <?php
 // modules/user/orders.php
-// PRODUCTION DEPLOYMENT v2.0 - Fully Mobile Responsive
+// PRODUCTION DEPLOYMENT v2.1 - Fully Mobile Responsive & Math Fix
 
 if (!is_logged_in()) redirect('index.php?module=auth&page=login');
 
@@ -86,6 +86,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['message'])) {
 }
 
 // Fetch All Orders for Sidebar
+// FIX: Ensure total_price_paid is selected to reflect the actual paid amount
 $stmt = $pdo->prepare("
     SELECT o.id, o.status, o.total_price_paid, o.created_at, p.name, p.image_path, c.icon_class
     FROM orders o 
@@ -163,6 +164,7 @@ $main_display = $active_chat_id ? 'flex' : 'hidden md:flex';
                     <div class="text-sm font-bold text-white truncate group-hover:text-blue-400 transition"><?php echo htmlspecialchars($ord['name']); ?></div>
                     <div class="flex justify-between items-center mt-2 text-xs text-slate-500">
                         <span><?php echo date('M d', strtotime($ord['created_at'])); ?></span>
+                        <!-- FIX: Display total_price_paid to show the final discounted amount -->
                         <span class="font-mono font-medium text-slate-300"><?php echo number_format($ord['total_price_paid']); ?> Ks</span>
                     </div>
                 </a>
@@ -201,6 +203,9 @@ $main_display = $active_chat_id ? 'flex' : 'hidden md:flex';
                         <div class="flex items-center gap-3 mt-1.5">
                             <span class="text-xs text-[#00f0ff] font-mono bg-[#00f0ff]/10 px-2 py-0.5 rounded border border-[#00f0ff]/20">#<?php echo $active_order['id']; ?></span>
                             <span class="text-xs text-slate-400"><i class="far fa-clock"></i> <?php echo date('M d, Y', strtotime($active_order['created_at'])); ?></span>
+                            <span class="text-xs text-green-400 font-mono font-bold bg-green-900/20 px-2 py-0.5 rounded border border-green-900/30 ml-2 hidden md:inline-block">
+                                <?php echo number_format($active_order['total_price_paid']); ?> Ks
+                            </span>
                         </div>
                     </div>
                 </div>
