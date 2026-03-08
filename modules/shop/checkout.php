@@ -1,6 +1,6 @@
 <?php
 // modules/shop/checkout.php
-// PRODUCTION DEPLOYMENT v4.0 - Cinematic Poster, Strict Admin Provisioning & Streamlined UI
+// PRODUCTION DEPLOYMENT v4.1 - Patched JS Null Reference & Stabilized Timer UI
 
 if (!is_logged_in()) redirect('index.php?module=auth&page=login');
 
@@ -459,37 +459,42 @@ $display_image = !empty($product['image_path']) ? BASE_URL . $product['image_pat
     const timerDisplay = document.getElementById('sessionTimer');
 
     function selectPayment(data, element) {
-        // Highlight selection
+        // Highlight selection safely
         pGrid.forEach(el => {
             el.classList.remove('border-[#00f0ff]', 'bg-[#00f0ff]/10', 'shadow-[0_0_20px_rgba(0,240,255,0.2)]', 'scale-105');
             el.classList.add('border-slate-600', 'bg-slate-800/50');
             
-            const i = el.querySelector('i');
-            if (i) {
-                i.classList.remove('text-[#00f0ff]');
-                i.classList.add('text-slate-500');
+            // Safely modify icon if exists
+            const icon = el.querySelector('i');
+            if (icon && icon.classList) {
+                icon.classList.remove('text-[#00f0ff]');
+                icon.classList.add('text-slate-500');
             }
             
-            const p = el.querySelector('p');
-            if (p) {
-                p.classList.remove('text-white');
-                p.classList.add('text-slate-300');
+            // Safely modify text if exists
+            const text = el.querySelector('p');
+            if (text && text.classList) {
+                text.classList.remove('text-white');
+                text.classList.add('text-slate-300');
             }
         });
         
-        element.classList.remove('border-slate-600', 'bg-slate-800/50');
-        element.classList.add('border-[#00f0ff]', 'bg-[#00f0ff]/10', 'shadow-[0_0_20px_rgba(0,240,255,0.2)]', 'scale-105');
-        
-        const ei = element.querySelector('i');
-        if (ei) {
-            ei.classList.remove('text-slate-500');
-            ei.classList.add('text-[#00f0ff]');
-        }
-        
-        const ep = element.querySelector('p');
-        if (ep) {
-            ep.classList.remove('text-slate-300');
-            ep.classList.add('text-white');
+        // Active Element Styling
+        if (element && element.classList) {
+            element.classList.remove('border-slate-600', 'bg-slate-800/50');
+            element.classList.add('border-[#00f0ff]', 'bg-[#00f0ff]/10', 'shadow-[0_0_20px_rgba(0,240,255,0.2)]', 'scale-105');
+            
+            const ei = element.querySelector('i');
+            if (ei && ei.classList) {
+                ei.classList.remove('text-slate-500');
+                ei.classList.add('text-[#00f0ff]');
+            }
+            
+            const ep = element.querySelector('p');
+            if (ep && ep.classList) {
+                ep.classList.remove('text-slate-300');
+                ep.classList.add('text-white');
+            }
         }
 
         // Update Panel Data
