@@ -1,6 +1,6 @@
 <?php
 // modules/shop/checkout.php
-// PRODUCTION DEPLOYMENT v3.4 - Dynamic Image Rendering & SQL Fixes
+// PRODUCTION DEPLOYMENT v3.5 - Strict Admin Provisioning Enforcement
 
 if (!is_logged_in()) redirect('index.php?module=auth&page=login');
 
@@ -47,7 +47,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         if ($coupon) {
             $coupon_code = $check_code;
             $final_price = $price_after_agent * ((100 - $coupon['discount_percent']) / 100);
-            // We increment usage *after* successful order insertion
         }
     }
 
@@ -56,11 +55,11 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $selected_payment_id = isset($_POST['payment_method_id']) ? (int)$_POST['payment_method_id'] : 0;
     
     if ($agreed_count < count($instructions)) {
-        $error = "Please accept all mandatory instructions.";
+        $error = "Please accept all mandatory security protocols.";
     } elseif ($selected_payment_id === 0) {
-        $error = "Please select a payment method.";
+        $error = "Please select a payment node.";
     } elseif (empty($_FILES['proof']['name'])) {
-        $error = "Payment screenshot is required.";
+        $error = "Payment verification screenshot is required.";
     } else {
         // Upload Logic
         $target_dir = "uploads/proofs/";
@@ -76,14 +75,12 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             if (move_uploaded_file($_FILES["proof"]["tmp_name"], $target_file)) {
                 $txn_id = trim($_POST['txn_id']);
                 
-                // Force Admin Delivery unless it's a form type that requires user email context
-                // FIX: Ensure it strictly matches the ENUM('own', 'admin_provided') in the database
-                $email_type = isset($_POST['email_type']) && $_POST['email_type'] === 'own' ? 'own' : 'admin_provided';
-                $delivery = ($email_type == 'own') ? $_SESSION['user_email'] : 'Admin Provided via Chat';
+                // FORCE ADMIN PROVISIONING
+                // All items are now strictly delivered/managed via the Admin channel
+                $email_type = 'admin_provided';
+                $delivery = 'Secure Admin Delivery via Chat';
                 
-                // -------------------------------------------------------------------------
-                // SQL ERROR PATCH: Store Payment Method inside JSON instead of missing column
-                // -------------------------------------------------------------------------
+                // Get Payment Method Name for JSON Data
                 $stmt_pm = $pdo->prepare("SELECT bank_name FROM payment_methods WHERE id = ?");
                 $stmt_pm->execute([$selected_payment_id]);
                 $pm_name = $stmt_pm->fetchColumn() ?: 'Manual Transfer';
@@ -95,7 +92,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 }
                 $form_data = json_encode($form_data_array);
 
-                // Insert Order (Removed payment_method_id to prevent PDO Exception)
+                // Insert Order
                 $sql = "INSERT INTO orders (user_id, product_id, email_delivery_type, delivery_email, form_data, transaction_last_6, proof_image_path, total_price_paid, coupon_code) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)";
                 $stmt = $pdo->prepare($sql);
                 $stmt->execute([$_SESSION['user_id'], $product_id, $email_type, $delivery, $form_data, $txn_id, $target_file, $final_price, $coupon_code]);
@@ -256,16 +253,11 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                                 <i class="fas fa-user-shield text-xl"></i>
                             </div>
                             <div>
-                                <h4 class="text-white font-bold text-sm tracking-wide">Secure Admin Delivery</h4>
-                                <p class="text-xs text-slate-400 mt-1 leading-relaxed pr-4">Your digital assets or setup instructions will be delivered securely via the encrypted Order Chat system once payment is verified.</p>
+                                <h4 class="text-white font-bold text-sm tracking-wide">Secure Admin Provisioning</h4>
+                                <p class="text-xs text-slate-400 mt-1 leading-relaxed pr-4">All digital assets, credentials, or setup instructions are securely delivered directly to you via the encrypted Order Chat system after payment verification.</p>
                             </div>
                         </div>
-                        <?php if($product['delivery_type'] != 'form'): ?>
-                            <!-- FIX: Use exact ENUM value 'admin_provided' -->
-                            <input type="hidden" name="email_type" value="admin_provided">
-                        <?php else: ?>
-                            <input type="hidden" name="email_type" value="own">
-                        <?php endif; ?>
+                        <input type="hidden" name="email_type" value="admin_provided">
                     </div>
                 </div>
 
@@ -337,22 +329,22 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             <div class="space-y-3.5 mb-8 border-b border-slate-700/50 pb-6">
                 <div class="flex justify-between text-sm">
                     <span class="text-slate-400 font-medium">Base Value</span>
-                    <span class="text-white font-mono <?php echo ($discount > 0 || $product['sale_price']) ? 'line-through decoration-slate-500 opacity-50' : ''; ?>">
-                        <?php echo format_price($product['price']); ?>
+                    <span class="text-white font-mono <?php echo ($sale_savings > 0 || $discount > 0) ? 'line-through decoration-slate-500 opacity-50' : ''; ?>">
+                        <?php echo format_price($original_price); ?>
                     </span>
                 </div>
                 
-                <?php if($product['sale_price']): ?>
+                <?php if($sale_savings > 0): ?>
                 <div class="flex justify-between text-sm">
-                    <span class="text-slate-300 font-medium">Flash Sale</span>
-                    <span class="text-white font-mono"><?php echo format_price($product['sale_price']); ?></span>
+                    <span class="text-red-400 font-bold flex items-center gap-1.5"><i class="fas fa-bolt text-[10px]"></i> Flash Sale</span>
+                    <span class="text-red-400 font-mono font-bold">- <?php echo format_price($sale_savings); ?></span>
                 </div>
                 <?php endif; ?>
 
                 <?php if($discount > 0): ?>
                 <div class="flex justify-between text-sm">
-                    <span class="text-yellow-400 flex items-center gap-1.5 font-medium"><i class="fas fa-crown text-xs"></i> Agent Offset (-<?php echo $discount; ?>%)</span>
-                    <span class="text-yellow-400 font-mono font-bold">- <?php echo format_price($base_price - $price_after_agent); ?></span>
+                    <span class="text-yellow-400 font-bold flex items-center gap-1.5"><i class="fas fa-crown text-[10px]"></i> Agent Offset (-<?php echo $discount; ?>%)</span>
+                    <span class="text-yellow-400 font-mono font-bold">- <?php echo format_price($agent_savings); ?></span>
                 </div>
                 <?php endif; ?>
 
