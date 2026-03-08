@@ -1,6 +1,6 @@
 <?php
 // admin/order_detail.php
-// PRODUCTION v4.3 - Agent Pass UI Handling, Activation Fix & Full SPA Chat
+// PRODUCTION v4.4 - Agent Pass UI Handling, Button Fix & Full SPA Chat
 
 // Include Notification Services
 @include_once dirname(__DIR__) . '/includes/MailService.php';
@@ -114,7 +114,9 @@ $quick_replies = [
 
 // ACTION: UPDATE STATUS
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['update_status'])) {
-    $status = $_POST['status'];
+    
+    // FIX: Extract status from select dropdown OR directly from the button value (for Agent Passes)
+    $status = isset($_POST['status']) ? $_POST['status'] : $_POST['update_status'];
     
     $stmt = $pdo->prepare("UPDATE orders SET status = ? WHERE id = ?");
     $stmt->execute([$status, $order_id]);
