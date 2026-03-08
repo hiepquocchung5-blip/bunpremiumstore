@@ -1,6 +1,6 @@
 <?php
 // modules/home/index.php
-// PRODUCTION READY v4.0 - Cinematic Poster Banners, Expanded Inventory & No Mock Toasts
+// PRODUCTION READY v4.1 - Cinematic Poster Banners, Expanded Inventory & Payment Directory
 
 // 1. Fetch Banners (Active Slides)
 $stmt = $pdo->query("SELECT * FROM banners ORDER BY display_order ASC, id DESC LIMIT 5");
@@ -51,11 +51,15 @@ $stmt = $pdo->query("
 ");
 $recent_reviews = $stmt->fetchAll();
 
-// 7. Get Current User Discount & Name
+// 7. Fetch Active Payment Methods for Display
+$stmt = $pdo->query("SELECT bank_name, logo_class FROM payment_methods WHERE is_active = 1");
+$active_payments = $stmt->fetchAll();
+
+// 8. Get Current User Discount & Name
 $discount = is_logged_in() ? get_user_discount($_SESSION['user_id']) : 0;
 $first_name = is_logged_in() ? explode(' ', $_SESSION['user_name'])[0] : 'Operative';
 
-// 8. Fetch Real Stats for Telemetry
+// 9. Fetch Real Stats for Telemetry
 $total_users_count = $pdo->query("SELECT COUNT(*) FROM users")->fetchColumn();
 $total_orders_count = $pdo->query("SELECT COUNT(*) FROM orders WHERE status = 'active'")->fetchColumn();
 $display_users = max($total_users_count, 1250); 
@@ -394,6 +398,43 @@ $display_orders = max($total_orders_count, 8500);
             </div>
         </div>
     </div>
+
+    <!-- SECTION 6: Payment Methods Directory -->
+    <?php if(!empty($active_payments)): ?>
+    <div class="mt-10 border-t border-slate-800 pt-10">
+        <div class="text-center mb-8 relative">
+            <div class="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 w-32 h-32 bg-[#00f0ff]/5 rounded-full blur-2xl pointer-events-none"></div>
+            <h3 class="text-xl md:text-2xl font-black text-white tracking-tight flex items-center justify-center gap-3 relative z-10">
+                <i class="fas fa-link text-[#00f0ff]"></i> Financial Interlinks
+            </h3>
+            <p class="text-slate-400 text-xs font-medium uppercase tracking-widest mt-2 relative z-10">Secure Gateway Integrations</p>
+        </div>
+
+        <div class="relative w-full overflow-hidden py-4 group/payment">
+            <!-- Fade Edges -->
+            <div class="absolute inset-y-0 left-0 w-12 md:w-32 bg-gradient-to-r from-[#0f172a] to-transparent z-10 pointer-events-none"></div>
+            <div class="absolute inset-y-0 right-0 w-12 md:w-32 bg-gradient-to-l from-[#0f172a] to-transparent z-10 pointer-events-none"></div>
+            
+            <div class="flex overflow-x-auto gap-4 md:gap-6 snap-x-mandatory hide-scrollbar pl-4 md:pl-[20%] pr-4 md:pr-[20%]">
+                <?php foreach($active_payments as $pm): ?>
+                    <div class="snap-center shrink-0 w-[200px] md:w-[240px] bg-slate-900/60 backdrop-blur border border-slate-700/50 hover:border-[#00f0ff]/40 rounded-2xl p-4 flex items-center gap-4 transition-all duration-300 hover:-translate-y-1 hover:shadow-[0_10px_20px_rgba(0,240,255,0.1)]">
+                        <div class="w-12 h-12 rounded-xl bg-slate-800 flex items-center justify-center border border-slate-600 shrink-0 text-[#00f0ff] shadow-inner">
+                            <i class="<?php echo htmlspecialchars($pm['logo_class']); ?> text-xl"></i>
+                        </div>
+                        <div class="min-w-0">
+                            <h4 class="text-sm font-bold text-white tracking-wide truncate"><?php echo htmlspecialchars($pm['bank_name']); ?></h4>
+                            <p class="text-[9px] text-green-400 uppercase tracking-widest font-bold mt-0.5 flex items-center gap-1"><i class="fas fa-check-circle"></i> Verified</p>
+                        </div>
+                    </div>
+                <?php endforeach; ?>
+            </div>
+            
+            <p class="text-center text-[10px] text-slate-500 font-mono mt-6 flex items-center justify-center gap-2">
+                <i class="fas fa-arrows-alt-h"></i> Swipe to explore nodes
+            </p>
+        </div>
+    </div>
+    <?php endif; ?>
 
 </div>
 
