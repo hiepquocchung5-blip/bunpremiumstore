@@ -1,6 +1,6 @@
 <?php
 // modules/shop/checkout.php
-// PRODUCTION DEPLOYMENT v3.6 - Upgraded UI, Sticky Sidebar & Timer Logic
+// PRODUCTION DEPLOYMENT v4.0 - Cinematic Poster, Strict Admin Provisioning & Streamlined UI
 
 if (!is_logged_in()) redirect('index.php?module=auth&page=login');
 
@@ -75,7 +75,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             if (move_uploaded_file($_FILES["proof"]["tmp_name"], $target_file)) {
                 $txn_id = trim($_POST['txn_id']);
                 
-                // FORCE ADMIN PROVISIONING
+                // STRICT ADMIN PROVISIONING
+                // User is no longer asked for email delivery options. All items flow through the secure chat.
                 $email_type = 'admin_provided';
                 $delivery = 'Secure Admin Delivery via Chat';
                 
@@ -125,6 +126,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 // Calculate savings for UI
 $sale_savings = $product['price'] - $base_price;
 $agent_savings = $base_price - $price_after_agent;
+
+// Image Selection for Poster
+$display_image = !empty($product['image_path']) ? BASE_URL . $product['image_path'] : (!empty($product['cat_image']) ? BASE_URL . $product['cat_image'] : '');
 ?>
 
 <style>
@@ -140,6 +144,16 @@ $agent_savings = $base_price - $price_after_agent;
         100% { background-position: 0% 50%; }
     }
     
+    /* Cinematic Image Pan (Slide Show effect for single image) */
+    @keyframes panImage {
+        0% { transform: scale(1.05) translate(0, 0); }
+        50% { transform: scale(1.15) translate(-2%, -2%); }
+        100% { transform: scale(1.05) translate(0, 0); }
+    }
+    .animate-pan-image {
+        animation: panImage 20s ease-in-out infinite;
+    }
+
     /* Input Label Floating */
     .input-wrapper { position: relative; }
     .input-wrapper input:focus + label,
@@ -159,10 +173,10 @@ $agent_savings = $base_price - $price_after_agent;
         <a href="javascript:history.back()" class="w-10 h-10 rounded-xl bg-slate-800/80 hover:bg-slate-700 border border-slate-700 text-slate-400 hover:text-white flex items-center justify-center transition shadow-lg backdrop-blur">
             <i class="fas fa-arrow-left"></i>
         </a>
-        <h1 class="text-3xl font-black text-white tracking-tight">Checkout Node</h1>
+        <h1 class="text-3xl font-black text-white tracking-tight">Acquisition Node</h1>
     </div>
 
-    <div class="grid grid-cols-1 lg:grid-cols-12 gap-8 lg:gap-10">
+    <div class="grid grid-cols-1 lg:grid-cols-12 gap-8 lg:gap-10 items-start">
         
         <!-- LEFT: Checkout Form (8 columns) -->
         <div class="lg:col-span-8 space-y-6">
@@ -173,17 +187,26 @@ $agent_savings = $base_price - $price_after_agent;
                 <input type="hidden" name="csrf_token" value="<?php echo generate_csrf_token(); ?>">
                 <input type="hidden" name="coupon_code" id="hidden_coupon_code">
                 <input type="hidden" name="payment_method_id" id="hidden_payment_id" required>
+                
+                <!-- Hidden strict delivery enforcement -->
+                <input type="hidden" name="email_type" value="admin_provided">
 
                 <!-- STEP 1: Interactive Payment Selection -->
                 <div class="bg-slate-900/80 backdrop-blur-xl p-6 md:p-8 rounded-3xl border border-slate-700/50 shadow-[0_10px_30px_rgba(0,0,0,0.3)] relative overflow-hidden group">
                     <div class="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-blue-600 via-[#00f0ff] to-blue-600 bg-[length:200%_auto] animate-gradient"></div>
                     
-                    <h3 class="text-sm font-bold text-[#00f0ff] uppercase tracking-widest mb-6 flex items-center gap-3 border-b border-slate-700/50 pb-3">
-                        <span class="w-6 h-6 rounded-full bg-[#00f0ff]/10 border border-[#00f0ff]/30 flex items-center justify-center text-[10px]">1</span> 
-                        Select Payment Node
-                    </h3>
+                    <div class="flex items-center justify-between mb-6 border-b border-slate-700/50 pb-3">
+                        <h3 class="text-sm font-bold text-[#00f0ff] uppercase tracking-widest flex items-center gap-3">
+                            <span class="w-6 h-6 rounded-full bg-[#00f0ff]/10 border border-[#00f0ff]/30 flex items-center justify-center text-[10px]">1</span> 
+                            Select Payment Gateway
+                        </h3>
+                        <div class="bg-slate-800 text-slate-400 text-[9px] font-bold px-2 py-1 rounded border border-slate-700 uppercase tracking-widest flex items-center gap-1">
+                            <i class="fas fa-lock text-green-400"></i> Secure Comm
+                        </div>
+                    </div>
                     
-                    <div class="grid grid-cols-2 sm:grid-cols-3 gap-4 mb-6" id="paymentGrid">
+                    <!-- Selection Grid -->
+                    <div class="grid grid-cols-2 sm:grid-cols-3 gap-4 mb-2" id="paymentGrid">
                         <?php foreach($payment_methods as $pm): ?>
                             <div class="payment-card cursor-pointer bg-slate-800/50 border border-slate-600 hover:border-[#00f0ff] rounded-2xl p-5 text-center transition-all duration-300 group/card shadow-inner" 
                                  onclick="selectPayment(<?php echo htmlspecialchars(json_encode($pm)); ?>, this)">
@@ -194,61 +217,63 @@ $agent_savings = $base_price - $price_after_agent;
                             </div>
                         <?php endforeach; ?>
                     </div>
-
-                    <!-- Hidden Details Panel -->
-                    <div id="paymentDetailsPanel" class="hidden bg-gradient-to-br from-slate-900 to-slate-800 border border-yellow-500/30 rounded-2xl p-6 relative overflow-hidden animate-fade-in-down shadow-[0_0_20px_rgba(234,179,8,0.1)]">
-                        <div class="absolute right-0 top-0 w-40 h-40 bg-yellow-500/10 rounded-full blur-3xl pointer-events-none"></div>
-                        
-                        <div class="flex flex-col md:flex-row justify-between md:items-end gap-6 relative z-10">
-                            <div class="flex-1 space-y-4">
-                                <div>
-                                    <p class="text-[10px] text-slate-400 font-bold uppercase tracking-wider mb-1">Transfer Exactly</p>
-                                    <p class="text-3xl font-black text-yellow-400 tracking-tight drop-shadow-[0_0_10px_rgba(234,179,8,0.3)]" id="transferAmountDisplay"><?php echo format_price($final_price); ?></p>
-                                </div>
-                                
-                                <div class="bg-black/30 p-4 rounded-xl border border-slate-700/50">
-                                    <div class="flex justify-between items-center mb-1">
-                                        <p class="text-[10px] text-slate-500 font-bold uppercase tracking-wider">Account Data</p>
-                                        <button type="button" onclick="copyAccountInfo()" class="text-slate-400 hover:text-white transition group/copy flex items-center gap-1" title="Copy Number">
-                                            <i class="fas fa-copy group-hover/copy:scale-110 transition"></i> <span class="text-[10px]">Copy</span>
-                                        </button>
-                                    </div>
-                                    <p class="text-sm text-white font-medium mb-1"><span class="text-slate-500 text-xs mr-1">Name:</span> <span id="receiverName">...</span></p>
-                                    <code class="text-xl font-mono text-green-400 font-bold select-all block mt-2" id="accountNumber">...</code>
-                                </div>
-                            </div>
-
-                            <!-- 5 Minute Session Timer -->
-                            <div class="bg-red-900/10 border border-red-500/30 p-4 rounded-xl flex flex-col items-center justify-center shrink-0 w-full md:w-48 shadow-inner">
-                                <i class="fas fa-shield-alt text-red-500 text-xl mb-2"></i>
-                                <span class="text-[10px] text-slate-400 font-bold uppercase tracking-widest mb-1 text-center">Session Expires</span>
-                                <span id="sessionTimer" class="font-mono text-3xl font-black text-white tracking-widest drop-shadow-[0_0_8px_rgba(239,68,68,0.5)]">05:00</span>
-                            </div>
-                        </div>
-                    </div>
                 </div>
 
-                <!-- STEP 2: Proof & Transaction ID -->
-                <div id="step2Container" class="opacity-50 pointer-events-none transition-all duration-300 bg-slate-900/80 backdrop-blur-xl p-6 md:p-8 rounded-3xl border border-slate-700/50 shadow-xl">
-                    <h3 class="text-sm font-bold text-[#00f0ff] uppercase tracking-widest mb-6 flex items-center gap-3 border-b border-slate-700/50 pb-3">
+                <!-- STEP 2: Transfer Terminal & Verification (Revealed on click) -->
+                <div id="step2Container" class="hidden bg-slate-900/80 backdrop-blur-xl p-6 md:p-8 rounded-3xl border border-[#00f0ff]/30 shadow-[0_20px_50px_rgba(0,240,255,0.1)] relative overflow-hidden animate-fade-in-down">
+                    <div class="absolute -right-20 -top-20 w-64 h-64 bg-[#00f0ff]/10 rounded-full blur-3xl pointer-events-none"></div>
+
+                    <h3 class="text-sm font-bold text-[#00f0ff] uppercase tracking-widest mb-6 flex items-center gap-3 border-b border-slate-700/50 pb-3 relative z-10">
                         <span class="w-6 h-6 rounded-full bg-[#00f0ff]/10 border border-[#00f0ff]/30 flex items-center justify-center text-[10px]">2</span> 
-                        Submit Verification
+                        Complete Transfer Protocol
                     </h3>
 
-                    <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
-                        <div class="input-wrapper mt-2">
+                    <!-- Dynamic Transfer Terminal -->
+                    <div class="bg-black/50 border border-slate-700 rounded-2xl p-6 mb-8 relative z-10 shadow-inner flex flex-col md:flex-row justify-between items-center gap-6">
+                        <div class="flex-1 w-full space-y-4">
+                            <div>
+                                <p class="text-[10px] text-slate-400 font-bold uppercase tracking-wider mb-1">Transfer Exactly</p>
+                                <p class="text-4xl font-black text-[#00f0ff] tracking-tight drop-shadow-[0_0_10px_rgba(0,240,255,0.4)]" id="transferAmountDisplay"><?php echo format_price($final_price); ?></p>
+                            </div>
+                            
+                            <div class="space-y-1 bg-slate-900 p-3 rounded-xl border border-slate-700">
+                                <p class="text-xs text-slate-400 font-medium">Receiver Name: <strong class="text-white ml-1" id="receiverName">...</strong></p>
+                                <div class="flex items-center justify-between gap-3">
+                                    <code class="text-lg md:text-xl font-mono text-green-400 font-bold select-all break-all" id="accountNumber">...</code>
+                                    <button type="button" onclick="copyAccountInfo()" class="text-slate-500 hover:text-white bg-slate-800 p-2 rounded-lg transition shrink-0 border border-slate-600 shadow-sm" title="Copy Number">
+                                        <i class="fas fa-copy"></i>
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- 5 Minute Session Timer -->
+                        <div class="bg-red-900/10 border border-red-500/30 p-5 rounded-xl flex flex-col items-center justify-center shrink-0 w-full md:w-48 shadow-inner">
+                            <i class="fas fa-satellite-dish text-red-500 text-2xl mb-2 animate-pulse"></i>
+                            <span class="text-[10px] text-slate-400 font-bold uppercase tracking-widest mb-1 text-center">Session Expires</span>
+                            <span id="sessionTimer" class="font-mono text-3xl font-black text-white tracking-widest drop-shadow-[0_0_8px_rgba(239,68,68,0.5)]">05:00</span>
+                        </div>
+                    </div>
+
+                    <!-- Verification Inputs -->
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-6 relative z-10">
+                        <div class="input-wrapper">
                             <input type="text" name="txn_id" id="txn_id" placeholder=" " required maxlength="6" pattern="\d{6}"
-                                   class="w-full bg-transparent border-2 border-slate-600 rounded-xl px-4 py-4 text-white font-mono tracking-[0.5em] text-xl focus:border-yellow-500 outline-none transition peer">
-                            <label for="txn_id" class="absolute left-4 top-4 text-slate-400 text-sm font-bold tracking-wider transition-all duration-200 pointer-events-none">Last 6 Digits of Txn ID</label>
+                                   class="w-full bg-slate-950/50 border-2 border-slate-600 rounded-xl px-4 py-5 text-white font-mono tracking-[0.5em] text-xl focus:border-[#00f0ff] outline-none transition peer shadow-inner text-center">
+                            <label for="txn_id" class="absolute left-4 top-5 text-slate-400 text-sm font-bold tracking-wider transition-all duration-200 pointer-events-none">Last 6 Digits of Txn ID</label>
                         </div>
 
                         <div>
-                            <div class="relative border-2 border-dashed border-slate-600 rounded-xl p-5 text-center hover:bg-slate-800/50 hover:border-[#00f0ff] transition-all cursor-pointer group/upload h-full flex flex-col justify-center" id="uploadWrapper">
+                            <div class="relative border-2 border-dashed border-slate-600 rounded-xl h-full min-h-[88px] text-center hover:bg-slate-800/50 hover:border-[#00f0ff] transition-all cursor-pointer group/upload flex flex-col justify-center bg-slate-950/30" id="uploadWrapper">
                                 <input type="file" name="proof" id="proofInput" accept="image/*" required class="absolute inset-0 w-full h-full opacity-0 cursor-pointer z-10" 
                                        onchange="document.getElementById('fileNameDisplay').innerHTML = `<span class='text-green-400 font-bold flex items-center justify-center gap-2'><i class='fas fa-check-circle'></i> ` + this.files[0].name + `</span>`; this.parentElement.classList.add('border-green-500/50', 'bg-green-500/10');">
-                                <i class="fas fa-cloud-upload-alt text-2xl text-slate-500 mb-2 group-hover/upload:text-[#00f0ff] group-hover/upload:-translate-y-1 transition-all"></i>
-                                <p class="text-xs font-bold text-slate-300 truncate px-2" id="fileNameDisplay">Upload Payment Receipt</p>
-                                <span class="text-[9px] text-slate-500 font-mono mt-1">JPG/PNG</span>
+                                <div class="flex items-center justify-center gap-3 px-4">
+                                    <i class="fas fa-cloud-upload-alt text-2xl text-slate-500 group-hover/upload:text-[#00f0ff] transition transform group-hover/upload:-translate-y-1 shrink-0"></i>
+                                    <div class="text-left overflow-hidden">
+                                        <p class="text-xs font-bold text-slate-300 truncate" id="fileNameDisplay">Upload Payment Receipt</p>
+                                        <p class="text-[9px] text-slate-500 font-mono mt-0.5 uppercase">JPG, PNG (Max 5MB)</p>
+                                    </div>
+                                </div>
                             </div>
                         </div>
                     </div>
@@ -256,11 +281,11 @@ $agent_savings = $base_price - $price_after_agent;
 
                 <!-- STEP 3: Form Fields (If applicable) -->
                 <?php if($product['delivery_type'] == 'form' && $product['form_fields']): ?>
-                <div class="bg-slate-900/80 backdrop-blur-xl p-6 md:p-8 rounded-3xl border border-blue-500/30 shadow-xl relative overflow-hidden">
-                    <div class="absolute inset-0 bg-[url('data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iNDAiIGhlaWdodD0iNDAiIHhtbG5zPSJodHRwOi8vd3d3LnczLm9yZy8yMDAwL3N2ZyI+PGRlZnM+PHBhdHRlcm4gaWQ9ImdyaWQiIHdpZHRoPSI0MCIgaGVpZ2h0PSI0MCIgcGF0dGVyblVuaXRzPSJ1c2VyU3BhY2VPblVzZSI+PHBhdGggZD0iTSAwIDEwIEwgNDAgMTAgTSAxMCAwIEwgMTAgNDAiIGZpbGw9Im5vbmUiIHN0cm9rZT0icmdiYSgwLCAyNDAsIDI1NSwgMC4wMykiIHN0cm9rZS13aWR0aD0iMSIvPjwvcGF0dGVybj48L2RlZnM+PHJlY3Qgd2lkdGg9IjEwMCUiIGhlaWdodD0iMTAwJSIgZmlsbD0idXJsKCNncmlkKSIvPjwvc3ZnPg==')] opacity-50"></div>
-                    <h3 class="text-sm font-bold text-[#00f0ff] uppercase tracking-widest mb-6 flex items-center gap-3 border-b border-slate-700/50 pb-3 relative z-10">
-                        <span class="w-6 h-6 rounded-full bg-[#00f0ff]/10 border border-[#00f0ff]/30 flex items-center justify-center text-[10px]">3</span> 
-                        Target Details
+                <div class="bg-slate-900/80 backdrop-blur-xl p-6 md:p-8 rounded-3xl border border-yellow-500/30 shadow-xl relative overflow-hidden">
+                    <div class="absolute inset-0 bg-[url('data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iNDAiIGhlaWdodD0iNDAiIHhtbG5zPSJodHRwOi8vd3d3LnczLm9yZy8yMDAwL3N2ZyI+PGRlZnM+PHBhdHRlcm4gaWQ9ImdyaWQiIHdpZHRoPSI0MCIgaGVpZ2h0PSI0MCIgcGF0dGVyblVuaXRzPSJ1c2VyU3BhY2VPblVzZSI+PHBhdGggZD0iTSAwIDEwIEwgNDAgMTAgTSAxMCAwIEwgMTAgNDAiIGZpbGw9Im5vbmUiIHN0cm9rZT0icmdiYSgyMzQsIDE3OSwgOCwgMC4wNSkiIHN0cm9rZS13aWR0aD0iMSIvPjwvcGF0dGVybj48L2RlZnM+PHJlY3Qgd2lkdGg9IjEwMCUiIGhlaWdodD0iMTAwJSIgZmlsbD0idXJsKCNncmlkKSIvPjwvc3ZnPg==')] opacity-50"></div>
+                    <h3 class="text-sm font-bold text-yellow-500 uppercase tracking-widest mb-6 flex items-center gap-3 border-b border-slate-700/50 pb-3 relative z-10">
+                        <span class="w-6 h-6 rounded-full bg-yellow-500/10 border border-yellow-500/30 flex items-center justify-center text-[10px]">3</span> 
+                        Target Account Details
                     </h3>
                     
                     <div class="space-y-5 relative z-10">
@@ -271,8 +296,8 @@ $agent_savings = $base_price - $price_after_agent;
                     ?>
                         <div class="input-wrapper">
                             <input type="<?php echo htmlspecialchars($f['type'] ?? 'text'); ?>" name="form_field[<?php echo htmlspecialchars($f['label']); ?>]" id="ff_<?php echo $idx; ?>" placeholder=" " required 
-                                   class="w-full bg-slate-950/50 border-2 border-slate-600 rounded-xl px-4 py-3.5 text-white focus:border-[#00f0ff] outline-none shadow-inner transition peer">
-                            <label for="ff_<?php echo $idx; ?>" class="absolute left-4 top-3.5 text-slate-400 text-xs font-bold tracking-wider transition-all duration-200 pointer-events-none">
+                                   class="w-full bg-slate-950/80 border-2 border-slate-600 rounded-xl px-4 py-4 text-white focus:border-yellow-400 outline-none shadow-inner transition peer">
+                            <label for="ff_<?php echo $idx; ?>" class="absolute left-4 top-4 text-slate-400 text-xs font-bold tracking-wider transition-all duration-200 pointer-events-none">
                                 <?php echo htmlspecialchars($f['label']); ?>
                             </label>
                         </div>
@@ -286,21 +311,22 @@ $agent_savings = $base_price - $price_after_agent;
 
                 <!-- STEP 4: Mandatory Instructions -->
                 <?php if(!empty($instructions)): ?>
-                <div class="bg-red-900/10 border border-red-500/20 p-6 md:p-8 rounded-3xl relative overflow-hidden">
-                    <div class="absolute top-0 right-0 w-1 h-full bg-red-500"></div>
-                    <h3 class="text-sm font-bold text-red-400 uppercase tracking-widest mb-5 flex items-center gap-2">
-                        <i class="fas fa-shield-alt"></i> Security Protocol Agreement
+                <div class="bg-slate-900/80 backdrop-blur-xl border border-red-500/30 p-6 md:p-8 rounded-3xl relative overflow-hidden">
+                    <div class="absolute top-0 right-0 w-1 h-full bg-gradient-to-b from-red-500 to-transparent"></div>
+                    <h3 class="text-sm font-bold text-red-400 uppercase tracking-widest mb-5 flex items-center gap-3">
+                        <span class="w-6 h-6 rounded-full bg-red-500/10 border border-red-500/30 flex items-center justify-center text-[10px] text-red-400">!</span>
+                        Security Protocol Agreement
                     </h3>
                     <div class="space-y-3">
                         <?php foreach($instructions as $ins): ?>
-                            <label class="flex items-start gap-4 cursor-pointer group select-none bg-slate-900/50 p-3 rounded-xl border border-slate-700/50 hover:bg-slate-800 transition">
+                            <label class="flex items-start gap-4 cursor-pointer group select-none bg-slate-950/50 p-3.5 rounded-xl border border-slate-700/50 hover:bg-slate-800 hover:border-red-500/30 transition">
                                 <div class="relative flex items-center pt-0.5 shrink-0">
                                     <input type="checkbox" name="agreed[]" value="<?php echo $ins['id']; ?>" required class="peer sr-only">
                                     <div class="w-5 h-5 rounded border-2 border-slate-500 bg-slate-900 peer-checked:bg-red-500 peer-checked:border-red-500 transition-colors flex items-center justify-center shadow-inner">
                                         <i class="fas fa-check text-white text-[10px] opacity-0 peer-checked:opacity-100 transition-opacity transform scale-50 peer-checked:scale-100 duration-200"></i>
                                     </div>
                                 </div>
-                                <span class="text-xs sm:text-sm text-slate-300 group-hover:text-white transition leading-snug font-medium pt-0.5"><?php echo htmlspecialchars($ins['instruction_text']); ?></span>
+                                <span class="text-xs sm:text-sm text-slate-300 group-hover:text-white transition leading-relaxed font-medium pt-px"><?php echo htmlspecialchars($ins['instruction_text']); ?></span>
                             </label>
                         <?php endforeach; ?>
                     </div>
@@ -309,93 +335,106 @@ $agent_savings = $base_price - $price_after_agent;
 
                 <!-- Submit Button -->
                 <button type="submit" id="finalSubmitBtn" disabled class="w-full bg-slate-800 border border-slate-700 text-slate-500 font-black py-5 rounded-2xl text-sm uppercase tracking-widest transition-all duration-300 cursor-not-allowed shadow-inner mt-4 relative overflow-hidden group/btn">
-                    <div class="absolute inset-0 bg-gradient-to-r from-blue-600 via-[#00f0ff] to-blue-600 opacity-0 group-hover/btn:opacity-100 transition-opacity duration-300"></div>
                     <span class="relative z-10 flex items-center justify-center gap-2">
-                        <i class="fas fa-lock"></i> <span>Awaiting Payment Node Selection</span>
+                        <i class="fas fa-lock"></i> <span>Awaiting Payment Selection</span>
                     </span>
                 </button>
 
             </form>
         </div>
 
-        <!-- RIGHT: Order Summary Sidebar (4 columns) -->
+        <!-- RIGHT: Order Summary Poster Sidebar (4 columns) -->
         <div class="lg:col-span-4">
-            <div class="bg-slate-900/80 backdrop-blur-xl p-6 rounded-3xl border border-slate-700 shadow-[0_20px_40px_rgba(0,0,0,0.5)] lg:sticky lg:top-24 relative overflow-hidden">
-                <!-- Background FX -->
-                <div class="absolute -right-20 -bottom-20 w-48 h-48 bg-blue-600/10 rounded-full blur-3xl pointer-events-none"></div>
-
-                <h3 class="font-black text-white text-lg tracking-tight mb-6 border-b border-slate-700/50 pb-4 flex items-center gap-2">
-                    <i class="fas fa-receipt text-[#00f0ff]"></i> Order Summary
-                </h3>
+            <div class="bg-slate-900/80 backdrop-blur-xl rounded-3xl border border-slate-700/80 shadow-[0_20px_50px_rgba(0,0,0,0.5)] lg:sticky lg:top-24 overflow-hidden flex flex-col">
                 
-                <!-- Product Mini Card -->
-                <div class="flex items-center gap-4 mb-6 bg-slate-800/50 p-3 rounded-2xl border border-slate-700">
-                    <div class="w-16 h-16 bg-slate-900 rounded-xl flex items-center justify-center text-[#00f0ff] text-2xl border border-slate-600 shadow-inner shrink-0 overflow-hidden relative">
-                        <?php if(!empty($product['image_path'])): ?>
-                            <img src="<?php echo BASE_URL . $product['image_path']; ?>" class="w-full h-full object-cover">
-                        <?php elseif(!empty($product['cat_image'])): ?>
-                            <img src="<?php echo BASE_URL . $product['cat_image']; ?>" class="w-full h-full object-cover">
-                        <?php else: ?>
-                            <i class="fas fa-cube opacity-50"></i>
+                <!-- Cinematic Poster Header -->
+                <?php if($display_image): ?>
+                <div class="aspect-video w-full relative overflow-hidden border-b border-slate-700 shrink-0 bg-black">
+                    <img src="<?php echo $display_image; ?>" class="w-full h-full object-cover animate-pan-image opacity-80 mix-blend-screen" alt="Product Poster">
+                    
+                    <!-- Bottom Gradient Fade -->
+                    <div class="absolute inset-0 bg-gradient-to-t from-slate-900 via-transparent to-transparent"></div>
+                    
+                    <!-- Top Badges -->
+                    <div class="absolute top-4 left-4 right-4 flex justify-between items-start">
+                        <span class="bg-black/60 backdrop-blur-md border border-white/10 text-white px-2.5 py-1 rounded text-[9px] font-black uppercase tracking-widest shadow-lg">
+                            <?php echo htmlspecialchars($product['cat_name']); ?>
+                        </span>
+                        <?php if($product['delivery_type'] == 'unique'): ?>
+                            <span class="bg-green-500/20 backdrop-blur-md border border-green-500/50 text-green-400 px-2 py-1 rounded text-[9px] font-black uppercase tracking-widest shadow-lg flex items-center gap-1">
+                                <i class="fas fa-bolt"></i> Auto
+                            </span>
                         <?php endif; ?>
                     </div>
-                    <div class="min-w-0">
-                        <h4 class="text-sm font-bold text-white leading-tight line-clamp-2"><?php echo htmlspecialchars($product['name']); ?></h4>
-                        <span class="text-[9px] uppercase font-bold text-[#00f0ff] bg-[#00f0ff]/10 px-2 py-0.5 rounded border border-[#00f0ff]/20 mt-1.5 inline-block tracking-widest">
-                            <?php echo htmlspecialchars($product['delivery_type']); ?> Protocol
-                        </span>
+                    
+                    <!-- Floating Title -->
+                    <div class="absolute bottom-4 left-4 right-4">
+                        <h3 class="text-xl font-black text-white leading-tight drop-shadow-[0_2px_4px_rgba(0,0,0,0.8)] line-clamp-2">
+                            <?php echo htmlspecialchars($product['name']); ?>
+                        </h3>
                     </div>
                 </div>
-
-                <!-- Promo UI -->
-                <div class="mb-6">
-                    <label class="block text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-2 ml-1">Transmission Code (Promo)</label>
-                    <div class="flex gap-2">
-                        <input type="text" id="coupon_input" placeholder="e.g. OMEGA20" class="w-full bg-slate-950 border border-slate-700 rounded-xl px-4 py-3 text-white text-sm focus:border-yellow-500 focus:ring-1 focus:ring-yellow-500 outline-none uppercase font-mono tracking-wider transition shadow-inner">
-                        <button type="button" onclick="applyCoupon()" class="bg-yellow-600 hover:bg-yellow-500 text-slate-900 px-4 rounded-xl text-xs font-black transition shadow-lg uppercase tracking-wide shrink-0">Apply</button>
-                    </div>
-                    <p id="coupon_msg" class="text-[10px] mt-2 hidden flex items-center gap-1.5 font-bold ml-1 tracking-wider"></p>
+                <?php else: ?>
+                <div class="aspect-video w-full relative overflow-hidden border-b border-slate-700 shrink-0 bg-gradient-to-br from-blue-900 to-slate-900 flex items-center justify-center">
+                    <i class="fas fa-cube text-6xl text-[#00f0ff] opacity-50 drop-shadow-[0_0_20px_rgba(0,240,255,0.5)]"></i>
+                    <h3 class="absolute bottom-4 left-4 right-4 text-xl font-black text-white leading-tight drop-shadow-[0_2px_4px_rgba(0,0,0,0.8)] line-clamp-2">
+                        <?php echo htmlspecialchars($product['name']); ?>
+                    </h3>
                 </div>
+                <?php endif; ?>
+                
+                <div class="p-6 md:p-8 flex-1 flex flex-col">
+                    
+                    <!-- Promo UI -->
+                    <div class="mb-6">
+                        <label class="block text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-2 ml-1">Transmission Code (Promo)</label>
+                        <div class="flex gap-2">
+                            <input type="text" id="coupon_input" placeholder="e.g. OMEGA20" class="w-full bg-slate-950 border border-slate-700 rounded-xl px-4 py-3 text-white text-sm focus:border-yellow-500 focus:ring-1 focus:ring-yellow-500 outline-none uppercase font-mono tracking-wider transition shadow-inner">
+                            <button type="button" onclick="applyCoupon()" class="bg-yellow-600 hover:bg-yellow-500 text-slate-900 px-4 rounded-xl text-xs font-black transition shadow-lg uppercase tracking-wide shrink-0">Patch In</button>
+                        </div>
+                        <p id="coupon_msg" class="text-[10px] mt-2 hidden flex items-center gap-1.5 font-bold ml-1 tracking-wider"></p>
+                    </div>
 
-                <!-- Pricing Breakdown -->
-                <div class="space-y-4 mb-6 border-y border-slate-700/50 py-5 bg-slate-800/30 -mx-6 px-6">
-                    <div class="flex justify-between text-sm">
-                        <span class="text-slate-400 font-medium">Retail Value</span>
-                        <span class="text-white font-mono <?php echo ($sale_savings > 0 || $discount > 0) ? 'line-through decoration-slate-500 opacity-50' : 'font-bold'; ?>">
-                            <?php echo format_price($original_price); ?>
+                    <!-- Pricing Breakdown -->
+                    <div class="space-y-4 mb-6 border-y border-slate-700/50 py-5 bg-slate-800/30 -mx-6 px-6 md:-mx-8 md:px-8">
+                        <div class="flex justify-between text-sm">
+                            <span class="text-slate-400 font-medium">Retail Value</span>
+                            <span class="text-white font-mono <?php echo ($sale_savings > 0 || $discount > 0) ? 'line-through decoration-slate-500 opacity-50' : 'font-bold'; ?>">
+                                <?php echo format_price($original_price); ?>
+                            </span>
+                        </div>
+                        
+                        <?php if($sale_savings > 0): ?>
+                        <div class="flex justify-between text-sm">
+                            <span class="text-red-400 font-bold flex items-center gap-1.5"><i class="fas fa-bolt text-[10px]"></i> Flash Sale</span>
+                            <span class="text-red-400 font-mono font-bold">- <?php echo format_price($sale_savings); ?></span>
+                        </div>
+                        <?php endif; ?>
+
+                        <?php if($discount > 0): ?>
+                        <div class="flex justify-between text-sm">
+                            <span class="text-yellow-400 font-bold flex items-center gap-1.5"><i class="fas fa-crown text-[10px]"></i> Agent Offset (-<?php echo $discount; ?>%)</span>
+                            <span class="text-yellow-400 font-mono font-bold">- <?php echo format_price($agent_savings); ?></span>
+                        </div>
+                        <?php endif; ?>
+
+                        <div id="discount_row" class="flex justify-between text-sm hidden">
+                            <span class="text-green-400 font-bold flex items-center gap-1.5"><i class="fas fa-ticket-alt text-[10px]"></i> Promo Applied</span>
+                            <span class="text-green-400 font-mono font-bold" id="discount_val">0%</span>
+                        </div>
+                    </div>
+
+                    <div class="flex justify-between items-end mb-2 relative z-10 mt-auto">
+                        <span class="text-slate-400 font-black uppercase text-xs tracking-widest">Total Required</span>
+                        <span class="text-3xl font-black text-[#00f0ff] tracking-tighter drop-shadow-[0_0_15px_rgba(0,240,255,0.4)]" id="final_price_display">
+                            <?php echo format_price($price_after_agent); ?>
                         </span>
                     </div>
                     
-                    <?php if($sale_savings > 0): ?>
-                    <div class="flex justify-between text-sm">
-                        <span class="text-red-400 font-bold flex items-center gap-1.5"><i class="fas fa-bolt text-[10px]"></i> Flash Sale</span>
-                        <span class="text-red-400 font-mono font-bold">- <?php echo format_price($sale_savings); ?></span>
-                    </div>
-                    <?php endif; ?>
-
-                    <?php if($discount > 0): ?>
-                    <div class="flex justify-between text-sm">
-                        <span class="text-yellow-400 font-bold flex items-center gap-1.5"><i class="fas fa-crown text-[10px]"></i> Agent Offset (-<?php echo $discount; ?>%)</span>
-                        <span class="text-yellow-400 font-mono font-bold">- <?php echo format_price($agent_savings); ?></span>
-                    </div>
-                    <?php endif; ?>
-
-                    <div id="discount_row" class="flex justify-between text-sm hidden">
-                        <span class="text-green-400 font-bold flex items-center gap-1.5"><i class="fas fa-ticket-alt text-[10px]"></i> Promo Applied</span>
-                        <span class="text-green-400 font-mono font-bold" id="discount_val">0%</span>
-                    </div>
+                    <p class="text-center text-[9px] text-slate-500 font-medium mt-6 uppercase tracking-widest flex items-center justify-center gap-2 opacity-80 bg-slate-950/50 py-2 rounded-lg border border-slate-800">
+                        <i class="fas fa-shield-check text-green-500 text-sm"></i> Secure Admin Provisioning Route
+                    </p>
                 </div>
-
-                <div class="flex justify-between items-end mb-2 relative z-10">
-                    <span class="text-slate-400 font-black uppercase text-xs tracking-widest">Total Required</span>
-                    <span class="text-3xl font-black text-[#00f0ff] tracking-tighter drop-shadow-[0_0_15px_rgba(0,240,255,0.4)]" id="final_price_display">
-                        <?php echo format_price($price_after_agent); ?>
-                    </span>
-                </div>
-                
-                <p class="text-center text-[9px] text-slate-500 font-medium mt-6 uppercase tracking-widest flex items-center justify-center gap-1.5 opacity-80">
-                    <i class="fas fa-lock text-green-500"></i> Secure 256-bit Encrypted Connection
-                </p>
             </div>
         </div>
 
@@ -444,7 +483,12 @@ $agent_savings = $base_price - $price_after_agent;
 
         // Reveal Panel & Step 2
         panel.classList.remove('hidden');
-        step2.classList.remove('opacity-50', 'pointer-events-none');
+        step2.classList.remove('hidden');
+        
+        // Small delay to allow display:block to apply before animating opacity
+        setTimeout(() => {
+            step2.classList.remove('opacity-50', 'pointer-events-none');
+        }, 50);
         
         // Enable Submit Button & Update Styling
         submitBtn.disabled = false;
@@ -471,9 +515,9 @@ $agent_savings = $base_price - $price_after_agent;
                 clearInterval(sessionTimer);
                 // Reject operation visually then reload
                 document.body.innerHTML += `
-                    <div class="fixed inset-0 bg-slate-950/90 z-[999] flex flex-col items-center justify-center text-center animate-fade-in">
-                        <i class="fas fa-shield-alt text-6xl text-red-500 mb-6 shadow-[0_0_30px_rgba(239,68,68,0.5)] rounded-full"></i>
-                        <h2 class="text-3xl font-black text-white mb-2">Session Terminated</h2>
+                    <div class="fixed inset-0 bg-slate-950/90 z-[999] flex flex-col items-center justify-center text-center animate-fade-in backdrop-blur-xl">
+                        <i class="fas fa-shield-alt text-7xl text-red-500 mb-6 shadow-[0_0_40px_rgba(239,68,68,0.5)] rounded-full bg-red-500/10 p-6"></i>
+                        <h2 class="text-4xl font-black text-white mb-3 tracking-tight">Session Terminated</h2>
                         <p class="text-slate-400 font-mono tracking-widest uppercase">Security protocol timeout. Reloading matrix...</p>
                     </div>
                 `;
