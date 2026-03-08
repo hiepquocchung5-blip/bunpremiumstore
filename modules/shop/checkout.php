@@ -1,10 +1,11 @@
 <?php
 // modules/shop/checkout.php
-// PRODUCTION DEPLOYMENT v4.1 - Patched JS Null Reference & Stabilized Timer UI
+// PRODUCTION DEPLOYMENT v4.3 - Debugged JS, No Wallet, Strict Admin Delivery
 
 if (!is_logged_in()) redirect('index.php?module=auth&page=login');
 
 $product_id = isset($_GET['id']) ? (int)$_GET['id'] : 0;
+$user_id = $_SESSION['user_id'];
 
 // 1. Fetch Product & Category Info
 $stmt = $pdo->prepare("
@@ -23,17 +24,19 @@ $stmt = $pdo->prepare("SELECT * FROM product_instructions WHERE product_id = ? O
 $stmt->execute([$product_id]);
 $instructions = $stmt->fetchAll();
 
-// 3. Fetch Active Payment Methods
+// 3. Fetch Active Payment Methods (Standard Gateways Only)
 $payment_methods = $pdo->query("SELECT * FROM payment_methods WHERE is_active = 1")->fetchAll();
 
 // 4. Pricing Logic
-$discount = get_user_discount($_SESSION['user_id']);
+$discount = get_user_discount($user_id);
 $base_price = $product['sale_price'] ?: $product['price'];
 $price_after_agent = $base_price * ((100 - $discount) / 100);
 $final_price = $price_after_agent;
 $coupon_code = null;
 
-// Handle Form Submission
+// =====================================================================================
+// HANDLE FORM SUBMISSION (Strictly Manual Transfers)
+// =====================================================================================
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     if (!hash_equals($_SESSION['csrf_token'], $_POST['csrf_token'])) die("Invalid Token");
 
@@ -61,6 +64,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     } elseif (empty($_FILES['proof']['name'])) {
         $error = "Payment verification screenshot is required.";
     } else {
+        
         // Upload Logic
         $target_dir = "uploads/proofs/";
         if (!is_dir($target_dir)) mkdir($target_dir, 0755, true);
@@ -75,31 +79,30 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             if (move_uploaded_file($_FILES["proof"]["tmp_name"], $target_file)) {
                 $txn_id = trim($_POST['txn_id']);
                 
-                // STRICT ADMIN PROVISIONING
-                // User is no longer asked for email delivery options. All items flow through the secure chat.
-                $email_type = 'admin_provided';
-                $delivery = 'Secure Admin Delivery via Chat';
-                
-                // Get Payment Method Name for JSON Data
+                // Fetch Payment Method Name for logs
                 $stmt_pm = $pdo->prepare("SELECT bank_name FROM payment_methods WHERE id = ?");
                 $stmt_pm->execute([$selected_payment_id]);
                 $pm_name = $stmt_pm->fetchColumn() ?: 'Manual Transfer';
 
+                // Form Data JSON setup
                 $form_data_array = ['Payment Node' => $pm_name];
-                
                 if ($product['delivery_type'] === 'form' && isset($_POST['form_field'])) {
                      $form_data_array = array_merge($form_data_array, $_POST['form_field']);
                 }
                 $form_data = json_encode($form_data_array);
 
+                // STRICT ADMIN PROVISIONING
+                $email_type = 'admin_provided';
+                $delivery = 'Secure Admin Delivery via Chat';
+                $order_status = 'pending';
+
                 // Insert Order
-                $sql = "INSERT INTO orders (user_id, product_id, email_delivery_type, delivery_email, form_data, transaction_last_6, proof_image_path, total_price_paid, coupon_code) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)";
+                $sql = "INSERT INTO orders (user_id, product_id, email_delivery_type, delivery_email, form_data, transaction_last_6, proof_image_path, total_price_paid, coupon_code, status) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)";
                 $stmt = $pdo->prepare($sql);
-                $stmt->execute([$_SESSION['user_id'], $product_id, $email_type, $delivery, $form_data, $txn_id, $target_file, $final_price, $coupon_code]);
-                
+                $stmt->execute([$user_id, $product_id, $email_type, $delivery, $form_data, $txn_id, $target_file, $final_price, $coupon_code, $order_status]);
                 $new_order_id = $pdo->lastInsertId();
 
-                // Increment Coupon Usage if applied
+                // Increment Coupon Usage
                 if ($coupon) {
                     $pdo->prepare("UPDATE coupons SET used_count = used_count + 1 WHERE id = ?")->execute([$coupon['id']]);
                 }
@@ -144,7 +147,7 @@ $display_image = !empty($product['image_path']) ? BASE_URL . $product['image_pat
         100% { background-position: 0% 50%; }
     }
     
-    /* Cinematic Image Pan (Slide Show effect for single image) */
+    /* Cinematic Image Pan */
     @keyframes panImage {
         0% { transform: scale(1.05) translate(0, 0); }
         50% { transform: scale(1.15) translate(-2%, -2%); }
@@ -205,7 +208,7 @@ $display_image = !empty($product['image_path']) ? BASE_URL . $product['image_pat
                         </div>
                     </div>
                     
-                    <!-- Selection Grid -->
+                    <!-- Selection Grid (Standard Methods Only) -->
                     <div class="grid grid-cols-2 sm:grid-cols-3 gap-4 mb-2" id="paymentGrid">
                         <?php foreach($payment_methods as $pm): ?>
                             <div class="payment-card cursor-pointer bg-slate-800/50 border border-slate-600 hover:border-[#00f0ff] rounded-2xl p-5 text-center transition-all duration-300 group/card shadow-inner" 
@@ -228,44 +231,44 @@ $display_image = !empty($product['image_path']) ? BASE_URL . $product['image_pat
                         Complete Transfer Protocol
                     </h3>
 
-                    <!-- Dynamic Transfer Terminal -->
-                    <div class="bg-black/50 border border-slate-700 rounded-2xl p-6 mb-8 relative z-10 shadow-inner flex flex-col md:flex-row justify-between items-center gap-6">
-                        <div class="flex-1 w-full space-y-4">
-                            <div>
-                                <p class="text-[10px] text-slate-400 font-bold uppercase tracking-wider mb-1">Transfer Exactly</p>
-                                <p class="text-4xl font-black text-[#00f0ff] tracking-tight drop-shadow-[0_0_10px_rgba(0,240,255,0.4)]" id="transferAmountDisplay"><?php echo format_price($final_price); ?></p>
-                            </div>
-                            
-                            <div class="space-y-1 bg-slate-900 p-3 rounded-xl border border-slate-700">
-                                <p class="text-xs text-slate-400 font-medium">Receiver Name: <strong class="text-white ml-1" id="receiverName">...</strong></p>
-                                <div class="flex items-center justify-between gap-3">
-                                    <code class="text-lg md:text-xl font-mono text-green-400 font-bold select-all break-all" id="accountNumber">...</code>
-                                    <button type="button" onclick="copyAccountInfo()" class="text-slate-500 hover:text-white bg-slate-800 p-2 rounded-lg transition shrink-0 border border-slate-600 shadow-sm" title="Copy Number">
-                                        <i class="fas fa-copy"></i>
-                                    </button>
+                    <!-- MANUAL PAYMENT DETAILS -->
+                    <div id="manualPaymentDetails" class="relative z-10">
+                        <div class="bg-black/50 border border-slate-700 rounded-2xl p-6 mb-8 shadow-inner flex flex-col md:flex-row justify-between items-center gap-6">
+                            <div class="flex-1 w-full space-y-4">
+                                <div>
+                                    <p class="text-[10px] text-slate-400 font-bold uppercase tracking-wider mb-1">Transfer Exactly</p>
+                                    <p class="text-4xl font-black text-[#00f0ff] tracking-tight drop-shadow-[0_0_10px_rgba(0,240,255,0.4)]" id="transferAmountDisplay"><?php echo format_price($final_price); ?></p>
+                                </div>
+                                
+                                <div class="space-y-1 bg-slate-900 p-3 rounded-xl border border-slate-700">
+                                    <p class="text-xs text-slate-400 font-medium">Receiver Name: <strong class="text-white ml-1" id="receiverName">...</strong></p>
+                                    <div class="flex items-center justify-between gap-3">
+                                        <code class="text-lg md:text-xl font-mono text-green-400 font-bold select-all break-all" id="accountNumber">...</code>
+                                        <button type="button" onclick="copyAccountInfo()" class="text-slate-500 hover:text-white bg-slate-800 p-2 rounded-lg transition shrink-0 border border-slate-600 shadow-sm" title="Copy Number">
+                                            <i class="fas fa-copy"></i>
+                                        </button>
+                                    </div>
                                 </div>
                             </div>
+
+                            <!-- 5 Minute Session Timer -->
+                            <div class="bg-red-900/10 border border-red-500/30 p-5 rounded-xl flex flex-col items-center justify-center shrink-0 w-full md:w-48 shadow-inner">
+                                <i class="fas fa-satellite-dish text-red-500 text-2xl mb-2 animate-pulse"></i>
+                                <span class="text-[10px] text-slate-400 font-bold uppercase tracking-widest mb-1 text-center">Session Expires</span>
+                                <span id="sessionTimer" class="font-mono text-3xl font-black text-white tracking-widest drop-shadow-[0_0_8px_rgba(239,68,68,0.5)]">05:00</span>
+                            </div>
                         </div>
 
-                        <!-- 5 Minute Session Timer -->
-                        <div class="bg-red-900/10 border border-red-500/30 p-5 rounded-xl flex flex-col items-center justify-center shrink-0 w-full md:w-48 shadow-inner">
-                            <i class="fas fa-satellite-dish text-red-500 text-2xl mb-2 animate-pulse"></i>
-                            <span class="text-[10px] text-slate-400 font-bold uppercase tracking-widest mb-1 text-center">Session Expires</span>
-                            <span id="sessionTimer" class="font-mono text-3xl font-black text-white tracking-widest drop-shadow-[0_0_8px_rgba(239,68,68,0.5)]">05:00</span>
-                        </div>
-                    </div>
+                        <!-- Verification Inputs -->
+                        <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                            <div class="input-wrapper">
+                                <input type="text" name="txn_id" id="txn_id" placeholder=" " maxlength="6" pattern="\d{6}"
+                                       class="w-full bg-slate-950/50 border-2 border-slate-600 rounded-xl px-4 py-5 text-white font-mono tracking-[0.5em] text-xl focus:border-[#00f0ff] outline-none transition peer shadow-inner text-center">
+                                <label for="txn_id" class="absolute left-4 top-5 text-slate-400 text-sm font-bold tracking-wider transition-all duration-200 pointer-events-none">Last 6 Digits of Txn ID</label>
+                            </div>
 
-                    <!-- Verification Inputs -->
-                    <div class="grid grid-cols-1 md:grid-cols-2 gap-6 relative z-10">
-                        <div class="input-wrapper">
-                            <input type="text" name="txn_id" id="txn_id" placeholder=" " required maxlength="6" pattern="\d{6}"
-                                   class="w-full bg-slate-950/50 border-2 border-slate-600 rounded-xl px-4 py-5 text-white font-mono tracking-[0.5em] text-xl focus:border-[#00f0ff] outline-none transition peer shadow-inner text-center">
-                            <label for="txn_id" class="absolute left-4 top-5 text-slate-400 text-sm font-bold tracking-wider transition-all duration-200 pointer-events-none">Last 6 Digits of Txn ID</label>
-                        </div>
-
-                        <div>
-                            <div class="relative border-2 border-dashed border-slate-600 rounded-xl h-full min-h-[88px] text-center hover:bg-slate-800/50 hover:border-[#00f0ff] transition-all cursor-pointer group/upload flex flex-col justify-center bg-slate-950/30" id="uploadWrapper">
-                                <input type="file" name="proof" id="proofInput" accept="image/*" required class="absolute inset-0 w-full h-full opacity-0 cursor-pointer z-10" 
+                            <div id="uploadWrapper" class="relative border-2 border-dashed border-slate-600 rounded-xl h-full min-h-[88px] text-center hover:bg-slate-800/50 hover:border-[#00f0ff] transition-all cursor-pointer group/upload flex flex-col justify-center bg-slate-950/30">
+                                <input type="file" name="proof" id="proofInput" accept="image/*" class="absolute inset-0 w-full h-full opacity-0 cursor-pointer z-10" 
                                        onchange="document.getElementById('fileNameDisplay').innerHTML = `<span class='text-green-400 font-bold flex items-center justify-center gap-2'><i class='fas fa-check-circle'></i> ` + this.files[0].name + `</span>`; this.parentElement.classList.add('border-green-500/50', 'bg-green-500/10');">
                                 <div class="flex items-center justify-center gap-3 px-4">
                                     <i class="fas fa-cloud-upload-alt text-2xl text-slate-500 group-hover/upload:text-[#00f0ff] transition transform group-hover/upload:-translate-y-1 shrink-0"></i>
@@ -277,6 +280,7 @@ $display_image = !empty($product['image_path']) ? BASE_URL . $product['image_pat
                             </div>
                         </div>
                     </div>
+
                 </div>
 
                 <!-- STEP 3: Form Fields (If applicable) -->
@@ -336,7 +340,7 @@ $display_image = !empty($product['image_path']) ? BASE_URL . $product['image_pat
                 <!-- Submit Button -->
                 <button type="submit" id="finalSubmitBtn" disabled class="w-full bg-slate-800 border border-slate-700 text-slate-500 font-black py-5 rounded-2xl text-sm uppercase tracking-widest transition-all duration-300 cursor-not-allowed shadow-inner mt-4 relative overflow-hidden group/btn">
                     <span class="relative z-10 flex items-center justify-center gap-2">
-                        <i class="fas fa-lock"></i> <span>Awaiting Payment Selection</span>
+                        <i class="fas fa-lock" id="btnLockIcon"></i> <span id="btnText">Awaiting Payment Selection</span>
                     </span>
                 </button>
 
@@ -452,26 +456,25 @@ $display_image = !empty($product['image_path']) ? BASE_URL . $product['image_pat
 
     // Elements
     const pGrid = document.querySelectorAll('.payment-card');
-    const panel = document.getElementById('paymentDetailsPanel');
+    const panel = document.getElementById('step2Container');
     const inputHiddenId = document.getElementById('hidden_payment_id');
-    const step2 = document.getElementById('step2Container');
     const submitBtn = document.getElementById('finalSubmitBtn');
     const timerDisplay = document.getElementById('sessionTimer');
+    const txnInput = document.getElementById('txn_id');
+    const proofInput = document.getElementById('proofInput');
 
     function selectPayment(data, element) {
-        // Highlight selection safely
+        // Highlight selection safely to prevent TypeError
         pGrid.forEach(el => {
             el.classList.remove('border-[#00f0ff]', 'bg-[#00f0ff]/10', 'shadow-[0_0_20px_rgba(0,240,255,0.2)]', 'scale-105');
             el.classList.add('border-slate-600', 'bg-slate-800/50');
             
-            // Safely modify icon if exists
             const icon = el.querySelector('i');
             if (icon && icon.classList) {
                 icon.classList.remove('text-[#00f0ff]');
                 icon.classList.add('text-slate-500');
             }
             
-            // Safely modify text if exists
             const text = el.querySelector('p');
             if (text && text.classList) {
                 text.classList.remove('text-white');
@@ -504,22 +507,27 @@ $display_image = !empty($product['image_path']) ? BASE_URL . $product['image_pat
 
         // Reveal Panel & Step 2
         panel.classList.remove('hidden');
-        step2.classList.remove('hidden');
         
+        // Enforce Inputs
+        if (txnInput) txnInput.required = true;
+        if (proofInput) proofInput.required = true;
+
         // Small delay to allow display:block to apply before animating opacity
         setTimeout(() => {
-            step2.classList.remove('opacity-50', 'pointer-events-none');
+            panel.classList.remove('opacity-50', 'pointer-events-none');
         }, 50);
         
         // Enable Submit Button & Update Styling
-        submitBtn.disabled = false;
-        submitBtn.className = "w-full text-slate-900 font-black py-5 rounded-2xl text-sm uppercase tracking-widest transition-all duration-300 shadow-[0_0_20px_rgba(0,240,255,0.4)] mt-6 relative overflow-hidden group/btn transform active:scale-[0.98]";
-        submitBtn.innerHTML = `
-            <div class="absolute inset-0 bg-gradient-to-r from-blue-500 via-[#00f0ff] to-blue-500 bg-[length:200%_auto] animate-gradient"></div>
-            <span class="relative z-10 flex items-center justify-center gap-2 drop-shadow-md">
-                <i class="fas fa-satellite-dish group-hover/btn:animate-pulse"></i> <span>Execute Transfer Protocol</span>
-            </span>
-        `;
+        if (submitBtn) {
+            submitBtn.disabled = false;
+            submitBtn.className = "w-full text-slate-900 font-black py-5 rounded-2xl text-sm uppercase tracking-widest transition-all duration-300 shadow-[0_0_20px_rgba(0,240,255,0.4)] mt-6 relative overflow-hidden group/btn transform active:scale-[0.98]";
+            submitBtn.innerHTML = `
+                <div class="absolute inset-0 bg-gradient-to-r from-blue-500 via-[#00f0ff] to-blue-500 bg-[length:200%_auto] animate-gradient"></div>
+                <span class="relative z-10 flex items-center justify-center gap-2 drop-shadow-md">
+                    <i class="fas fa-satellite-dish group-hover/btn:animate-pulse"></i> <span>Execute Transfer Protocol</span>
+                </span>
+            `;
+        }
 
         // Start Timer
         startSessionTimer();
@@ -528,8 +536,11 @@ $display_image = !empty($product['image_path']) ? BASE_URL . $product['image_pat
     function startSessionTimer() {
         clearInterval(sessionTimer);
         timeLeft = 300; // Reset to 5 mins
-        timerDisplay.classList.remove('text-red-500', 'scale-110');
-        timerDisplay.classList.add('text-white');
+        
+        if (timerDisplay) {
+            timerDisplay.classList.remove('text-red-500', 'scale-110');
+            timerDisplay.classList.add('text-white');
+        }
         
         sessionTimer = setInterval(() => {
             if(timeLeft <= 0) {
@@ -548,29 +559,40 @@ $display_image = !empty($product['image_path']) ? BASE_URL . $product['image_pat
             
             let m = Math.floor(timeLeft / 60);
             let s = timeLeft % 60;
-            timerDisplay.innerText = `${m < 10 ? '0' : ''}${m}:${s < 10 ? '0' : ''}${s}`;
             
-            // Visual warning at 1 minute
-            if(timeLeft <= 60) {
-                timerDisplay.classList.remove('text-white');
-                timerDisplay.classList.add('text-red-500', 'scale-110', 'transition-transform');
+            if (timerDisplay) {
+                timerDisplay.innerText = `${m < 10 ? '0' : ''}${m}:${s < 10 ? '0' : ''}${s}`;
+                
+                // Visual warning at 1 minute
+                if(timeLeft <= 60) {
+                    timerDisplay.classList.remove('text-white');
+                    timerDisplay.classList.add('text-red-500', 'scale-110', 'transition-transform');
+                }
             }
             timeLeft--;
         }, 1000);
     }
 
     function copyAccountInfo() {
-        const text = document.getElementById('accountNumber').innerText;
+        const accElement = document.getElementById('accountNumber');
+        if (!accElement) return;
+        
+        const text = accElement.innerText;
         navigator.clipboard.writeText(text).then(() => {
-            const btn = document.querySelector('#paymentDetailsPanel button i');
-            btn.className = 'fas fa-check text-green-400';
-            setTimeout(() => { btn.className = 'fas fa-copy'; }, 2000);
+            const btn = document.querySelector('#step2Container button i');
+            if(btn) {
+                btn.className = 'fas fa-check text-green-400';
+                setTimeout(() => { btn.className = 'fas fa-copy'; }, 2000);
+            }
         });
     }
 
     function applyCoupon() {
-        const code = document.getElementById('coupon_input').value;
+        const codeInput = document.getElementById('coupon_input');
         const msg = document.getElementById('coupon_msg');
+        
+        if (!codeInput || !msg) return;
+        const code = codeInput.value;
         
         fetch('api/coupon.php', {
             method: 'POST',
@@ -589,18 +611,23 @@ $display_image = !empty($product['image_path']) ? BASE_URL . $product['image_pat
                 
                 let priceStr = new Intl.NumberFormat().format(currentFinalPrice) + ' Ks';
                 
-                document.getElementById('final_price_display').innerText = priceStr;
+                const finalDisplay = document.getElementById('final_price_display');
+                if (finalDisplay) finalDisplay.innerText = priceStr;
                 
-                // Only update transfer amount if payment panel is visible
                 const transferDisplay = document.getElementById('transferAmountDisplay');
                 if(transferDisplay) transferDisplay.innerText = priceStr;
                 
-                document.getElementById('discount_row').classList.remove('hidden');
-                document.getElementById('discount_val').innerText = `-${discountPct}%`;
+                const discountRow = document.getElementById('discount_row');
+                const discountVal = document.getElementById('discount_val');
                 
-                document.getElementById('hidden_coupon_code').value = code;
-                document.getElementById('coupon_input').readOnly = true;
-                document.getElementById('coupon_input').classList.add('opacity-50', 'cursor-not-allowed');
+                if (discountRow) discountRow.classList.remove('hidden');
+                if (discountVal) discountVal.innerText = `-${discountPct}%`;
+                
+                const hiddenCoupon = document.getElementById('hidden_coupon_code');
+                if (hiddenCoupon) hiddenCoupon.value = code;
+                
+                codeInput.readOnly = true;
+                codeInput.classList.add('opacity-50', 'cursor-not-allowed');
             } else {
                 msg.classList.add('text-red-400');
                 msg.innerHTML = `<i class="fas fa-times-circle"></i> ${data.message}`;
