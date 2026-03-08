@@ -463,18 +463,34 @@ $display_image = !empty($product['image_path']) ? BASE_URL . $product['image_pat
         pGrid.forEach(el => {
             el.classList.remove('border-[#00f0ff]', 'bg-[#00f0ff]/10', 'shadow-[0_0_20px_rgba(0,240,255,0.2)]', 'scale-105');
             el.classList.add('border-slate-600', 'bg-slate-800/50');
-            el.querySelector('i').classList.remove('text-[#00f0ff]');
-            el.querySelector('i').classList.add('text-slate-500');
-            el.querySelector('p').classList.remove('text-white');
-            el.querySelector('p').classList.add('text-slate-300');
+            
+            const i = el.querySelector('i');
+            if (i) {
+                i.classList.remove('text-[#00f0ff]');
+                i.classList.add('text-slate-500');
+            }
+            
+            const p = el.querySelector('p');
+            if (p) {
+                p.classList.remove('text-white');
+                p.classList.add('text-slate-300');
+            }
         });
         
         element.classList.remove('border-slate-600', 'bg-slate-800/50');
         element.classList.add('border-[#00f0ff]', 'bg-[#00f0ff]/10', 'shadow-[0_0_20px_rgba(0,240,255,0.2)]', 'scale-105');
-        element.querySelector('i').classList.remove('text-slate-500');
-        element.querySelector('i').classList.add('text-[#00f0ff]');
-        element.querySelector('p').classList.remove('text-slate-300');
-        element.querySelector('p').classList.add('text-white');
+        
+        const ei = element.querySelector('i');
+        if (ei) {
+            ei.classList.remove('text-slate-500');
+            ei.classList.add('text-[#00f0ff]');
+        }
+        
+        const ep = element.querySelector('p');
+        if (ep) {
+            ep.classList.remove('text-slate-300');
+            ep.classList.add('text-white');
+        }
 
         // Update Panel Data
         document.getElementById('receiverName').innerText = data.account_name;
