@@ -229,18 +229,18 @@ $google_login_url = "https://accounts.google.com/o/oauth2/v2/auth?response_type=
         <?php endif; ?>
 
         <!-- Google Sign-Up -->
-        <?php if(!empty($google_client_id)): ?>
-        <a href="<?php echo $google_login_url; ?>" class="w-full bg-white hover:bg-gray-100 text-slate-900 font-black py-3.5 px-4 rounded-xl shadow-lg transition flex items-center justify-center gap-3 mb-6 group">
+        <?php // if(!empty($google_client_id)): ?>
+        <!-- <a href="<?php // echo $google_login_url; ?>" class="w-full bg-white hover:bg-gray-100 text-slate-900 font-black py-3.5 px-4 rounded-xl shadow-lg transition flex items-center justify-center gap-3 mb-6 group">
             <img src="https://www.svgrepo.com/show/475656/google-color.svg" class="w-6 h-6 transition-transform group-hover:scale-110" alt="Google">
             <span class="text-sm tracking-wide">Fast Deploy with Google</span>
-        </a>
+        </a> -->
 
-        <div class="flex items-center gap-4 mb-6">
+        <!-- <div class="flex items-center gap-4 mb-6">
             <div class="h-px bg-slate-700/80 flex-1"></div>
             <span class="text-[10px] text-slate-500 uppercase font-black tracking-widest">Or manual setup</span>
             <div class="h-px bg-slate-700/80 flex-1"></div>
-        </div>
-        <?php endif; ?>
+        </div> -->
+        <?php // endif; ?>
 
         <!-- Form -->
         <form method="POST" class="space-y-5" onsubmit="return validateForm()">
