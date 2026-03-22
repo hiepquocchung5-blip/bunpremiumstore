@@ -289,8 +289,8 @@ $curr_symbol = $curr_currency == 'USD' ? '$' : 'Ks';
             </div>
 
             <a href="index.php?module=user&page=orders" class="flex flex-col items-center gap-1 <?php echo isActive('user', 'orders'); ?>">
-                <i class="fas fa-box-open text-lg"></i>
-                <span class="text-[8px] font-black uppercase tracking-widest">Orders</span>
+                <i class="fas fa-comments text-lg"></i>
+                <span class="text-[8px] font-black uppercase tracking-widest">Chat</span>
             </a>
 
             <!-- Toggle Mobile Menu Overlay -->
