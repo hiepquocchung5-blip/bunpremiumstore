@@ -280,13 +280,19 @@ $google_login_url = "https://accounts.google.com/o/oauth2/v2/auth?response_type=
             <div class="grid grid-cols-1 md:grid-cols-2 gap-5">
                 <div class="input-group">
                     <input type="password" name="password" id="password" placeholder="Master Password" required 
-                           class="input-field w-full bg-slate-900/60 border border-slate-600 rounded-xl py-3.5 text-white focus:border-[#00f0ff] outline-none placeholder-slate-500 backdrop-blur-sm">
-                    <i class="fas fa-Password input-icon"></i>
+                           class="input-field w-full bg-slate-900/60 border border-slate-600 rounded-xl py-3.5 text-white focus:border-[#00f0ff] outline-none placeholder-slate-500 backdrop-blur-sm pr-12">
+                    <i class="fas fa-lock input-icon"></i>
+                    <button type="button" id="togglePassword" class="absolute right-3 top-1/2 transform -translate-y-1/2 text-slate-400 hover:text-[#00f0ff] transition-colors duration-200">
+                        <i class="fas fa-eye"></i>
+                    </button>
                 </div>
                 <div class="input-group">
                     <input type="password" name="confirm_password" id="confirm_password" placeholder="Verify Password" required 
-                           class="input-field w-full bg-slate-900/60 border border-slate-600 rounded-xl py-3.5 text-white focus:border-[#00f0ff] outline-none placeholder-slate-500 backdrop-blur-sm">
+                           class="input-field w-full bg-slate-900/60 border border-slate-600 rounded-xl py-3.5 text-white focus:border-[#00f0ff] outline-none placeholder-slate-500 backdrop-blur-sm pr-12">
                     <i class="fas fa-check-double input-icon"></i>
+                    <button type="button" id="toggleConfirmPassword" class="absolute right-3 top-1/2 transform -translate-y-1/2 text-slate-400 hover:text-[#00f0ff] transition-colors duration-200">
+                        <i class="fas fa-eye"></i>
+                    </button>
                 </div>
             </div>
 
@@ -346,6 +352,37 @@ $google_login_url = "https://accounts.google.com/o/oauth2/v2/auth?response_type=
                 else { reqNum.classList.replace('text-green-400', 'text-slate-500'); }
             });
         }
+
+        // Password visibility toggles
+        document.getElementById('togglePassword').addEventListener('click', function() {
+            const passwordInput = document.getElementById('password');
+            const icon = this.querySelector('i');
+            
+            if (passwordInput.type === 'password') {
+                passwordInput.type = 'text';
+                icon.classList.remove('fa-eye');
+                icon.classList.add('fa-eye-slash');
+            } else {
+                passwordInput.type = 'password';
+                icon.classList.remove('fa-eye-slash');
+                icon.classList.add('fa-eye');
+            }
+        });
+
+        document.getElementById('toggleConfirmPassword').addEventListener('click', function() {
+            const confirmPasswordInput = document.getElementById('confirm_password');
+            const icon = this.querySelector('i');
+            
+            if (confirmPasswordInput.type === 'password') {
+                confirmPasswordInput.type = 'text';
+                icon.classList.remove('fa-eye');
+                icon.classList.add('fa-eye-slash');
+            } else {
+                confirmPasswordInput.type = 'password';
+                icon.classList.remove('fa-eye-slash');
+                icon.classList.add('fa-eye');
+            }
+        });
 
         function validateForm() {
             const p1 = document.getElementById('password').value;
