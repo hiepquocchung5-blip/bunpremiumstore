@@ -1,9 +1,9 @@
 <?php
 // admin/includes/header.php
+// PRODUCTION v6.0 - Mobile-Optimized (425px), Z-Index Supremacy & Live Clock
 
 require_once dirname(__DIR__) . '/config/db.php';
 require_once dirname(__DIR__) . '/includes/functions.php';
-
 
 if (session_status() === PHP_SESSION_NONE) {
     session_start();
@@ -35,8 +35,7 @@ if (!function_exists('admin_url')) {
     }
 }
 
-// Database connection required for badges (Assuming it's loaded before header in index.php)
-// If $pdo exists, fetch pending orders count for the badge
+// Database connection required for badges
 $pending_count = 0;
 if (isset($pdo)) {
     try {
@@ -49,7 +48,6 @@ if (isset($pdo)) {
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <!-- Viewport optimized for mobile scaling (including 320px - 425px) -->
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>Command Center - DigitalMarketplaceMM</title>
     
@@ -119,9 +117,9 @@ if (isset($pdo)) {
 
     <!-- ========================================== -->
     <!-- MOBILE HEADER (Visible < 1024px)           -->
-    <!-- Optimized for 425px screens                -->
+    <!-- Z-Index 80 to float above normal content   -->
     <!-- ========================================== -->
-    <div class="lg:hidden fixed top-0 left-0 right-0 h-16 bg-slate-900/95 backdrop-blur-xl border-b border-slate-800 z-40 flex items-center justify-between px-4 sm:px-6 shadow-[0_4px_20px_rgba(0,0,0,0.5)]">
+    <div class="lg:hidden fixed top-0 left-0 right-0 h-16 bg-slate-900/95 backdrop-blur-xl border-b border-slate-800 z-[80] flex items-center justify-between px-4 sm:px-6 shadow-[0_4px_20px_rgba(0,0,0,0.5)]">
         <div class="flex items-center gap-3">
             <div class="w-9 h-9 rounded-xl bg-slate-800 flex items-center justify-center border border-[#00f0ff]/30 shadow-[0_0_15px_rgba(0,240,255,0.2)]">
                 <i class="fas fa-bolt text-[#00f0ff] text-sm"></i>
@@ -147,14 +145,15 @@ if (isset($pdo)) {
         </div>
     </div>
 
-    <!-- Mobile Overlay -->
-    <div id="sidebarOverlay" class="fixed inset-0 bg-slate-950/80 backdrop-blur-sm z-40 hidden lg:hidden opacity-0"></div>
+    <!-- Mobile Overlay (Z-Index 90) -->
+    <div id="sidebarOverlay" class="fixed inset-0 bg-slate-950/80 backdrop-blur-sm z-[90] hidden lg:hidden opacity-0 cursor-pointer"></div>
 
     <!-- ========================================== -->
     <!-- SIDEBAR NAVIGATION                         -->
-    <!-- Width 64 (256px) fits perfectly on 320-425px-->
+    <!-- Z-Index 100 to dominate all UI elements    -->
+    <!-- Width 64 (256px) fits 320-425px viewports  -->
     <!-- ========================================== -->
-    <aside id="adminSidebar" class="fixed inset-y-0 left-0 w-64 bg-slate-900/95 backdrop-blur-2xl border-r border-slate-800 z-50 transform -translate-x-full lg:translate-x-0 lg:static lg:flex shrink-0 flex-col shadow-[20px_0_50px_rgba(0,0,0,0.5)]">
+    <aside id="adminSidebar" class="fixed inset-y-0 left-0 w-64 bg-slate-900/95 backdrop-blur-2xl border-r border-slate-800 z-[100] transform -translate-x-full lg:translate-x-0 lg:static lg:flex shrink-0 flex-col shadow-[20px_0_50px_rgba(0,0,0,0.5)]">
         
         <!-- Brand Header -->
         <div class="h-20 flex items-center justify-between px-5 border-b border-slate-800 shrink-0 relative overflow-hidden group">
@@ -171,12 +170,12 @@ if (isset($pdo)) {
             </div>
 
             <!-- Mobile Close Btn inside sidebar -->
-            <button id="closeSidebarBtn" class="lg:hidden text-slate-500 hover:text-white bg-slate-800 w-8 h-8 rounded-lg flex items-center justify-center transition border border-slate-700">
+            <button id="closeSidebarBtn" class="lg:hidden text-slate-500 hover:text-white bg-slate-800 w-8 h-8 rounded-lg flex items-center justify-center transition border border-slate-700 focus:outline-none">
                 <i class="fas fa-times"></i>
             </button>
         </div>
 
-        <!-- Identity Banner -->
+        <!-- Identity Banner with Live Clock -->
         <div class="p-5 border-b border-slate-800/80 shrink-0 bg-slate-900/50">
             <div class="flex items-center gap-3">
                 <div class="w-10 h-10 rounded-full bg-slate-800 border border-[#00f0ff]/30 flex items-center justify-center text-white font-bold shadow-inner relative">
@@ -184,9 +183,9 @@ if (isset($pdo)) {
                     <span class="absolute -bottom-0.5 -right-0.5 w-3.5 h-3.5 bg-green-500 border-2 border-slate-900 rounded-full"></span>
                 </div>
                 <div class="min-w-0 flex-1">
-                    <p class="text-sm font-bold text-white truncate">Operative #<?php echo $_SESSION['admin_id'] ?? '1'; ?></p>
-                    <p class="text-[9px] font-mono text-[#00f0ff] uppercase tracking-widest truncate mt-0.5">
-                        <i class="fas fa-shield-check mr-1"></i> <?php echo str_replace('_', ' ', $_SESSION['admin_role'] ?? 'ADMIN'); ?>
+                    <p class="text-sm font-bold text-white truncate">Op #<?php echo $_SESSION['admin_id'] ?? '1'; ?></p>
+                    <p class="text-[9px] font-mono text-slate-400 uppercase tracking-widest truncate mt-0.5" id="live-clock">
+                        --:--:--
                     </p>
                 </div>
             </div>
@@ -320,9 +319,10 @@ if (isset($pdo)) {
         <div class="flex-1 p-4 sm:p-6 lg:p-8 animate-fade-in-down max-w-[1600px] w-full mx-auto pb-20">
             <!-- Child pages drop into here -->
 
-            <!-- Mobile UI / Sidebar JS -->
+            <!-- Mobile UI & Live Clock Script -->
             <script>
                 document.addEventListener('DOMContentLoaded', () => {
+                    // --- Sidebar Toggle Logic ---
                     const menuBtn = document.getElementById('mobileMenuBtn');
                     const closeBtn = document.getElementById('closeSidebarBtn');
                     const sidebar = document.getElementById('adminSidebar');
@@ -354,5 +354,30 @@ if (isset($pdo)) {
                     if (menuBtn) menuBtn.addEventListener('click', toggleSidebar);
                     if (closeBtn) closeBtn.addEventListener('click', toggleSidebar);
                     if (overlay) overlay.addEventListener('click', toggleSidebar);
+
+                    // --- Auto-Correct on Resize ---
+                    window.addEventListener('resize', () => {
+                        if (window.innerWidth >= 1024) {
+                            // Desktop: ensure sidebar is visible and overlay is gone
+                            sidebar.classList.remove('-translate-x-full');
+                            overlay.classList.add('hidden', 'opacity-0');
+                            document.body.style.overflow = '';
+                        } else {
+                            // Mobile: if overlay is hidden, ensure sidebar is hidden
+                            if (overlay.classList.contains('hidden')) {
+                                sidebar.classList.add('-translate-x-full');
+                            }
+                        }
+                    });
+
+                    // --- Live Matrix Clock ---
+                    const clockEl = document.getElementById('live-clock');
+                    if(clockEl) {
+                        setInterval(() => {
+                            const now = new Date();
+                            const timeString = now.toLocaleTimeString('en-US', { hour12: false });
+                            clockEl.innerHTML = `<i class="far fa-clock mr-1 text-slate-500"></i> ${timeString}`;
+                        }, 1000);
+                    }
                 });
             </script>
