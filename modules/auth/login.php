@@ -214,7 +214,7 @@ if ($_SESSION['login_attempts'] >= 5 && time() < $_SESSION['login_lockout']) {
                 if ($_SESSION['login_attempts'] >= 5) {
                     $_SESSION['login_lockout'] = time() + (5 * 60); // Lock for 5 mins
                 }
-                $error = "Invalid secure comms or master key.";
+                $error = "Invalid secure comms or Password.";
             }
         }
     }
@@ -352,7 +352,7 @@ if ($_SESSION['login_attempts'] >= 5 && time() < $_SESSION['login_lockout']) {
             </div>
 
             <div class="input-group">
-                <input type="password" name="password" placeholder="Master Key" required autocomplete="current-password"
+                <input type="password" name="password" placeholder="Password" required autocomplete="current-password"
                        class="input-field w-full bg-slate-900/60 border border-slate-600 rounded-xl py-4 text-white focus:border-[#00f0ff] outline-none placeholder-slate-500 backdrop-blur-sm">
                 <i class="fas fa-lock input-icon"></i>
             </div>

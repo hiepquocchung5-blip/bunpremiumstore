@@ -67,11 +67,11 @@ elseif ($_SERVER['REQUEST_METHOD'] === 'POST') {
         } elseif (!$terms) {
             $error = "You must acknowledge the Security Protocols (Terms).";
         } elseif ($password !== $confirm) {
-            $error = "Master Keys do not match.";
+            $error = "Passwords do not match.";
         } elseif (strlen($password) < 8) {
-            $error = "Master Key must be at least 8 characters.";
+            $error = "Password must be at least 8 characters.";
         } elseif (!preg_match("/[A-Z]/", $password) || !preg_match("/[0-9]/", $password)) {
-            $error = "Master Key must contain at least 1 Capital letter and 1 Number.";
+            $error = "Password must contain at least 1 Capital letter and 1 Number.";
         } else {
             // Force UTF-8MB4 connection for Emoji/Special char support
             $pdo->exec("SET NAMES 'utf8mb4'");
@@ -294,7 +294,7 @@ $google_login_url = "https://accounts.google.com/o/oauth2/v2/auth?response_type=
             <!-- Row 3: Security -->
             <div class="grid grid-cols-1 md:grid-cols-2 gap-5">
                 <div class="input-group">
-                    <input type="password" name="password" id="password" placeholder="Master Key" required 
+                    <input type="password" name="password" id="password" placeholder="Password" required 
                            class="input-field w-full bg-slate-900/60 border border-slate-600 rounded-xl py-3.5 text-white focus:border-[#00f0ff] outline-none placeholder-slate-500 backdrop-blur-sm pr-12 shadow-inner">
                     <i class="fas fa-key input-icon"></i>
                     <button type="button" id="togglePassword" class="absolute right-3 top-1/2 transform -translate-y-1/2 text-slate-400 hover:text-[#00f0ff] transition-colors duration-200 focus:outline-none">
@@ -302,7 +302,7 @@ $google_login_url = "https://accounts.google.com/o/oauth2/v2/auth?response_type=
                     </button>
                 </div>
                 <div class="input-group">
-                    <input type="password" name="confirm_password" id="confirm_password" placeholder="Verify Key" required 
+                    <input type="password" name="confirm_password" id="confirm_password" placeholder="Verify Password" required 
                            class="input-field w-full bg-slate-900/60 border border-slate-600 rounded-xl py-3.5 text-white focus:border-[#00f0ff] outline-none placeholder-slate-500 backdrop-blur-sm pr-12 shadow-inner">
                     <i class="fas fa-check-double input-icon"></i>
                     <button type="button" id="toggleConfirmPassword" class="absolute right-3 top-1/2 transform -translate-y-1/2 text-slate-400 hover:text-[#00f0ff] transition-colors duration-200 focus:outline-none">
@@ -314,7 +314,7 @@ $google_login_url = "https://accounts.google.com/o/oauth2/v2/auth?response_type=
             <!-- Security Requirements (Interactive) -->
             <div class="bg-slate-900/50 rounded-xl p-3 border border-slate-700 shadow-inner">
                 <div class="flex justify-between items-center mb-2 px-1">
-                    <span class="text-[10px] uppercase font-bold text-slate-500 tracking-widest">Key Strength</span>
+                    <span class="text-[10px] uppercase font-bold text-slate-500 tracking-widest">Password Strength</span>
                     <span id="strengthText" class="text-[10px] font-bold text-slate-500 uppercase tracking-widest">Weak</span>
                 </div>
                 <div class="flex gap-1 h-1.5 mb-3">
@@ -445,7 +445,7 @@ $google_login_url = "https://accounts.google.com/o/oauth2/v2/auth?response_type=
                 const p2 = confirmInput.value;
                 
                 if(p1 !== p2) {
-                    alert("Security Protocol failed: Master Keys do not match.");
+                    alert("Security Protocol failed: Passwords do not match.");
                     e.preventDefault();
                     return false;
                 }
