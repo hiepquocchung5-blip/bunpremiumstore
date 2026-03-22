@@ -1,6 +1,6 @@
 <?php
 // admin/order_detail.php
-// PRODUCTION v5.0 - Messenger-Style UI, 425px Mobile Tabs & Agent Pass Integration
+// PRODUCTION v5.1 - Isolated Comms Terminal, 425px Layout Fix & Neon Messenger
 
 // Include Notification Services
 @include_once dirname(__DIR__) . '/includes/MailService.php';
@@ -68,7 +68,7 @@ if (isset($_GET['ajax']) && $_GET['ajax'] == 1) {
                 <div class='w-20 h-20 bg-[#00f0ff]/10 rounded-full flex items-center justify-center mb-4 shadow-[0_0_30px_rgba(0,240,255,0.1)]'>
                     <i class='fas fa-satellite-dish text-3xl opacity-50 text-[#00f0ff] animate-pulse'></i>
                 </div>
-                <p class='text-sm font-bold text-white tracking-widest uppercase'>Secure Channel Open</p>
+                <p class='text-sm font-bold text-[#00f0ff] tracking-widest uppercase'>Secure Channel Open</p>
                 <p class='text-xs mt-1'>Awaiting communication initialization.</p>
               </div>";
         exit;
@@ -243,7 +243,7 @@ $is_cat_image_legacy_icon = !empty($order['cat_image']) && strpos($order['cat_im
 </style>
 
 <!-- Mobile Tab Controller (Visible < 1024px) -->
-<div class="lg:hidden px-4 pt-4 pb-2 z-30 relative">
+<div class="lg:hidden px-4 pt-4 pb-2 z-30 relative shrink-0">
     <div class="bg-slate-800 p-1 rounded-xl flex shadow-inner border border-slate-700">
         <button id="tabBtnInfo" onclick="switchMobileTab('info')" class="flex-1 py-2.5 text-xs font-bold uppercase tracking-wider rounded-lg transition-all bg-slate-700 text-white shadow-sm">
             <i class="fas fa-database mr-1"></i> Intelligence
@@ -255,13 +255,13 @@ $is_cat_image_legacy_icon = !empty($order['cat_image']) && strpos($order['cat_im
     </div>
 </div>
 
-<!-- Main Layout Container -->
-<div class="max-w-[1600px] mx-auto h-[calc(100vh-140px)] lg:h-[calc(100vh-100px)] flex flex-col lg:flex-row gap-6 px-4 pb-6 overflow-hidden">
+<!-- Main Layout Container (Uses min-h-0 and dvh for perfect mobile scaling without header conflict) -->
+<div class="max-w-[1600px] w-full mx-auto flex-1 flex flex-col lg:flex-row gap-6 px-4 pb-6 min-h-0 overflow-hidden h-[calc(100dvh-180px)] lg:h-[calc(100vh-100px)]">
     
     <!-- ========================================== -->
     <!-- LEFT PANEL: Order Info & Verification      -->
     <!-- ========================================== -->
-    <div id="colInfo" class="w-full lg:w-1/3 xl:w-1/4 flex flex-col gap-6 overflow-y-auto custom-scrollbar lg:h-full pb-10 lg:pb-0 lg:flex transition-all">
+    <div id="colInfo" class="w-full lg:w-1/3 xl:w-1/4 flex flex-col gap-6 overflow-y-auto custom-scrollbar lg:h-full pb-10 lg:pb-0 transition-all shrink-0 lg:shrink">
         
         <!-- Header Card -->
         <div class="bg-slate-900/80 p-5 rounded-2xl border <?php echo $is_pass_order ? 'border-yellow-500/30' : 'border-[#00f0ff]/30'; ?> relative overflow-hidden group shrink-0">
@@ -376,25 +376,26 @@ $is_cat_image_legacy_icon = !empty($order['cat_image']) && strpos($order['cat_im
 
     <!-- ========================================== -->
     <!-- RIGHT PANEL: Live Chat & Fulfillment       -->
+    <!-- NEW: Fully isolated flex terminal window   -->
     <!-- ========================================== -->
-    <div id="colChat" class="w-full lg:w-2/3 xl:w-3/4 hidden lg:flex flex-col h-[calc(100vh-200px)] lg:h-full bg-slate-900/90 rounded-3xl border border-slate-700 shadow-2xl overflow-hidden relative">
+    <div id="colChat" class="w-full lg:w-2/3 xl:w-3/4 hidden lg:flex flex-col bg-slate-900/90 rounded-3xl border border-slate-700 shadow-2xl relative flex-1 min-h-[500px] lg:min-h-0 overflow-hidden">
         
         <?php if($is_pass_order): ?>
             <!-- Agent Pass Control Panel (Replaces Chat) -->
-            <div class="flex-grow flex flex-col items-center justify-center relative p-6 text-center">
-                <div class="absolute inset-0 bg-[url('data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iNDAiIGhlaWdodD0iNDAiIHhtbG5zPSJodHRwOi8vd3d3LnczLm9yZy8yMDAwL3N2ZyI+PGRlZnM+PHBhdHRlcm4gaWQ9ImdyaWQiIHdpZHRoPSI0MCIgaGVpZ2h0PSI0MCIgcGF0dGVyblVuaXRzPSJ1c2VyU3BhY2VPblVzZSI+PHBhdGggZD0iTSAwIDEwIEwgNDAgMTAgTSAxMCAwIEwgMTAgNDAiIGZpbGw9Im5vbmUiIHN0cm9rZT0icmdiYSgyMzQsIDE3OSwgOCwgMC4wNSkiIHN0cm9rZS13aWR0aD0iMSIvPjwvcGF0dGVybj48L2RlZnM+PHJlY3Qgd2lkdGg9IjEwMCUiIGhlaWdodD0iMTAwJSIgZmlsbD0idXJsKCNncmlkKSIvPjwvc3ZnPg==')] opacity-50"></div>
+            <div class="flex-grow flex flex-col items-center justify-center relative p-6 text-center h-full overflow-y-auto custom-scrollbar">
+                <div class="absolute inset-0 bg-[url('data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iNDAiIGhlaWdodD0iNDAiIHhtbG5zPSJodHRwOi8vd3d3LnczLm9yZy8yMDAwL3N2ZyI+PGRlZnM+PHBhdHRlcm4gaWQ9ImdyaWQiIHdpZHRoPSI0MCIgaGVpZ2h0PSI0MCIgcGF0dGVyblVuaXRzPSJ1c2VyU3BhY2VPblVzZSI+PHBhdGggZD0iTSAwIDEwIEwgNDAgMTAgTSAxMCAwIEwgMTAgNDAiIGZpbGw9Im5vbmUiIHN0cm9rZT0icmdiYSgyMzQsIDE3OSwgOCwgMC4wNSkiIHN0cm9rZS13aWR0aD0iMSIvPjwvcGF0dGVybj48L2RlZnM+PHJlY3Qgd2lkdGg9IjEwMCUiIGhlaWdodD0iMTAwJSIgZmlsbD0idXJsKCNncmlkKSIvPjwvc3ZnPg==')] opacity-50 pointer-events-none"></div>
                 <div class="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 w-64 h-64 bg-yellow-500/10 rounded-full blur-[100px] pointer-events-none"></div>
 
-                <div class="w-20 h-20 bg-yellow-500/10 rounded-full flex items-center justify-center text-yellow-500 text-4xl mb-4 border border-yellow-500/30 shadow-[0_0_30px_rgba(234,179,8,0.2)] relative z-10">
+                <div class="w-20 h-20 bg-yellow-500/10 rounded-full flex items-center justify-center text-yellow-500 text-4xl mb-4 border border-yellow-500/30 shadow-[0_0_30px_rgba(234,179,8,0.2)] relative z-10 shrink-0">
                     <i class="fas fa-crown"></i>
                 </div>
                 
-                <h3 class="text-2xl font-black text-white mb-2 relative z-10 tracking-tight">Agent Tier Authorization</h3>
-                <p class="text-slate-400 text-sm max-w-sm mx-auto mb-8 relative z-10">
+                <h3 class="text-2xl font-black text-white mb-2 relative z-10 tracking-tight shrink-0">Agent Tier Authorization</h3>
+                <p class="text-slate-400 text-sm max-w-sm mx-auto mb-8 relative z-10 shrink-0">
                     Verify the payment screenshot. If correct, approve the request to automatically grant reseller privileges.
                 </p>
 
-                <div class="w-full max-w-sm bg-slate-900 border border-slate-700 p-5 rounded-2xl shadow-inner relative z-10">
+                <div class="w-full max-w-sm bg-slate-900 border border-slate-700 p-5 rounded-2xl shadow-inner relative z-10 shrink-0">
                     <div class="flex items-center justify-between mb-5">
                         <span class="text-[10px] font-bold text-slate-500 uppercase tracking-widest">Current Status</span>
                         <span class="px-2 py-0.5 rounded text-[10px] font-black uppercase tracking-wider <?php echo $order['status'] == 'pending' ? 'bg-yellow-500/20 text-yellow-400' : ($order['status'] == 'active' ? 'bg-green-500/20 text-green-400' : 'bg-red-500/20 text-red-400'); ?>">
@@ -414,97 +415,100 @@ $is_cat_image_legacy_icon = !empty($order['cat_image']) && strpos($order['cat_im
             </div>
 
         <?php else: ?>
-            <!-- Messenger Style Product View -->
-            
-            <!-- Sticky Chat Header (Fulfillment Hub) -->
-            <div class="bg-slate-800/95 backdrop-blur-md border-b border-[#00f0ff]/20 p-3 sm:p-4 shrink-0 shadow-sm z-20 flex flex-col gap-3">
-                <div class="flex justify-between items-center">
-                    <div class="flex items-center gap-2">
-                        <div class="w-8 h-8 rounded-full bg-[#00f0ff]/10 flex items-center justify-center text-[#00f0ff] border border-[#00f0ff]/30">
-                            <i class="fas fa-bolt text-sm"></i>
-                        </div>
-                        <div>
-                            <h3 class="text-xs font-black text-white tracking-wide">Fulfillment Hub</h3>
-                            <p class="text-[9px] text-[#00f0ff] uppercase tracking-widest font-mono">Encrypted Connection</p>
-                        </div>
-                    </div>
-                    <?php if($order['delivery_type'] === 'unique' && empty($available_keys)): ?>
-                        <a href="index.php?page=keys&product_id=<?php echo $order['product_id']; ?>" class="bg-red-600 text-white px-3 py-1.5 rounded-lg text-[10px] font-bold uppercase tracking-wider flex items-center gap-1.5 shadow-sm">
-                            <i class="fas fa-exclamation-triangle"></i> Restock
-                        </a>
-                    <?php endif; ?>
-                </div>
+            <!-- Messenger Style Product View (Strictly bounded flex terminal) -->
+            <div class="flex-1 flex flex-col min-h-0 w-full h-full relative z-10 bg-slate-950/50 rounded-2xl border border-[#00f0ff]/20 shadow-[inset_0_0_30px_rgba(0,240,255,0.05)] overflow-hidden m-1">
                 
-                <!-- Quick Keys / Universal Data Injection -->
-                <div>
-                    <?php if($order['delivery_type'] === 'unique' && !empty($available_keys)): ?>
-                        <div class="flex gap-2 overflow-x-auto pb-1 custom-scrollbar snap-x">
-                            <?php foreach($available_keys as $k): ?>
-                                <button type="button" onclick="autoPasteKey('<?php echo addslashes($k['key_content']); ?>')" class="snap-start bg-slate-900 border border-slate-700 rounded-lg py-2 px-3 min-w-[180px] flex justify-between items-center group hover:border-[#00f0ff]/50 transition-colors shrink-0">
-                                    <code class="text-[10px] text-green-400 font-mono font-bold truncate mr-2"><?php echo htmlspecialchars($k['key_content']); ?></code>
-                                    <i class="fas fa-paper-plane text-slate-500 group-hover:text-[#00f0ff] text-xs"></i>
-                                </button>
-                            <?php endforeach; ?>
+                <!-- Sticky Chat Header (Fulfillment Hub) -->
+                <div class="bg-slate-800/95 backdrop-blur-md border-b border-[#00f0ff]/20 p-3 sm:p-4 shrink-0 shadow-sm z-20 flex flex-col gap-3">
+                    <div class="flex justify-between items-center">
+                        <div class="flex items-center gap-2">
+                            <div class="w-8 h-8 rounded-full bg-[#00f0ff]/10 flex items-center justify-center text-[#00f0ff] border border-[#00f0ff]/30 shadow-[0_0_10px_rgba(0,240,255,0.2)]">
+                                <i class="fas fa-bolt text-sm"></i>
+                            </div>
+                            <div>
+                                <h3 class="text-xs font-black text-white tracking-wide">Fulfillment Hub</h3>
+                                <p class="text-[9px] text-[#00f0ff] uppercase tracking-widest font-mono">Encrypted Terminal</p>
+                            </div>
                         </div>
-                    <?php elseif($order['delivery_type'] === 'universal'): ?>
-                        <div class="bg-slate-900 border border-slate-700 rounded-lg p-2 flex justify-between items-center group shadow-inner">
-                            <div class="text-[10px] text-slate-300 font-mono font-bold truncate pr-2"><?php echo htmlspecialchars($order['universal_content']); ?></div>
-                            <button type="button" onclick="autoPasteKey('<?php echo addslashes($order['universal_content']); ?>')" class="bg-slate-700 hover:bg-[#00f0ff] hover:text-slate-900 text-white text-[9px] font-black px-3 py-1.5 rounded-md transition shadow-sm uppercase tracking-widest shrink-0">
-                                Inject
-                            </button>
-                        </div>
-                    <?php endif; ?>
-                </div>
-            </div>
-
-            <!-- Dynamic SPA Chat Area -->
-            <div class="flex-grow overflow-y-auto p-4 chat-bg-pattern relative z-0 scroll-smooth" id="chatBox">
-                <div class="flex items-center justify-center h-full text-slate-500" id="chatLoading">
-                    <i class="fas fa-circle-notch fa-spin text-2xl text-[#00f0ff]"></i>
-                </div>
-                <!-- Messages populated by AJAX -->
-            </div>
-
-            <!-- Chat Input Area (Fixed at bottom) -->
-            <div class="bg-slate-800/95 backdrop-blur-md border-t border-slate-700 shrink-0 z-20 pb-safe">
-                <!-- Quick Replies -->
-                <div class="px-3 py-2 flex gap-2 overflow-x-auto hide-scrollbar border-b border-slate-700/50 bg-slate-900/30">
-                    <?php foreach($quick_replies as $qr): ?>
-                        <button type="button" onclick="insertQuickReply('<?php echo addslashes($qr); ?>')" class="whitespace-nowrap bg-slate-800 border border-slate-600 text-slate-300 hover:text-white hover:border-[#00f0ff] rounded-full px-3 py-1.5 text-[10px] font-medium transition-colors shrink-0 shadow-sm">
-                            <?php echo htmlspecialchars((strlen($qr) > 25 ? substr($qr, 0, 25).'...' : $qr)); ?>
-                        </button>
-                    <?php endforeach; ?>
-                </div>
-
-                <form id="adminChatForm" class="p-2 sm:p-3 flex items-end gap-2">
-                    <input type="hidden" name="order_id" value="<?php echo $order_id; ?>">
+                        <?php if($order['delivery_type'] === 'unique' && empty($available_keys)): ?>
+                            <a href="index.php?page=keys&product_id=<?php echo $order['product_id']; ?>" class="bg-red-600 text-white px-3 py-1.5 rounded-lg text-[10px] font-bold uppercase tracking-wider flex items-center gap-1.5 shadow-sm hover:bg-red-500 transition-colors">
+                                <i class="fas fa-exclamation-triangle"></i> Restock
+                            </a>
+                        <?php endif; ?>
+                    </div>
                     
-                    <!-- AI Enhance Tool -->
-                    <button type="button" onclick="enhanceText()" class="w-10 h-10 md:w-11 md:h-11 rounded-full bg-slate-700 text-purple-400 hover:text-white hover:bg-purple-600 flex items-center justify-center shrink-0 transition shadow-sm" title="AI Enhance">
-                        <i class="fas fa-magic text-sm"></i>
-                    </button>
+                    <!-- Quick Keys / Universal Data Injection -->
+                    <div>
+                        <?php if($order['delivery_type'] === 'unique' && !empty($available_keys)): ?>
+                            <div class="flex gap-2 overflow-x-auto pb-1 custom-scrollbar snap-x">
+                                <?php foreach($available_keys as $k): ?>
+                                    <button type="button" onclick="autoPasteKey('<?php echo addslashes($k['key_content']); ?>')" class="snap-start bg-slate-900 border border-slate-700 rounded-lg py-2 px-3 min-w-[180px] flex justify-between items-center group hover:border-[#00f0ff]/50 transition-colors shrink-0 cursor-pointer">
+                                        <code class="text-[10px] text-green-400 font-mono font-bold truncate mr-2"><?php echo htmlspecialchars($k['key_content']); ?></code>
+                                        <i class="fas fa-paper-plane text-slate-500 group-hover:text-[#00f0ff] text-xs"></i>
+                                    </button>
+                                <?php endforeach; ?>
+                            </div>
+                        <?php elseif($order['delivery_type'] === 'universal'): ?>
+                            <div class="bg-slate-900 border border-slate-700 rounded-lg p-2 flex justify-between items-center group shadow-inner">
+                                <div class="text-[10px] text-slate-300 font-mono font-bold truncate pr-2"><?php echo htmlspecialchars($order['universal_content']); ?></div>
+                                <button type="button" onclick="autoPasteKey('<?php echo addslashes($order['universal_content']); ?>')" class="bg-slate-700 hover:bg-[#00f0ff] hover:text-slate-900 text-white text-[9px] font-black px-3 py-1.5 rounded-md transition shadow-sm uppercase tracking-widest shrink-0">
+                                    Inject
+                                </button>
+                            </div>
+                        <?php endif; ?>
+                    </div>
+                </div>
 
-                    <!-- Auto-expanding Textarea Wrapper -->
-                    <div class="flex-grow relative bg-slate-900 border border-slate-600 rounded-[20px] focus-within:border-[#00f0ff] focus-within:shadow-[0_0_10px_rgba(0,240,255,0.1)] transition-all flex items-end overflow-hidden min-h-[44px]">
-                        
-                        <textarea id="chatInput" name="message" rows="1" placeholder="Type a message..." required 
-                                  class="w-full bg-transparent py-3 pl-4 pr-12 text-[13px] md:text-sm text-white outline-none resize-none custom-scrollbar leading-snug max-h-[120px]" 
-                                  oninput="this.style.height = 'auto'; this.style.height = (this.scrollHeight < 120 ? this.scrollHeight : 120) + 'px'"></textarea>
-                        
-                        <!-- Secure Toggle -->
-                        <div class="absolute right-2 bottom-1.5 md:bottom-2">
-                            <label class="cursor-pointer flex items-center justify-center w-8 h-8 rounded-full bg-slate-800 hover:bg-slate-700 transition group" title="Send as Credential (Encrypted Format)">
-                                <input type="checkbox" id="secureToggle" name="is_credential" value="1" class="hidden peer">
-                                <i class="fas fa-shield-alt text-slate-400 peer-checked:text-green-400 peer-checked:animate-pulse text-xs transition-colors"></i>
-                            </label>
-                        </div>
+                <!-- Dynamic SPA Chat Area -->
+                <!-- min-h-0 allows the flex item to scroll properly within bounded parent -->
+                <div class="flex-1 min-h-0 overflow-y-auto p-4 chat-bg-pattern relative z-0 scroll-smooth" id="chatBox">
+                    <div class="flex items-center justify-center h-full text-slate-500" id="chatLoading">
+                        <i class="fas fa-circle-notch fa-spin text-2xl text-[#00f0ff]"></i>
+                    </div>
+                    <!-- Messages populated by AJAX -->
+                </div>
+
+                <!-- Chat Input Area (Fixed at bottom of terminal) -->
+                <div class="bg-slate-800/95 backdrop-blur-md border-t border-[#00f0ff]/30 shrink-0 z-20">
+                    <!-- Quick Replies -->
+                    <div class="px-3 py-2 flex gap-2 overflow-x-auto hide-scrollbar border-b border-slate-700/50 bg-slate-900/30">
+                        <?php foreach($quick_replies as $qr): ?>
+                            <button type="button" onclick="insertQuickReply('<?php echo addslashes($qr); ?>')" class="whitespace-nowrap bg-slate-800 border border-slate-600 text-slate-300 hover:text-white hover:border-[#00f0ff] rounded-full px-3 py-1.5 text-[10px] font-medium transition-colors shrink-0 shadow-sm">
+                                <?php echo htmlspecialchars((strlen($qr) > 25 ? substr($qr, 0, 25).'...' : $qr)); ?>
+                            </button>
+                        <?php endforeach; ?>
                     </div>
 
-                    <!-- Send Button -->
-                    <button type="submit" class="w-10 h-10 md:w-11 md:h-11 rounded-full bg-blue-600 hover:bg-[#00f0ff] text-white hover:text-slate-900 flex items-center justify-center shrink-0 transition-all shadow-[0_4px_10px_rgba(37,99,235,0.4)] active:scale-90">
-                        <i class="fas fa-paper-plane text-sm ml-[-2px] mt-[1px]"></i>
-                    </button>
-                </form>
+                    <form id="adminChatForm" class="p-2 sm:p-3 flex items-end gap-2">
+                        <input type="hidden" name="order_id" value="<?php echo $order_id; ?>">
+                        
+                        <!-- AI Enhance Tool -->
+                        <button type="button" onclick="enhanceText()" class="w-10 h-10 md:w-11 md:h-11 rounded-full bg-slate-700 text-purple-400 hover:text-white hover:bg-purple-600 flex items-center justify-center shrink-0 transition shadow-sm border border-slate-600" title="AI Enhance">
+                            <i class="fas fa-magic text-sm"></i>
+                        </button>
+
+                        <!-- Auto-expanding Textarea Wrapper -->
+                        <div class="flex-grow relative bg-slate-900 border border-slate-600 rounded-[20px] focus-within:border-[#00f0ff] focus-within:shadow-[0_0_15px_rgba(0,240,255,0.2)] transition-all flex items-end overflow-hidden min-h-[44px]">
+                            
+                            <textarea id="chatInput" name="message" rows="1" placeholder="Transmit data..." required 
+                                      class="w-full bg-transparent py-3 pl-4 pr-12 text-[13px] md:text-sm text-white outline-none resize-none custom-scrollbar leading-snug max-h-[120px]" 
+                                      oninput="this.style.height = 'auto'; this.style.height = (this.scrollHeight < 120 ? this.scrollHeight : 120) + 'px'"></textarea>
+                            
+                            <!-- Secure Toggle -->
+                            <div class="absolute right-2 bottom-1.5 md:bottom-2">
+                                <label class="cursor-pointer flex items-center justify-center w-8 h-8 rounded-full bg-slate-800 hover:bg-slate-700 transition group border border-transparent hover:border-slate-600" title="Send as Credential (Encrypted Format)">
+                                    <input type="checkbox" id="secureToggle" name="is_credential" value="1" class="hidden peer">
+                                    <i class="fas fa-shield-alt text-slate-400 peer-checked:text-green-400 peer-checked:animate-pulse text-xs transition-colors"></i>
+                                </label>
+                            </div>
+                        </div>
+
+                        <!-- Send Button -->
+                        <button type="submit" class="w-10 h-10 md:w-11 md:h-11 rounded-full bg-gradient-to-r from-blue-600 to-[#00f0ff] hover:from-blue-500 hover:to-[#00f0ff] text-slate-900 flex items-center justify-center shrink-0 transition-all shadow-[0_0_15px_rgba(0,240,255,0.3)] active:scale-90">
+                            <i class="fas fa-paper-plane text-sm ml-[-2px] mt-[1px]"></i>
+                        </button>
+                    </form>
+                </div>
             </div>
         <?php endif; ?>
     </div>
