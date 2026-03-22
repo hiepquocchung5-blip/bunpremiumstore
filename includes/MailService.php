@@ -53,26 +53,26 @@ class MailService {
             $this->mail->Subject = "Order #$orderId Confirmed - DigitalMarketplaceMM";
             
             $content = "
-                <h2 style='color: #1e293b; font-size: 24px; margin-bottom: 10px;'>Order Received! 📦</h2>
-                <p style='color: #64748b; font-size: 16px; line-height: 1.6;'>Hi <strong>$userName</strong>, thank you for your purchase. We are currently verifying your payment and will deliver your item shortly via the Order Chat.</p>
+                <h2 style='color: #ffffff; font-size: 24px; margin-bottom: 10px; font-weight: 900;'>Order Received! 📦</h2>
+                <p style='color: #94a3b8; font-size: 16px; line-height: 1.6;'>Hi <strong style='color:#00f0ff;'>$userName</strong>, thank you for your purchase. We are currently verifying your payment and will deliver your item shortly via the Order Chat.</p>
                 
-                <table width='100%' cellpadding='0' cellspacing='0' style='background-color: #f8fafc; border-radius: 8px; margin: 20px 0; padding: 15px; border: 1px solid #e2e8f0;'>
+                <table width='100%' cellpadding='0' cellspacing='0' style='background-color: #0f172a; border-radius: 8px; margin: 20px 0; padding: 15px; border: 1px solid #1e293b;'>
                     <tr>
                         <td style='padding: 8px 0; color: #64748b;'>Order ID:</td>
-                        <td style='padding: 8px 0; color: #1e293b; font-weight: bold; text-align: right;'>#$orderId</td>
+                        <td style='padding: 8px 0; color: #00f0ff; font-weight: bold; text-align: right; font-family: monospace;'>#$orderId</td>
                     </tr>
                     <tr>
-                        <td style='padding: 8px 0; color: #64748b; border-bottom: 1px solid #e2e8f0;'>Product:</td>
-                        <td style='padding: 8px 0; color: #1e293b; font-weight: bold; text-align: right; border-bottom: 1px solid #e2e8f0;'>$productName</td>
+                        <td style='padding: 8px 0; color: #64748b; border-bottom: 1px solid #1e293b;'>Product:</td>
+                        <td style='padding: 8px 0; color: #ffffff; font-weight: bold; text-align: right; border-bottom: 1px solid #1e293b;'>$productName</td>
                     </tr>
                     <tr>
                         <td style='padding: 12px 0 0 0; color: #64748b; font-size: 18px;'>Total Paid:</td>
-                        <td style='padding: 12px 0 0 0; color: #10b981; font-weight: bold; font-size: 18px; text-align: right;'>" . number_format($price) . " Ks</td>
+                        <td style='padding: 12px 0 0 0; color: #10b981; font-weight: bold; font-size: 18px; text-align: right; font-family: monospace;'>" . number_format($price) . " Ks</td>
                     </tr>
                 </table>
 
                 <div style='text-align: center; margin-top: 30px;'>
-                    <a href='".BASE_URL."index.php?module=user&page=orders&view_chat=$orderId' style='background-color: #2563eb; color: #ffffff; padding: 12px 24px; border-radius: 6px; text-decoration: none; font-weight: bold; display: inline-block;'>View Order & Chat</a>
+                    <a href='".BASE_URL."index.php?module=user&page=orders&view_chat=$orderId' style='display: inline-block; background: linear-gradient(90deg, #2563eb, #00f0ff); color: #0f172a; padding: 16px 32px; border-radius: 8px; text-decoration: none; font-weight: 900; font-size: 14px; text-transform: uppercase; letter-spacing: 1px; border: 1px solid #00f0ff; box-shadow: 0 0 15px rgba(0, 240, 255, 0.3);'>Open Fulfillment Terminal</a>
                 </div>
             ";
 
@@ -98,12 +98,15 @@ class MailService {
             $this->mail->Subject = "New Sale! Order #$orderId ($price Ks)";
             
             $content = "
-                <h2 style='color: #1e293b;'>New Order Received 💰</h2>
-                <p style='color: #64748b;'>A new order has been placed and is waiting for manual verification.</p>
-                <div style='background-color: #ecfdf5; border: 1px solid #10b981; padding: 15px; border-radius: 8px; margin: 15px 0;'>
-                    <p style='margin:0; font-size: 20px; font-weight: bold; color: #047857;'>Amount: " . number_format($price) . " Ks</p>
+                <h2 style='color: #ffffff; font-weight: 900;'>New Order Received 💰</h2>
+                <p style='color: #94a3b8;'>A new order has been placed and is waiting for manual verification.</p>
+                <div style='background-color: rgba(16, 185, 129, 0.1); border: 1px solid #10b981; padding: 15px; border-radius: 8px; margin: 15px 0;'>
+                    <p style='margin:0; font-size: 20px; font-weight: bold; color: #34d399; font-family: monospace;'>Amount: " . number_format($price) . " Ks</p>
                 </div>
-                <p><a href='".ADMIN_URL."index.php?page=order_detail&id=$orderId' style='color: #2563eb; text-decoration: underline; font-weight: bold;'>Process Order in Admin Panel &rarr;</a></p>
+                
+                <div style='text-align: center; margin-top: 30px;'>
+                    <a href='".ADMIN_URL."index.php?page=order_detail&id=$orderId' style='display: inline-block; background: linear-gradient(90deg, #10b981, #34d399); color: #0f172a; padding: 16px 32px; border-radius: 8px; text-decoration: none; font-weight: 900; font-size: 14px; text-transform: uppercase; letter-spacing: 1px; border: 1px solid #34d399; box-shadow: 0 0 15px rgba(52, 211, 153, 0.3);'>Process Order in Matrix</a>
+                </div>
             ";
 
             $this->mail->Body = $this->getHtmlTemplate($content);
@@ -121,19 +124,22 @@ class MailService {
         try {
             $this->mail->clearAddresses();
             $this->mail->addAddress($email);
-            $this->mail->Subject = "Verify Your Email - DigitalMarketplaceMM";
+            $this->mail->Subject = "Verify Your Identity - DigitalMarketplaceMM";
             
             $link = BASE_URL . "index.php?module=auth&page=verify&token=" . $token;
             
             $content = "
-                <h2 style='color: #1e293b; text-align: center;'>Welcome to DMMM! 👋</h2>
-                <p style='color: #64748b; text-align: center;'>Please confirm your email address to activate your account and start shopping for premium digital goods.</p>
+                <h2 style='color: #ffffff; text-align: center; font-weight: 900;'>Welcome to DMMM! 👋</h2>
+                <p style='color: #94a3b8; text-align: center;'>Please confirm your email address to activate your account and start shopping for premium digital goods.</p>
                 
-                <div style='text-align: center; margin: 30px 0;'>
-                    <a href='$link' style='background-color: #2563eb; color: #ffffff; padding: 14px 28px; border-radius: 50px; text-decoration: none; font-weight: bold; font-size: 16px; box-shadow: 0 4px 6px rgba(37, 99, 235, 0.2);'>Verify My Account</a>
+                <div style='text-align: center; margin: 35px 0;'>
+                    <!-- Heavily styled <a> tag acting as a button for email client compatibility -->
+                    <a href='$link' style='display: inline-block; background: linear-gradient(90deg, #2563eb, #00f0ff); color: #0f172a; padding: 16px 32px; border-radius: 8px; text-decoration: none; font-weight: 900; font-size: 14px; text-transform: uppercase; letter-spacing: 1px; border: 1px solid #00f0ff; box-shadow: 0 0 15px rgba(0, 240, 255, 0.4);'>Verify My Account</a>
                 </div>
                 
-                <p style='color: #94a3b8; font-size: 12px; text-align: center;'>If the button doesn't work, copy this link:<br><a href='$link' style='color: #2563eb;'>$link</a></p>
+                <div style='background-color: rgba(0, 240, 255, 0.05); padding: 15px; border-radius: 8px; border-left: 4px solid #00f0ff;'>
+                    <p style='color: #64748b; font-size: 11px; text-align: center; margin: 0; word-break: break-all;'>If the button doesn't work, copy this link into your browser:<br><br><a href='$link' style='color: #00f0ff; text-decoration: underline;'>$link</a></p>
+                </div>
             ";
 
             $this->mail->Body = $this->getHtmlTemplate($content);
@@ -152,19 +158,20 @@ class MailService {
         try {
             $this->mail->clearAddresses();
             $this->mail->addAddress($email);
-            $this->mail->Subject = "Reset Your Password - DigitalMarketplaceMM";
+            $this->mail->Subject = "Reset Your Master Key - DigitalMarketplaceMM";
             
             $link = BASE_URL . "index.php?module=auth&page=reset_password&token=" . $token;
             
             $content = "
-                <h2 style='color: #1e293b;'>Password Reset Request 🔒</h2>
-                <p style='color: #64748b;'>We received a request to reset your password. If this was you, click the button below to set a new password:</p>
+                <h2 style='color: #ffffff; font-weight: 900;'>Master Key Reset Request 🔒</h2>
+                <p style='color: #94a3b8;'>We received a request to reset your password. If this was you, execute the command below to set a new master key:</p>
                 
-                <div style='text-align: center; margin: 30px 0;'>
-                    <a href='$link' style='background-color: #ef4444; color: #ffffff; padding: 12px 24px; border-radius: 6px; text-decoration: none; font-weight: bold;'>Reset Password</a>
+                <div style='text-align: center; margin: 35px 0;'>
+                    <!-- Heavily styled <a> tag acting as a button for email client compatibility -->
+                    <a href='$link' style='display: inline-block; background: linear-gradient(90deg, #dc2626, #ef4444); color: #ffffff; padding: 16px 32px; border-radius: 8px; text-decoration: none; font-weight: 900; font-size: 14px; text-transform: uppercase; letter-spacing: 1px; border: 1px solid #f87171; box-shadow: 0 0 15px rgba(239, 68, 68, 0.4);'>Reset Password</a>
                 </div>
                 
-                <p style='color: #94a3b8; font-size: 13px;'>If you didn't ask for this, you can safely ignore this email. Your account remains secure.</p>
+                <p style='color: #64748b; font-size: 12px; text-align: center;'>If you didn't initiate this protocol, you can safely ignore this communication. Your account remains secure.</p>
             ";
 
             $this->mail->Body = $this->getHtmlTemplate($content);
@@ -180,26 +187,26 @@ class MailService {
         try {
             $this->mail->clearAddresses();
             $this->mail->addAddress($email, $name);
-            $this->mail->Subject = "Your New Account Details - DigitalMarketplaceMM";
+            $this->mail->Subject = "Your New Account Credentials - DigitalMarketplaceMM";
             
             $login_url = BASE_URL . "index.php?module=auth&page=login";
             
             $content = "
-                <h2 style='color: #1e293b;'>Welcome, $name! 🚀</h2>
-                <p style='color: #64748b;'>An account has been automatically created for you using Google Sign-In.</p>
+                <h2 style='color: #ffffff; font-weight: 900;'>Welcome, $name! 🚀</h2>
+                <p style='color: #94a3b8;'>An account has been automatically created for you using Google Sign-In.</p>
                 
-                <div style='background-color: #f1f5f9; padding: 20px; border-radius: 8px; border-left: 4px solid #0ea5e9; margin: 20px 0;'>
-                    <p style='margin: 0 0 10px 0; color: #334155;'><strong>Login Details:</strong></p>
-                    <p style='margin: 0; font-family: monospace; color: #0f172a; font-size: 14px;'>
-                        Email: $email<br>
+                <div style='background-color: rgba(0, 240, 255, 0.05); padding: 20px; border-radius: 8px; border-left: 4px solid #00f0ff; margin: 20px 0;'>
+                    <p style='margin: 0 0 10px 0; color: #e2e8f0; font-size: 12px; text-transform: uppercase; letter-spacing: 1px;'><strong>Login Credentials:</strong></p>
+                    <p style='margin: 0; font-family: monospace; color: #00f0ff; font-size: 16px;'>
+                        Email: <span style='color: #ffffff;'>$email</span><br>
                         Generated Password: <strong>$password</strong>
                     </p>
                 </div>
                 
-                <p style='color: #64748b; font-size: 14px;'>You can continue logging in with Google, or use these credentials to sign in normally. We highly recommend changing this password in your Account Settings.</p>
+                <p style='color: #64748b; font-size: 12px;'>You can continue logging in with Google, or use these credentials to sign in manually. We highly recommend updating this password in your Account Settings.</p>
                 
-                <div style='text-align: center; margin-top: 30px;'>
-                    <a href='$login_url' style='background-color: #2563eb; color: #ffffff; padding: 12px 24px; border-radius: 6px; text-decoration: none; font-weight: bold;'>Go to Login</a>
+                <div style='text-align: center; margin-top: 35px;'>
+                    <a href='$login_url' style='display: inline-block; background: linear-gradient(90deg, #2563eb, #00f0ff); color: #0f172a; padding: 16px 32px; border-radius: 8px; text-decoration: none; font-weight: 900; font-size: 14px; text-transform: uppercase; letter-spacing: 1px; border: 1px solid #00f0ff; box-shadow: 0 0 15px rgba(0, 240, 255, 0.4);'>Access Portal</a>
                 </div>
             ";
 
@@ -215,13 +222,12 @@ class MailService {
     /**
      * --------------------------------------------------------------------------
      * HTML TEMPLATE ENGINE
-     * Wraps content in a branded, responsive container.
+     * Futuristic Dark Mode "Neon Tech" Container
      * --------------------------------------------------------------------------
      */
     private function getHtmlTemplate($content) {
         $year = date('Y');
         $homeUrl = BASE_URL;
-        $logoUrl = BASE_URL . 'assets/images/logo.png'; // Ensure you have a logo here or remove img tag
         
         return "
         <!DOCTYPE html>
@@ -230,24 +236,23 @@ class MailService {
             <meta charset='utf-8'>
             <meta name='viewport' content='width=device-width, initial-scale=1.0'>
             <style>
-                body { margin: 0; padding: 0; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background-color: #f1f5f9; }
-                .container { max-width: 600px; margin: 0 auto; background-color: #ffffff; border-radius: 12px; overflow: hidden; box-shadow: 0 4px 6px rgba(0,0,0,0.05); }
-                .header { background-color: #0f172a; padding: 30px 20px; text-align: center; border-bottom: 4px solid #2563eb; }
-                .header h1 { margin: 0; color: #ffffff; font-size: 22px; letter-spacing: 1px; font-weight: 800; text-transform: uppercase; }
-                .header span { color: #3b82f6; }
-                .content { padding: 40px 30px; color: #334155; line-height: 1.6; }
-                .footer { background-color: #f8fafc; padding: 20px; text-align: center; color: #94a3b8; font-size: 12px; border-top: 1px solid #e2e8f0; }
-                .footer a { color: #64748b; text-decoration: none; margin: 0 8px; }
-                .footer a:hover { text-decoration: underline; color: #2563eb; }
-                .socials { margin-top: 10px; }
+                body { margin: 0; padding: 0; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background-color: #020617; }
+                .container { max-width: 600px; margin: 0 auto; background-color: #0f172a; border-radius: 16px; overflow: hidden; box-shadow: 0 10px 30px rgba(0,0,0,0.8); border: 1px solid rgba(0, 240, 255, 0.2); }
+                .header { background-color: #020617; padding: 30px 20px; text-align: center; border-bottom: 2px solid #00f0ff; }
+                .header h1 { margin: 0; color: #ffffff; font-size: 24px; letter-spacing: 1px; font-weight: 900; }
+                .header span { color: #00f0ff; }
+                .content { padding: 40px 30px; color: #e2e8f0; line-height: 1.6; }
+                .footer { background-color: #020617; padding: 25px 20px; text-align: center; color: #475569; font-size: 11px; border-top: 1px solid rgba(255, 255, 255, 0.05); }
+                .footer a { color: #64748b; text-decoration: none; margin: 0 8px; text-transform: uppercase; letter-spacing: 1px; font-weight: bold; }
+                .footer a:hover { color: #00f0ff; }
             </style>
         </head>
         <body>
-            <div style='padding: 40px 0;'>
+            <div style='padding: 40px 10px; background-color: #020617;'>
                 <div class='container'>
                     <!-- Header -->
                     <div class='header'>
-                        <h1>DigitalMarketplace<span>MM</span></h1>
+                        <h1>Digital<span style='color: #00f0ff;'>MM</span></h1>
                     </div>
                     
                     <!-- Main Content -->
@@ -257,10 +262,10 @@ class MailService {
                     
                     <!-- Footer -->
                     <div class='footer'>
-                        <p>&copy; $year DigitalMarketplaceMM. All rights reserved.</p>
-                        <p>Yangon, Myanmar • Premium Digital Goods</p>
-                        <div style='margin-top: 15px;'>
-                            <a href='{$homeUrl}'>Visit Store</a> • 
+                        <p style='margin-bottom: 5px;'>&copy; $year DigitalMarketplaceMM. All rights reserved.</p>
+                        <p style='margin-bottom: 15px;'>Yangon, Myanmar • Premium Digital Goods</p>
+                        <div>
+                            <a href='{$homeUrl}'>Matrix Hub</a> • 
                             <a href='{$homeUrl}index.php?module=info&page=support'>Support</a> • 
                             <a href='{$homeUrl}index.php?module=info&page=privacy'>Privacy</a>
                         </div>
