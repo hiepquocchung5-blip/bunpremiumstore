@@ -1,6 +1,6 @@
 <?php
 // admin/order_detail.php
-// PRODUCTION v5.1 - Isolated Comms Terminal, 425px Layout Fix & Neon Messenger
+// PRODUCTION v5.2 - Patched AJAX Output Bleed & Isolated Comms Terminal
 
 // Include Notification Services
 @include_once dirname(__DIR__) . '/includes/MailService.php';
@@ -59,6 +59,10 @@ if (isset($_GET['ajax']) && $_GET['ajax'] == 1) {
     header("Cache-Control: no-store, no-cache, must-revalidate, max-age=0");
     header("Pragma: no-cache");
 
+    // FIX: Add strict payload delimiters so JS can extract ONLY the chat content,
+    // ignoring any header/sidebar HTML accidentally output by the admin/index.php wrapper.
+    echo "<!--CHAT_PAYLOAD_START-->";
+
     $stmt = $pdo->prepare("SELECT * FROM order_messages WHERE order_id = ? ORDER BY created_at ASC");
     $stmt->execute([$order_id]);
     $messages = $stmt->fetchAll();
@@ -71,40 +75,41 @@ if (isset($_GET['ajax']) && $_GET['ajax'] == 1) {
                 <p class='text-sm font-bold text-[#00f0ff] tracking-widest uppercase'>Secure Channel Open</p>
                 <p class='text-xs mt-1'>Awaiting communication initialization.</p>
               </div>";
-        exit;
-    }
-
-    foreach($messages as $msg) {
-        $is_admin = $msg['sender_type'] === 'admin';
-        $align = $is_admin ? 'justify-end' : 'justify-start';
-        $item_align = $is_admin ? 'items-end' : 'items-start';
-        
-        // Messenger style bubble tails
-        $bubble_bg = $is_admin 
-            ? 'bg-gradient-to-br from-blue-600 to-[#00f0ff] text-slate-900 rounded-2xl rounded-br-sm shadow-[0_4px_15px_rgba(0,240,255,0.2)]' 
-            : 'bg-slate-800 text-slate-200 border border-slate-700 rounded-2xl rounded-bl-sm shadow-md';
+    } else {
+        foreach($messages as $msg) {
+            $is_admin = $msg['sender_type'] === 'admin';
+            $align = $is_admin ? 'justify-end' : 'justify-start';
+            $item_align = $is_admin ? 'items-end' : 'items-start';
             
-        $time = date('H:i', strtotime($msg['created_at']));
-        $safe_msg = htmlspecialchars($msg['message']);
+            // Messenger style bubble tails
+            $bubble_bg = $is_admin 
+                ? 'bg-gradient-to-br from-blue-600 to-[#00f0ff] text-slate-900 rounded-2xl rounded-br-sm shadow-[0_4px_15px_rgba(0,240,255,0.2)]' 
+                : 'bg-slate-800 text-slate-200 border border-slate-700 rounded-2xl rounded-bl-sm shadow-md';
+                
+            $time = date('H:i', strtotime($msg['created_at']));
+            $safe_msg = htmlspecialchars($msg['message']);
 
-        echo "<div class='flex w-full {$align} mb-4 animate-fade-in-up group'>";
-        echo "<div class='max-w-[85%] sm:max-w-[75%] flex flex-col {$item_align}'>";
-        echo "<div class='px-4 py-3 text-[13px] md:text-sm relative {$bubble_bg}'>";
-        
-        if ($msg['is_credential']) {
-            echo "<div class='flex items-center gap-2 text-[10px] font-black " . ($is_admin ? "text-slate-900" : "text-[#00f0ff]") . " mb-2 border-b " . ($is_admin ? "border-slate-900/20" : "border-white/10") . " pb-1 uppercase tracking-wider'><i class='fas fa-shield-alt'></i> SECURE CREDENTIAL</div>";
-            echo "<div class='font-mono text-xs whitespace-pre-wrap select-all " . ($is_admin ? "bg-white/30 text-slate-900" : "bg-black/40 text-green-300") . " p-2.5 rounded-lg border border-white/10'>{$safe_msg}</div>";
-        } else {
-            echo "<div class='whitespace-pre-wrap break-words leading-relaxed font-medium'>{$safe_msg}</div>";
+            echo "<div class='flex w-full {$align} mb-4 animate-fade-in-up group'>";
+            echo "<div class='max-w-[85%] sm:max-w-[75%] flex flex-col {$item_align}'>";
+            echo "<div class='px-4 py-3 text-[13px] md:text-sm relative {$bubble_bg}'>";
+            
+            if ($msg['is_credential']) {
+                echo "<div class='flex items-center gap-2 text-[10px] font-black " . ($is_admin ? "text-slate-900" : "text-[#00f0ff]") . " mb-2 border-b " . ($is_admin ? "border-slate-900/20" : "border-white/10") . " pb-1 uppercase tracking-wider'><i class='fas fa-shield-alt'></i> SECURE CREDENTIAL</div>";
+                echo "<div class='font-mono text-xs whitespace-pre-wrap select-all " . ($is_admin ? "bg-white/30 text-slate-900" : "bg-black/40 text-green-300") . " p-2.5 rounded-lg border border-white/10'>{$safe_msg}</div>";
+            } else {
+                echo "<div class='whitespace-pre-wrap break-words leading-relaxed font-medium'>{$safe_msg}</div>";
+            }
+            
+            echo "</div>";
+            echo "<div class='flex items-center gap-1.5 mt-1 px-1 opacity-60 group-hover:opacity-100 transition-opacity'>";
+            if($is_admin) echo "<i class='fas fa-check-double text-[8px] text-[#00f0ff]'></i>";
+            echo "<span class='text-[9px] text-slate-400 font-medium tracking-wide'>{$time}</span>";
+            echo "</div>";
+            echo "</div></div>";
         }
-        
-        echo "</div>";
-        echo "<div class='flex items-center gap-1.5 mt-1 px-1 opacity-60 group-hover:opacity-100 transition-opacity'>";
-        if($is_admin) echo "<i class='fas fa-check-double text-[8px] text-[#00f0ff]'></i>";
-        echo "<span class='text-[9px] text-slate-400 font-medium tracking-wide'>{$time}</span>";
-        echo "</div>";
-        echo "</div></div>";
     }
+    
+    echo "<!--CHAT_PAYLOAD_END-->";
     exit;
 }
 
@@ -577,9 +582,13 @@ $is_cat_image_legacy_icon = !empty($order['cat_image']) && strpos($order['cat_im
                     const loading = document.getElementById('chatLoading');
                     if(loading) loading.remove();
 
-                    if(html.trim() !== '' && html !== lastChatHtml) {
-                        chatBox.innerHTML = html;
-                        lastChatHtml = html;
+                    // FIX: Extract ONLY the chat payload to prevent Admin Header/Sidebar bleed
+                    const match = html.match(/<!--CHAT_PAYLOAD_START-->([\s\S]*?)<!--CHAT_PAYLOAD_END-->/);
+                    const chatContent = match ? match[1] : html;
+
+                    if(chatContent.trim() !== '' && chatContent !== lastChatHtml) {
+                        chatBox.innerHTML = chatContent;
+                        lastChatHtml = chatContent;
                         if(!isUserScrolling) {
                             chatBox.scrollTop = chatBox.scrollHeight;
                         }
