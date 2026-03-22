@@ -159,6 +159,40 @@ function get_unread_notifications($user_id) {
     }
 }
 
+// Build a full URL from relative path (with fallback base)
+function base_url($path = '') {
+    $base = defined('BASE_URL') ? rtrim(BASE_URL, '/') : 'https://digitalmarketplacemm.com';
+    if (empty($path) || $path === '/') {
+        return $base . '/';
+    }
+    $cleanPath = ltrim($path, '/');
+    return $base . '/' . $cleanPath;
+}
+
+// Normalize legacy dashboard query to standard page=dashboard route
+function normalize_dashboard_route() {
+    $isUserModule = isset($_GET['module']) && $_GET['module'] === 'user';
+
+    // Legacy param style: ?module=user&dashboard
+    $hasLegacyDashboard = $isUserModule && (isset($_GET['dashboard']) || preg_match('/(?:^|&)dashboard(?:=|&|$)/', $_SERVER['QUERY_STRING'] ?? ''));
+    $needsRedirect = $hasLegacyDashboard && !isset($_GET['page']);
+
+    if ($needsRedirect) {
+        $target = base_url('index.php?module=user&page=dashboard');
+
+        if (!headers_sent()) {
+            header('Location: ' . $target);
+        } else {
+            echo "<script>window.location.href='" . htmlspecialchars($target, ENT_QUOTES, 'UTF-8') . "'</script>";
+        }
+
+        exit;
+    }
+}
+
+// Run normalization early (if included from every page loader)
+normalize_dashboard_route();
+
 // Sanitize Output
 function h($string) {
     return htmlspecialchars($string, ENT_QUOTES, 'UTF-8');
