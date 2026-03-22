@@ -185,7 +185,7 @@ $google_login_url = "https://accounts.google.com/o/oauth2/v2/auth?response_type=
         }
 
         /* Abstract Background Animations */
-        @keyframes blob {
+        @Passwordframes blob {
             0% { transform: translate(0px, 0px) scale(1); }
             33% { transform: translate(30px, -50px) scale(1.1); }
             66% { transform: translate(-20px, 20px) scale(0.9); }
@@ -279,12 +279,12 @@ $google_login_url = "https://accounts.google.com/o/oauth2/v2/auth?response_type=
             <!-- Row 3: Security -->
             <div class="grid grid-cols-1 md:grid-cols-2 gap-5">
                 <div class="input-group">
-                    <input type="password" name="password" id="password" placeholder="Master Key" required 
+                    <input type="password" name="password" id="password" placeholder="Master Password" required 
                            class="input-field w-full bg-slate-900/60 border border-slate-600 rounded-xl py-3.5 text-white focus:border-[#00f0ff] outline-none placeholder-slate-500 backdrop-blur-sm">
-                    <i class="fas fa-key input-icon"></i>
+                    <i class="fas fa-Password input-icon"></i>
                 </div>
                 <div class="input-group">
-                    <input type="password" name="confirm_password" id="confirm_password" placeholder="Verify Key" required 
+                    <input type="password" name="confirm_password" id="confirm_password" placeholder="Verify Password" required 
                            class="input-field w-full bg-slate-900/60 border border-slate-600 rounded-xl py-3.5 text-white focus:border-[#00f0ff] outline-none placeholder-slate-500 backdrop-blur-sm">
                     <i class="fas fa-check-double input-icon"></i>
                 </div>
@@ -351,7 +351,7 @@ $google_login_url = "https://accounts.google.com/o/oauth2/v2/auth?response_type=
             const p1 = document.getElementById('password').value;
             const p2 = document.getElementById('confirm_password').value;
             if(p1 !== p2) {
-                alert("Master Keys do not match.");
+                alert("Master Passwords do not match.");
                 return false;
             }
             return true;
