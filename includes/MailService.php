@@ -72,7 +72,9 @@ class MailService {
                 </table>
 
                 <div style='text-align: center; margin-top: 30px;'>
-                    <a href='".BASE_URL."index.php?module=user&page=orders&view_chat=$orderId' style='display: inline-block; background: linear-gradient(90deg, #2563eb, #00f0ff); color: #0f172a; padding: 16px 32px; border-radius: 8px; text-decoration: none; font-weight: 900; font-size: 14px; text-transform: uppercase; letter-spacing: 1px; border: 1px solid #00f0ff; box-shadow: 0 0 15px rgba(0, 240, 255, 0.3);'>Open Fulfillment Terminal</a>
+                    <a href='".BASE_URL."index.php?module=user&page=orders&view_chat=$orderId' style='text-decoration: none;'>
+                        <button style='cursor: pointer; background: linear-gradient(90deg, #2563eb, #00f0ff); color: #0f172a; padding: 16px 32px; border-radius: 8px; border: 1px solid #00f0ff; font-weight: 900; font-size: 14px; text-transform: uppercase; letter-spacing: 1px; box-shadow: 0 0 15px rgba(0, 240, 255, 0.3);'>Open Fulfillment Terminal</button>
+                    </a>
                 </div>
             ";
 
@@ -105,7 +107,9 @@ class MailService {
                 </div>
                 
                 <div style='text-align: center; margin-top: 30px;'>
-                    <a href='".ADMIN_URL."index.php?page=order_detail&id=$orderId' style='display: inline-block; background: linear-gradient(90deg, #10b981, #34d399); color: #0f172a; padding: 16px 32px; border-radius: 8px; text-decoration: none; font-weight: 900; font-size: 14px; text-transform: uppercase; letter-spacing: 1px; border: 1px solid #34d399; box-shadow: 0 0 15px rgba(52, 211, 153, 0.3);'>Process Order in Matrix</a>
+                    <a href='".ADMIN_URL."index.php?page=order_detail&id=$orderId' style='text-decoration: none;'>
+                        <button style='cursor: pointer; background: linear-gradient(90deg, #10b981, #34d399); color: #0f172a; padding: 16px 32px; border-radius: 8px; border: 1px solid #34d399; font-weight: 900; font-size: 14px; text-transform: uppercase; letter-spacing: 1px; box-shadow: 0 0 15px rgba(52, 211, 153, 0.3);'>Process Order in Matrix</button>
+                    </a>
                 </div>
             ";
 
@@ -133,8 +137,9 @@ class MailService {
                 <p style='color: #94a3b8; text-align: center;'>Please confirm your email address to activate your account and start shopping for premium digital goods.</p>
                 
                 <div style='text-align: center; margin: 35px 0;'>
-                    <!-- Heavily styled <a> tag acting as a button for email client compatibility -->
-                    <a href='$link' style='display: inline-block; background: linear-gradient(90deg, #2563eb, #00f0ff); color: #0f172a; padding: 16px 32px; border-radius: 8px; text-decoration: none; font-weight: 900; font-size: 14px; text-transform: uppercase; letter-spacing: 1px; border: 1px solid #00f0ff; box-shadow: 0 0 15px rgba(0, 240, 255, 0.4);'>Verify My Account</a>
+                    <a href='$link' style='text-decoration: none;'>
+                        <button style='cursor: pointer; background: linear-gradient(90deg, #2563eb, #00f0ff); color: #0f172a; padding: 16px 32px; border-radius: 8px; border: 1px solid #00f0ff; font-weight: 900; font-size: 14px; text-transform: uppercase; letter-spacing: 1px; box-shadow: 0 0 15px rgba(0, 240, 255, 0.4);'>Verify My Account</button>
+                    </a>
                 </div>
                 
                 <div style='background-color: rgba(0, 240, 255, 0.05); padding: 15px; border-radius: 8px; border-left: 4px solid #00f0ff;'>
@@ -167,8 +172,9 @@ class MailService {
                 <p style='color: #94a3b8;'>We received a request to reset your password. If this was you, execute the command below to set a new master key:</p>
                 
                 <div style='text-align: center; margin: 35px 0;'>
-                    <!-- Heavily styled <a> tag acting as a button for email client compatibility -->
-                    <a href='$link' style='display: inline-block; background: linear-gradient(90deg, #dc2626, #ef4444); color: #ffffff; padding: 16px 32px; border-radius: 8px; text-decoration: none; font-weight: 900; font-size: 14px; text-transform: uppercase; letter-spacing: 1px; border: 1px solid #f87171; box-shadow: 0 0 15px rgba(239, 68, 68, 0.4);'>Reset Password</a>
+                    <a href='$link' style='text-decoration: none;'>
+                        <button style='cursor: pointer; background: linear-gradient(90deg, #dc2626, #ef4444); color: #ffffff; padding: 16px 32px; border-radius: 8px; border: 1px solid #f87171; font-weight: 900; font-size: 14px; text-transform: uppercase; letter-spacing: 1px; box-shadow: 0 0 15px rgba(239, 68, 68, 0.4);'>Reset Password</button>
+                    </a>
                 </div>
                 
                 <p style='color: #64748b; font-size: 12px; text-align: center;'>If you didn't initiate this protocol, you can safely ignore this communication. Your account remains secure.</p>
@@ -206,7 +212,9 @@ class MailService {
                 <p style='color: #64748b; font-size: 12px;'>You can continue logging in with Google, or use these credentials to sign in manually. We highly recommend updating this password in your Account Settings.</p>
                 
                 <div style='text-align: center; margin-top: 35px;'>
-                    <a href='$login_url' style='display: inline-block; background: linear-gradient(90deg, #2563eb, #00f0ff); color: #0f172a; padding: 16px 32px; border-radius: 8px; text-decoration: none; font-weight: 900; font-size: 14px; text-transform: uppercase; letter-spacing: 1px; border: 1px solid #00f0ff; box-shadow: 0 0 15px rgba(0, 240, 255, 0.4);'>Access Portal</a>
+                    <a href='$login_url' style='text-decoration: none;'>
+                        <button style='cursor: pointer; background: linear-gradient(90deg, #2563eb, #00f0ff); color: #0f172a; padding: 16px 32px; border-radius: 8px; border: 1px solid #00f0ff; font-weight: 900; font-size: 14px; text-transform: uppercase; letter-spacing: 1px; box-shadow: 0 0 15px rgba(0, 240, 255, 0.4);'>Access Portal</button>
+                    </a>
                 </div>
             ";
 
