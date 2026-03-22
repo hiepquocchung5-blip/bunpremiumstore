@@ -1,56 +1,42 @@
 <?php
 // modules/auth/register.php
-// PRODUCTION v4.0 - Form State Retention, Submit Lockout & Neon UX
+// PRODUCTION v4.2 - Google Auth V3 Sync & Terminology Update
 
 // 1. Redirect if already logged in
 if (is_logged_in()) {
     redirect('index.php');
 }
 
-// Include Mail Service
 require_once 'includes/MailService.php';
 
 $error = '';
 $success = '';
 
-// Form state retention variables
 $form_name = '';
 $form_user = '';
 $form_email = '';
 $form_phone = '';
 
-// ==========================================================================
-// SECURITY: RATE LIMITING (Brute Force Protection)
-// ==========================================================================
+// Rate Limiting
 if (!isset($_SESSION['reg_attempts'])) $_SESSION['reg_attempts'] = 0;
 if (!isset($_SESSION['reg_lockout'])) $_SESSION['reg_lockout'] = 0;
 
-// Block if too many attempts
 if ($_SESSION['reg_attempts'] >= 3 && time() < $_SESSION['reg_lockout']) {
     $remaining = ceil(($_SESSION['reg_lockout'] - time()) / 60);
     $error = "System locked. Too many failed attempts. Please wait $remaining minutes.";
 } 
-
-// ==========================================================================
-// HANDLE FORM SUBMISSION
-// ==========================================================================
 elseif ($_SERVER['REQUEST_METHOD'] === 'POST') {
     
-    // Retain form data on error
     $form_name = trim($_POST['full_name'] ?? '');
     $form_user = trim($_POST['username'] ?? '');
     $form_email = filter_var(trim($_POST['email'] ?? ''), FILTER_SANITIZE_EMAIL);
     $form_phone = trim($_POST['phone'] ?? '');
     
-    // 2. SECURITY: CSRF Check
     $session_token = $_SESSION['csrf_token'] ?? '';
     $post_token = $_POST['csrf_token'] ?? '';
-
-    // 3. SECURITY: Honeypot Trap (Anti-Bot)
     $honeypot = $_POST['fax'] ?? '';
 
     if (!empty($honeypot)) {
-        // Silent failure for bots
         die("System error. Connection terminated.");
     }
 
@@ -61,7 +47,6 @@ elseif ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $confirm = $_POST['confirm_password'];
         $terms = isset($_POST['terms']);
 
-        // 5. SECURITY: Input Validation
         if (!filter_var($form_email, FILTER_VALIDATE_EMAIL)) {
             $error = "Invalid email format detected.";
         } elseif (!$terms) {
@@ -73,10 +58,8 @@ elseif ($_SERVER['REQUEST_METHOD'] === 'POST') {
         } elseif (!preg_match("/[A-Z]/", $password) || !preg_match("/[0-9]/", $password)) {
             $error = "Password must contain at least 1 Capital letter and 1 Number.";
         } else {
-            // Force UTF-8MB4 connection for Emoji/Special char support
             $pdo->exec("SET NAMES 'utf8mb4'");
 
-            // Check Database for duplicates
             $stmt = $pdo->prepare("SELECT id FROM users WHERE email = ? OR username = ?");
             $stmt->execute([$form_email, $form_user]);
             
@@ -84,27 +67,21 @@ elseif ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 $error = "Identity collision: Username or Email is already active in the network.";
             } else {
                 try {
-                    // 6. SECURITY: Password Hashing
                     $hashed = password_hash($password, PASSWORD_DEFAULT);
                     $token = bin2hex(random_bytes(32)); 
                     $phoneVal = empty($form_phone) ? null : $form_phone;
 
-                    // 7. SECURITY: Prepared Statement
                     $stmt = $pdo->prepare("INSERT INTO users (full_name, username, email, phone, password, verify_token, is_verified) VALUES (?, ?, ?, ?, ?, ?, 0)");
                     
                     if ($stmt->execute([$form_name, $form_user, $form_email, $phoneVal, $hashed, $token])) {
-                        
-                        // Send Verification Email
                         try {
                             $mailer = new MailService();
                             $mailer->sendVerificationEmail($form_email, $token);
                         } catch(Exception $e) {
-                            error_log("Failed to send verification email on registration: " . $e->getMessage());
+                            error_log("Failed to send verification email: " . $e->getMessage());
                         }
 
                         $_SESSION['reg_attempts'] = 0;
-
-                        // Redirect to Login
                         header("Location: index.php?module=auth&page=login&registered=1&email=" . urlencode($form_email));
                         exit;
                     } else {
@@ -116,27 +93,30 @@ elseif ($_SERVER['REQUEST_METHOD'] === 'POST') {
                     } elseif ($e->getCode() == 'HY000' && strpos($e->getMessage(), '1366') !== false) {
                         $error = "Invalid characters detected in input. Please use standard ASCII.";
                     } else {
-                        error_log($e->getMessage()); 
                         $error = "An unexpected error occurred in the matrix. Please try again.";
                     }
                 }
             }
         }
         
-        // Increment rate limit
         if ($error) {
             $_SESSION['reg_attempts']++;
             if ($_SESSION['reg_attempts'] >= 3) {
-                $_SESSION['reg_lockout'] = time() + (10 * 60); // 10 min lock
+                $_SESSION['reg_lockout'] = time() + (10 * 60);
             }
         }
     }
 }
 
-// Google Auth Link (Safe variable fetch)
+// --- GOOGLE OAUTH V3 Setup ---
 $google_client_id = defined('GOOGLE_CLIENT_ID') ? GOOGLE_CLIENT_ID : '';
 $google_redirect_url = defined('GOOGLE_REDIRECT_URL') ? GOOGLE_REDIRECT_URL : '';
-$google_login_url = "https://accounts.google.com/o/oauth2/v2/auth?response_type=code&client_id=" . urlencode($google_client_id) . "&redirect_uri=" . urlencode($google_redirect_url) . "&scope=email%20profile";
+
+if (empty($_SESSION['g_state'])) {
+    $_SESSION['g_state'] = bin2hex(random_bytes(16));
+}
+
+$google_login_url = "https://accounts.google.com/o/oauth2/v2/auth?response_type=code&client_id=" . urlencode($google_client_id) . "&redirect_uri=" . urlencode($google_redirect_url) . "&scope=email%20profile&state=" . $_SESSION['g_state'];
 ?>
 <!DOCTYPE html>
 <html lang="en">
@@ -163,7 +143,6 @@ $google_login_url = "https://accounts.google.com/o/oauth2/v2/auth?response_type=
             box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.5), 0 0 30px rgba(0, 240, 255, 0.05); 
         }
         
-        /* Mobile Optimized Inputs */
         .input-group { position: relative; }
         .input-icon { 
             position: absolute; 
@@ -178,7 +157,7 @@ $google_login_url = "https://accounts.google.com/o/oauth2/v2/auth?response_type=
             padding-left: 3.25rem; 
             padding-right: 1rem;
             transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1); 
-            font-size: 16px !important; /* Prevents iOS Zoom */
+            font-size: 16px !important; 
         }
         .input-field:focus + .input-icon { color: #00f0ff; }
         .input-field:focus { 
@@ -186,7 +165,6 @@ $google_login_url = "https://accounts.google.com/o/oauth2/v2/auth?response_type=
             box-shadow: inset 0 0 15px rgba(0, 240, 255, 0.15); 
         }
 
-        /* Abstract Background Animations */
         @keyframes blob {
             0% { transform: translate(0px, 0px) scale(1); }
             33% { transform: translate(30px, -50px) scale(1.1); }
@@ -199,7 +177,6 @@ $google_login_url = "https://accounts.google.com/o/oauth2/v2/auth?response_type=
         
         .visually-hidden { position: absolute; left: -9999px; top: -9999px; visibility: hidden; }
 
-        /* Loader */
         .loader-shimmer {
             background: linear-gradient(90deg, transparent, rgba(255,255,255,0.4), transparent);
             background-size: 200% 100%;
@@ -213,16 +190,13 @@ $google_login_url = "https://accounts.google.com/o/oauth2/v2/auth?response_type=
 </head>
 <body class="flex items-center justify-center relative overflow-x-hidden px-4 py-12 md:py-8 min-h-screen">
     
-    <!-- Animated Cyberpunk Background -->
     <div class="fixed inset-0 w-full h-full bg-slate-950 -z-20"></div>
     <div class="fixed top-0 -left-4 w-72 h-72 bg-blue-600 rounded-full mix-blend-multiply filter blur-[128px] opacity-30 animate-blob -z-10"></div>
     <div class="fixed top-0 -right-4 w-72 h-72 bg-[#00f0ff] rounded-full mix-blend-multiply filter blur-[128px] opacity-20 animate-blob animation-delay-2000 -z-10"></div>
     <div class="fixed -bottom-8 left-20 w-72 h-72 bg-purple-600 rounded-full mix-blend-multiply filter blur-[128px] opacity-30 animate-blob animation-delay-4000 -z-10"></div>
 
-    <!-- Main Container -->
     <div class="w-full max-w-xl glass p-6 md:p-10 rounded-3xl relative z-10 animate-fade-in-down border-t border-[#00f0ff]/30">
         
-        <!-- Header -->
         <div class="text-center mb-8">
             <a href="index.php" class="inline-block mb-4 group">
                 <div class="w-16 h-16 bg-slate-900 border border-[#00f0ff]/30 rounded-2xl flex items-center justify-center mx-auto shadow-[0_0_15px_rgba(0,240,255,0.2)] group-hover:shadow-[0_0_25px_rgba(0,240,255,0.4)] transition duration-300">
@@ -233,7 +207,6 @@ $google_login_url = "https://accounts.google.com/o/oauth2/v2/auth?response_type=
             <p class="text-slate-400 text-sm">Deploy your identity into the network</p>
         </div>
         
-        <!-- Alerts -->
         <?php if($error): ?>
             <div class="bg-red-900/20 border border-red-500/50 text-red-400 p-4 rounded-xl mb-6 text-sm backdrop-blur-md shadow-lg flex items-start gap-3">
                 <i class="fas fa-exclamation-triangle text-lg mt-0.5 shrink-0"></i>
@@ -241,11 +214,11 @@ $google_login_url = "https://accounts.google.com/o/oauth2/v2/auth?response_type=
             </div>
         <?php endif; ?>
 
-        <!-- Google Sign-Up -->
+        <!-- Google OAuth Button -->
         <?php if(!empty($google_client_id)): ?>
-        <a href="<?php echo $google_login_url; ?>" class="w-full bg-white hover:bg-gray-100 text-slate-900 font-black py-3.5 px-4 rounded-xl shadow-lg transition transform active:scale-[0.98] flex items-center justify-center gap-3 mb-6 group">
-            <img src="https://www.svgrepo.com/show/475656/google-color.svg" class="w-6 h-6 transition-transform group-hover:scale-110" alt="Google">
-            <span class="text-sm tracking-wide">Fast Deploy with Google</span>
+        <a href="<?php echo $google_login_url; ?>" class="w-full bg-slate-800 border border-slate-600 hover:border-slate-500 hover:bg-slate-700 text-white font-bold py-3.5 px-4 rounded-xl shadow-lg transition transform active:scale-[0.98] flex items-center justify-center gap-3 mb-6 group">
+            <img src="https://www.svgrepo.com/show/475656/google-color.svg" class="w-5 h-5 transition-transform group-hover:scale-110" alt="Google">
+            <span class="text-sm tracking-wide">Sign Up with Google</span>
         </a>
 
         <div class="flex items-center gap-4 mb-6">
@@ -258,11 +231,8 @@ $google_login_url = "https://accounts.google.com/o/oauth2/v2/auth?response_type=
         <!-- Form -->
         <form method="POST" id="registerForm" class="space-y-5">
             <input type="hidden" name="csrf_token" value="<?php echo generate_csrf_token(); ?>">
-            
-            <!-- Honeypot -->
             <input type="text" name="fax" class="visually-hidden" tabindex="-1" autocomplete="off">
             
-            <!-- Row 1: Identity -->
             <div class="grid grid-cols-1 md:grid-cols-2 gap-5">
                 <div class="input-group">
                     <input type="text" name="full_name" placeholder="Full Designation" required value="<?php echo htmlspecialchars($form_name); ?>"
@@ -276,7 +246,6 @@ $google_login_url = "https://accounts.google.com/o/oauth2/v2/auth?response_type=
                 </div>
             </div>
 
-            <!-- Row 2: Comms -->
             <div class="grid grid-cols-1 md:grid-cols-2 gap-5">
                 <div class="input-group">
                     <input type="email" name="email" placeholder="Secure Comm (Email)" required value="<?php echo htmlspecialchars($form_email); ?>"
@@ -291,10 +260,9 @@ $google_login_url = "https://accounts.google.com/o/oauth2/v2/auth?response_type=
                 </div>
             </div>
 
-            <!-- Row 3: Security -->
             <div class="grid grid-cols-1 md:grid-cols-2 gap-5">
                 <div class="input-group">
-                    <input type="password" name="password" id="password" placeholder="Password" required 
+                    <input type="password" name="password" id="password" placeholder="Master Password" required 
                            class="input-field w-full bg-slate-900/60 border border-slate-600 rounded-xl py-3.5 text-white focus:border-[#00f0ff] outline-none placeholder-slate-500 backdrop-blur-sm pr-12 shadow-inner">
                     <i class="fas fa-key input-icon"></i>
                     <button type="button" id="togglePassword" class="absolute right-3 top-1/2 transform -translate-y-1/2 text-slate-400 hover:text-[#00f0ff] transition-colors duration-200 focus:outline-none">
@@ -311,7 +279,7 @@ $google_login_url = "https://accounts.google.com/o/oauth2/v2/auth?response_type=
                 </div>
             </div>
 
-            <!-- Security Requirements (Interactive) -->
+            <!-- Security Requirements -->
             <div class="bg-slate-900/50 rounded-xl p-3 border border-slate-700 shadow-inner">
                 <div class="flex justify-between items-center mb-2 px-1">
                     <span class="text-[10px] uppercase font-bold text-slate-500 tracking-widest">Password Strength</span>
@@ -329,7 +297,6 @@ $google_login_url = "https://accounts.google.com/o/oauth2/v2/auth?response_type=
                 </div>
             </div>
 
-            <!-- Agreements -->
             <label class="flex items-start gap-3 cursor-pointer group mt-4 select-none px-1">
                 <div class="relative flex items-center pt-0.5">
                     <input type="checkbox" name="terms" required class="peer sr-only">
@@ -342,7 +309,6 @@ $google_login_url = "https://accounts.google.com/o/oauth2/v2/auth?response_type=
                 </span>
             </label>
 
-            <!-- Submit -->
             <button type="submit" id="submitBtn" class="w-full bg-gradient-to-r from-blue-600 to-[#00f0ff] hover:from-blue-500 hover:to-[#00f0ff] text-slate-900 font-black py-4 rounded-xl shadow-[0_0_20px_rgba(0,240,255,0.2)] hover:shadow-[0_0_30px_rgba(0,240,255,0.4)] transform transition active:scale-[0.98] text-sm uppercase tracking-widest mt-6 flex justify-center items-center gap-2 group/btn relative overflow-hidden">
                 <span class="relative z-10 flex items-center gap-2" id="btnContent">
                     Deploy Credentials <i class="fas fa-upload group-hover/btn:-translate-y-1 transition-transform"></i>
@@ -350,7 +316,6 @@ $google_login_url = "https://accounts.google.com/o/oauth2/v2/auth?response_type=
             </button>
         </form>
 
-        <!-- Footer -->
         <div class="mt-8 pt-6 border-t border-slate-700/50 text-center">
             <p class="text-sm text-slate-400 font-medium">
                 Already registered? <a href="index.php?module=auth&page=login" class="text-[#00f0ff] font-bold hover:underline ml-1">Initiate Login</a>
@@ -358,7 +323,7 @@ $google_login_url = "https://accounts.google.com/o/oauth2/v2/auth?response_type=
         </div>
     </div>
 
-    <!-- Interactive Script Logic -->
+    <!-- JS Logic -->
     <script>
         const passwordInput = document.getElementById('password');
         const confirmInput = document.getElementById('confirm_password');
@@ -366,7 +331,6 @@ $google_login_url = "https://accounts.google.com/o/oauth2/v2/auth?response_type=
         const btn = document.getElementById('submitBtn');
         const btnContent = document.getElementById('btnContent');
         
-        // Strength Elements
         const reqLen = document.getElementById('len');
         const reqCap = document.getElementById('cap');
         const reqNum = document.getElementById('num');
@@ -380,31 +344,15 @@ $google_login_url = "https://accounts.google.com/o/oauth2/v2/auth?response_type=
                 const val = this.value;
                 let score = 0;
                 
-                // Length check
-                if(val.length >= 8) { 
-                    reqLen.classList.replace('text-slate-500', 'text-green-400');
-                    score++;
-                } else { 
-                    reqLen.classList.replace('text-green-400', 'text-slate-500'); 
-                }
+                if(val.length >= 8) { reqLen.classList.replace('text-slate-500', 'text-green-400'); score++; } 
+                else { reqLen.classList.replace('text-green-400', 'text-slate-500'); }
 
-                // Capital check
-                if(/[A-Z]/.test(val)) { 
-                    reqCap.classList.replace('text-slate-500', 'text-green-400');
-                    score++;
-                } else { 
-                    reqCap.classList.replace('text-green-400', 'text-slate-500'); 
-                }
+                if(/[A-Z]/.test(val)) { reqCap.classList.replace('text-slate-500', 'text-green-400'); score++; } 
+                else { reqCap.classList.replace('text-green-400', 'text-slate-500'); }
 
-                // Number check
-                if(/[0-9]/.test(val)) { 
-                    reqNum.classList.replace('text-slate-500', 'text-green-400');
-                    score++;
-                } else { 
-                    reqNum.classList.replace('text-green-400', 'text-slate-500'); 
-                }
+                if(/[0-9]/.test(val)) { reqNum.classList.replace('text-slate-500', 'text-green-400'); score++; } 
+                else { reqNum.classList.replace('text-green-400', 'text-slate-500'); }
 
-                // Visual Bars
                 bar1.className = 'flex-1 rounded-full transition-colors duration-300 ' + (score >= 1 ? 'bg-red-500' : 'bg-slate-700');
                 bar2.className = 'flex-1 rounded-full transition-colors duration-300 ' + (score >= 2 ? 'bg-yellow-400' : 'bg-slate-700');
                 bar3.className = 'flex-1 rounded-full transition-colors duration-300 ' + (score === 3 ? 'bg-green-400 shadow-[0_0_10px_#4ade80]' : 'bg-slate-700');
@@ -416,7 +364,6 @@ $google_login_url = "https://accounts.google.com/o/oauth2/v2/auth?response_type=
             });
         }
 
-        // Password visibility toggles
         function setupToggle(btnId, inputId) {
             const btn = document.getElementById(btnId);
             const input = document.getElementById(inputId);
@@ -438,7 +385,6 @@ $google_login_url = "https://accounts.google.com/o/oauth2/v2/auth?response_type=
         setupToggle('togglePassword', 'password');
         setupToggle('toggleConfirmPassword', 'confirm_password');
 
-        // Form Submit Lockout & Validation
         if(form) {
             form.addEventListener('submit', function(e) {
                 const p1 = passwordInput.value;
@@ -450,12 +396,9 @@ $google_login_url = "https://accounts.google.com/o/oauth2/v2/auth?response_type=
                     return false;
                 }
                 
-                // UX: Lock button to prevent double submission
                 btn.disabled = true;
                 btn.classList.add('opacity-80', 'cursor-not-allowed', 'loader-shimmer');
                 btnContent.innerHTML = 'Deploying... <i class="fas fa-circle-notch fa-spin"></i>';
-                
-                // Allow form to submit naturally
                 return true;
             });
         }
