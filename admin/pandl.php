@@ -1,6 +1,6 @@
 <?php
 // admin/pandl.php
-// PRODUCTION v1.0 - Profit & Loss Matrix with Automated Cost Tracking
+// PRODUCTION v2.0 - Advanced P&L Matrix with Temporal Scoping & Trend Analytics
 
 // 1. Handle Batch Cost Updates
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['update_costs'])) {
@@ -15,15 +15,37 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['update_costs'])) {
             }
         }
         $pdo->commit();
-        redirect(admin_url('pandl', ['success' => 1]));
+        redirect(admin_url('pandl', ['success' => 1, 'range' => $_GET['range'] ?? '30']));
     } catch (Exception $e) {
         $pdo->rollBack();
         $error = "Data synchronization failed: " . $e->getMessage();
     }
 }
 
-// 2. Fetch Global Financial Telemetry (Lifetime)
-// Calculate total revenue, total costs (only for product orders), and pass revenue (100% profit)
+// =====================================================================================
+// NEW FUNCTION 1: DYNAMIC TEMPORAL SCOPING
+// =====================================================================================
+$range = isset($_GET['range']) ? $_GET['range'] : '30';
+$date_filter = "";
+$prev_date_filter = "";
+$chart_days = 14; // Default chart span
+
+if ($range === '7') {
+    $date_filter = "AND o.created_at >= DATE_SUB(NOW(), INTERVAL 7 DAY)";
+    $prev_date_filter = "AND o.created_at >= DATE_SUB(NOW(), INTERVAL 14 DAY) AND o.created_at < DATE_SUB(NOW(), INTERVAL 7 DAY)";
+    $chart_days = 7;
+} elseif ($range === '30') {
+    $date_filter = "AND o.created_at >= DATE_SUB(NOW(), INTERVAL 30 DAY)";
+    $prev_date_filter = "AND o.created_at >= DATE_SUB(NOW(), INTERVAL 60 DAY) AND o.created_at < DATE_SUB(NOW(), INTERVAL 30 DAY)";
+    $chart_days = 30;
+} else {
+    // Lifetime (No date filter)
+    $date_filter = "";
+    $prev_date_filter = "AND 1=0"; // Prevent previous calc for lifetime
+    $chart_days = 30; // Cap chart at 30 days for performance on lifetime view
+}
+
+// 2. Fetch Global Financial Telemetry (Current Period)
 $sql_stats = "
     SELECT 
         COUNT(o.id) as total_sales,
@@ -31,7 +53,7 @@ $sql_stats = "
         SUM(CASE WHEN o.product_id IS NOT NULL THEN COALESCE(pc.cost_price, 0) ELSE 0 END) as total_cost
     FROM orders o
     LEFT JOIN product_costs pc ON o.product_id = pc.product_id
-    WHERE o.status = 'active'
+    WHERE o.status = 'active' $date_filter
 ";
 $global_stats = $pdo->query($sql_stats)->fetch();
 
@@ -40,12 +62,47 @@ $total_cost = $global_stats['total_cost'] ?: 0;
 $total_profit = $total_revenue - $total_cost;
 $avg_margin = $total_revenue > 0 ? round(($total_profit / $total_revenue) * 100, 1) : 0;
 
-// 3. Fetch Chart Data (Last 14 Days)
+// =====================================================================================
+// NEW FUNCTION 2: VELOCITY TREND ENGINE (Previous Period Comparison)
+// =====================================================================================
+$sql_prev_stats = "
+    SELECT 
+        SUM(o.total_price_paid) as total_revenue,
+        SUM(CASE WHEN o.product_id IS NOT NULL THEN COALESCE(pc.cost_price, 0) ELSE 0 END) as total_cost
+    FROM orders o
+    LEFT JOIN product_costs pc ON o.product_id = pc.product_id
+    WHERE o.status = 'active' $prev_date_filter
+";
+$prev_stats = $pdo->query($sql_prev_stats)->fetch();
+
+$prev_revenue = $prev_stats['total_revenue'] ?: 0;
+$prev_profit = $prev_revenue - ($prev_stats['total_cost'] ?: 0);
+$prev_margin = $prev_revenue > 0 ? round(($prev_profit / $prev_revenue) * 100, 1) : 0;
+
+// Calculate Trend Percentages
+function calc_trend($current, $previous) {
+    if ($previous == 0) return $current > 0 ? 100 : 0;
+    return round((($current - $previous) / $previous) * 100, 1);
+}
+
+$trend_rev = calc_trend($total_revenue, $prev_revenue);
+$trend_profit = calc_trend($total_profit, $prev_profit);
+$trend_margin = $avg_margin - $prev_margin; // Absolute difference for margins
+
+// Trend HTML Builder
+function render_trend($value, $is_margin = false) {
+    $symbol = $value >= 0 ? '↑' : '↓';
+    $color = $value >= 0 ? 'text-green-400' : 'text-red-400';
+    $suffix = $is_margin ? 'pts' : '%';
+    return "<span class='text-[10px] font-bold $color bg-slate-900/50 px-1.5 py-0.5 rounded-md border border-slate-700/50'>$symbol " . abs($value) . "$suffix</span>";
+}
+
+// 3. Fetch Chart Data (Dynamic Days)
 $chart_labels = [];
 $chart_revenue = [];
 $chart_profit = [];
 
-for ($i = 13; $i >= 0; $i--) {
+for ($i = $chart_days - 1; $i >= 0; $i--) {
     $date = date('Y-m-d', strtotime("-$i days"));
     $chart_labels[] = date('M d', strtotime($date));
     
@@ -60,11 +117,30 @@ for ($i = 13; $i >= 0; $i--) {
     $day_stats = $pdo->query($day_sql)->fetch();
     
     $d_rev = $day_stats['d_rev'] ?: 0;
-    $d_cost = $day_stats['d_cost'] ?: 0;
-    
     $chart_revenue[] = $d_rev;
-    $chart_profit[] = $d_rev - $d_cost;
+    $chart_profit[] = $d_rev - ($day_stats['d_cost'] ?: 0);
 }
+
+// =====================================================================================
+// NEW FUNCTION 3: ASSET INSIGHT ENGINE (Top / Bottom Performers)
+// =====================================================================================
+$sql_insights = "
+    SELECT 
+        p.name, 
+        p.image_path,
+        SUM(o.total_price_paid) as revenue,
+        SUM(o.total_price_paid - COALESCE(pc.cost_price, 0)) as profit,
+        (SUM(o.total_price_paid - COALESCE(pc.cost_price, 0)) / SUM(o.total_price_paid) * 100) as margin
+    FROM orders o
+    JOIN products p ON o.product_id = p.id
+    LEFT JOIN product_costs pc ON p.id = pc.product_id
+    WHERE o.status = 'active' $date_filter
+    GROUP BY p.id
+    HAVING revenue > 0
+";
+
+$top_node = $pdo->query("$sql_insights ORDER BY profit DESC LIMIT 1")->fetch();
+$critical_node = $pdo->query("$sql_insights ORDER BY margin ASC LIMIT 1")->fetch();
 
 // 4. Fetch Products with their Cost Prices for the Data Table
 $products = $pdo->query("
@@ -80,12 +156,19 @@ $products = $pdo->query("
 <!-- Chart.js -->
 <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 
-<div class="mb-6 flex justify-between items-center relative z-10">
+<div class="mb-8 flex flex-col md:flex-row justify-between items-start md:items-center gap-4 relative z-10">
     <div>
         <h1 class="text-3xl font-bold text-white tracking-tight flex items-center gap-3">
             Profit & Loss Matrix <i class="fas fa-chart-line text-[#00f0ff]"></i>
         </h1>
         <p class="text-slate-400 text-sm mt-1">Real-time financial telemetry, acquisition costs, and net margins.</p>
+    </div>
+
+    <!-- NEW FEATURE 1: TIME-PHASE TOGGLE -->
+    <div class="flex items-center bg-slate-900 border border-slate-700 rounded-xl p-1 shadow-inner">
+        <a href="?page=pandl&range=7" class="px-5 py-2 rounded-lg text-xs font-bold transition-all <?php echo $range == '7' ? 'bg-gradient-to-r from-blue-600 to-[#00f0ff] text-slate-900 shadow-[0_0_10px_rgba(0,240,255,0.4)]' : 'text-slate-400 hover:text-white'; ?>">7 Days</a>
+        <a href="?page=pandl&range=30" class="px-5 py-2 rounded-lg text-xs font-bold transition-all <?php echo $range == '30' ? 'bg-gradient-to-r from-blue-600 to-[#00f0ff] text-slate-900 shadow-[0_0_10px_rgba(0,240,255,0.4)]' : 'text-slate-400 hover:text-white'; ?>">30 Days</a>
+        <a href="?page=pandl&range=all" class="px-5 py-2 rounded-lg text-xs font-bold transition-all <?php echo $range == 'all' ? 'bg-gradient-to-r from-blue-600 to-[#00f0ff] text-slate-900 shadow-[0_0_10px_rgba(0,240,255,0.4)]' : 'text-slate-400 hover:text-white'; ?>">Lifetime</a>
     </div>
 </div>
 
@@ -95,35 +178,83 @@ $products = $pdo->query("
     </div>
 <?php endif; ?>
 
-<!-- KPI Dashboard -->
+<!-- KPI Dashboard with Momentum Badges -->
 <div class="grid grid-cols-1 md:grid-cols-4 gap-6 mb-8 relative z-10">
     
     <div class="bg-slate-900/80 backdrop-blur-xl p-6 rounded-2xl border border-slate-700 shadow-[0_10px_30px_rgba(0,0,0,0.3)] relative overflow-hidden group hover:border-blue-500/50 transition">
         <div class="absolute -right-6 -top-6 w-24 h-24 bg-blue-500/10 rounded-full blur-2xl group-hover:bg-blue-500/20 transition"></div>
-        <p class="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-1">Gross Revenue</p>
-        <h3 class="text-2xl md:text-3xl font-black text-white font-mono"><?php echo format_admin_currency($total_revenue); ?></h3>
-        <i class="fas fa-money-bill-wave absolute right-6 bottom-6 text-3xl text-slate-700 opacity-30 group-hover:text-blue-500/30 transition"></i>
+        <div class="flex justify-between items-start mb-1">
+            <p class="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Gross Revenue</p>
+            <?php if($range !== 'all') echo render_trend($trend_rev); ?>
+        </div>
+        <h3 class="text-2xl md:text-3xl font-black text-white font-mono mt-1"><?php echo format_admin_currency($total_revenue); ?></h3>
+        <i class="fas fa-money-bill-wave absolute right-6 bottom-6 text-3xl text-slate-700 opacity-30 group-hover:text-blue-500/30 transition transform group-hover:scale-110"></i>
     </div>
 
     <div class="bg-slate-900/80 backdrop-blur-xl p-6 rounded-2xl border border-slate-700 shadow-[0_10px_30px_rgba(0,0,0,0.3)] relative overflow-hidden group hover:border-red-500/50 transition">
         <div class="absolute -right-6 -top-6 w-24 h-24 bg-red-500/10 rounded-full blur-2xl group-hover:bg-red-500/20 transition"></div>
         <p class="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-1">Acquisition Costs</p>
-        <h3 class="text-2xl md:text-3xl font-black text-red-400 font-mono">-<?php echo format_admin_currency($total_cost); ?></h3>
-        <i class="fas fa-shopping-cart absolute right-6 bottom-6 text-3xl text-slate-700 opacity-30 group-hover:text-red-500/30 transition"></i>
+        <h3 class="text-2xl md:text-3xl font-black text-red-400 font-mono mt-1">-<?php echo format_admin_currency($total_cost); ?></h3>
+        <i class="fas fa-shopping-cart absolute right-6 bottom-6 text-3xl text-slate-700 opacity-30 group-hover:text-red-500/30 transition transform group-hover:scale-110"></i>
     </div>
 
     <div class="bg-slate-900/80 backdrop-blur-xl p-6 rounded-2xl border border-slate-700 shadow-[0_10px_30px_rgba(0,0,0,0.3)] relative overflow-hidden group hover:border-green-500/50 transition">
         <div class="absolute -right-6 -top-6 w-24 h-24 bg-green-500/10 rounded-full blur-2xl group-hover:bg-green-500/20 transition"></div>
-        <p class="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-1">Net Profit</p>
-        <h3 class="text-2xl md:text-3xl font-black text-green-400 font-mono"><?php echo format_admin_currency($total_profit); ?></h3>
-        <i class="fas fa-chart-pie absolute right-6 bottom-6 text-3xl text-slate-700 opacity-30 group-hover:text-green-500/30 transition"></i>
+        <div class="flex justify-between items-start mb-1">
+            <p class="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Net Profit</p>
+            <?php if($range !== 'all') echo render_trend($trend_profit); ?>
+        </div>
+        <h3 class="text-2xl md:text-3xl font-black text-green-400 font-mono mt-1"><?php echo format_admin_currency($total_profit); ?></h3>
+        <i class="fas fa-chart-pie absolute right-6 bottom-6 text-3xl text-slate-700 opacity-30 group-hover:text-green-500/30 transition transform group-hover:scale-110"></i>
     </div>
 
     <div class="bg-slate-900/80 backdrop-blur-xl p-6 rounded-2xl border border-slate-700 shadow-[0_10px_30px_rgba(0,0,0,0.3)] relative overflow-hidden group hover:border-purple-500/50 transition">
         <div class="absolute -right-6 -top-6 w-24 h-24 bg-purple-500/10 rounded-full blur-2xl group-hover:bg-purple-500/20 transition"></div>
-        <p class="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-1">Avg Margin</p>
-        <h3 class="text-2xl md:text-3xl font-black <?php echo $avg_margin >= 30 ? 'text-purple-400' : 'text-yellow-400'; ?> font-mono"><?php echo $avg_margin; ?>%</h3>
-        <i class="fas fa-percent absolute right-6 bottom-6 text-3xl text-slate-700 opacity-30 group-hover:text-purple-500/30 transition"></i>
+        <div class="flex justify-between items-start mb-1">
+            <p class="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Avg Margin</p>
+            <?php if($range !== 'all') echo render_trend($trend_margin, true); ?>
+        </div>
+        <h3 class="text-2xl md:text-3xl font-black <?php echo $avg_margin >= 30 ? 'text-purple-400' : 'text-yellow-400'; ?> font-mono mt-1"><?php echo $avg_margin; ?>%</h3>
+        <i class="fas fa-percent absolute right-6 bottom-6 text-3xl text-slate-700 opacity-30 group-hover:text-purple-500/30 transition transform group-hover:scale-110"></i>
+    </div>
+
+</div>
+
+<!-- NEW FEATURE 2 & 3: INTELLIGENCE PANELS -->
+<div class="grid grid-cols-1 md:grid-cols-2 gap-6 mb-10 relative z-10">
+    
+    <!-- Top Yield Node -->
+    <div class="bg-slate-900/60 backdrop-blur-xl rounded-2xl border border-emerald-500/30 p-5 shadow-lg flex items-center gap-4 relative overflow-hidden group">
+        <div class="absolute inset-0 bg-gradient-to-r from-emerald-500/5 to-transparent pointer-events-none"></div>
+        <div class="w-14 h-14 rounded-xl bg-slate-950 border border-emerald-500/50 flex items-center justify-center text-emerald-400 shrink-0 shadow-[0_0_15px_rgba(16,185,129,0.2)] overflow-hidden relative">
+            <?php if(!empty($top_node['image_path'])): ?>
+                <img src="<?php echo MAIN_SITE_URL . $top_node['image_path']; ?>" class="w-full h-full object-cover opacity-80 group-hover:scale-110 transition duration-500">
+            <?php else: ?>
+                <i class="fas fa-rocket text-xl group-hover:-translate-y-1 transition transform"></i>
+            <?php endif; ?>
+        </div>
+        <div class="flex-1 min-w-0">
+            <p class="text-[10px] font-black text-emerald-400 uppercase tracking-widest mb-0.5"><i class="fas fa-crown mr-1"></i> Top Yield Node</p>
+            <h4 class="text-white font-bold text-sm truncate"><?php echo $top_node ? htmlspecialchars($top_node['name']) : 'Insufficient Data'; ?></h4>
+            <p class="text-xs text-slate-400 mt-1 font-mono">Profit: <span class="text-emerald-400 font-bold"><?php echo $top_node ? format_admin_currency($top_node['profit']) : '0 Ks'; ?></span></p>
+        </div>
+    </div>
+
+    <!-- Critical Margin Alert -->
+    <div class="bg-slate-900/60 backdrop-blur-xl rounded-2xl border border-orange-500/30 p-5 shadow-lg flex items-center gap-4 relative overflow-hidden group">
+        <div class="absolute inset-0 bg-gradient-to-r from-orange-500/5 to-transparent pointer-events-none"></div>
+        <div class="w-14 h-14 rounded-xl bg-slate-950 border border-orange-500/50 flex items-center justify-center text-orange-400 shrink-0 shadow-[0_0_15px_rgba(249,115,22,0.2)] overflow-hidden relative">
+            <?php if(!empty($critical_node['image_path'])): ?>
+                <img src="<?php echo MAIN_SITE_URL . $critical_node['image_path']; ?>" class="w-full h-full object-cover opacity-80 group-hover:scale-110 transition duration-500">
+            <?php else: ?>
+                <i class="fas fa-exclamation-triangle text-xl group-hover:scale-110 transition transform"></i>
+            <?php endif; ?>
+        </div>
+        <div class="flex-1 min-w-0">
+            <p class="text-[10px] font-black text-orange-400 uppercase tracking-widest mb-0.5"><i class="fas fa-engine-warning mr-1"></i> Critical Margin Alert</p>
+            <h4 class="text-white font-bold text-sm truncate"><?php echo $critical_node ? htmlspecialchars($critical_node['name']) : 'Insufficient Data'; ?></h4>
+            <p class="text-xs text-slate-400 mt-1 font-mono">Margin: <span class="text-orange-400 font-bold"><?php echo $critical_node ? round($critical_node['margin'], 1) . '%' : '0%'; ?></span></p>
+        </div>
     </div>
 
 </div>
@@ -132,7 +263,7 @@ $products = $pdo->query("
 <div class="bg-slate-900/80 backdrop-blur-xl rounded-3xl border border-slate-700 shadow-2xl p-6 mb-10 relative overflow-hidden">
     <div class="absolute top-0 right-0 w-96 h-96 bg-blue-600/5 rounded-full blur-3xl pointer-events-none"></div>
     <div class="flex justify-between items-center mb-6">
-        <h3 class="font-bold text-white text-lg tracking-tight"><i class="fas fa-project-diagram text-[#00f0ff] mr-2"></i> 14-Day Trajectory</h3>
+        <h3 class="font-bold text-white text-lg tracking-tight"><i class="fas fa-project-diagram text-[#00f0ff] mr-2"></i> <?php echo $chart_days; ?>-Day Trajectory</h3>
     </div>
     <div class="relative h-[300px] w-full">
         <canvas id="pandlChart"></canvas>
