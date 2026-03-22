@@ -1,6 +1,9 @@
 <?php
 // admin/includes/header.php
-// PRODUCTION v4.5 - Responsive Neon-Tech Sidebar & Layout Wrapper
+
+require_once dirname(__DIR__) . '/config/db.php';
+require_once dirname(__DIR__) . '/includes/functions.php';
+
 
 if (session_status() === PHP_SESSION_NONE) {
     session_start();
@@ -31,11 +34,22 @@ if (!function_exists('admin_url')) {
         return $url;
     }
 }
+
+// Database connection required for badges (Assuming it's loaded before header in index.php)
+// If $pdo exists, fetch pending orders count for the badge
+$pending_count = 0;
+if (isset($pdo)) {
+    try {
+        $stmt = $pdo->query("SELECT COUNT(*) FROM orders WHERE status = 'pending'");
+        $pending_count = $stmt->fetchColumn();
+    } catch (PDOException $e) {}
+}
 ?>
 <!DOCTYPE html>
 <html lang="en">
 <head>
     <meta charset="UTF-8">
+    <!-- Viewport optimized for mobile scaling (including 320px - 425px) -->
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>Command Center - DigitalMarketplaceMM</title>
     
@@ -51,19 +65,23 @@ if (!function_exists('admin_url')) {
             background-color: #0f172a; 
             color: #f8fafc;
             overflow-x: hidden;
+            -webkit-tap-highlight-color: transparent;
         }
         
         /* Webkit Scrollbar */
-        ::-webkit-scrollbar { width: 6px; height: 6px; }
+        ::-webkit-scrollbar { width: 4px; height: 4px; }
         ::-webkit-scrollbar-track { background: transparent; }
         ::-webkit-scrollbar-thumb { background: #334155; border-radius: 10px; }
         ::-webkit-scrollbar-thumb:hover { background: #00f0ff; }
-        .custom-scrollbar::-webkit-scrollbar { width: 4px; }
+        
+        /* Sidebar custom scrollbar */
+        .sidebar-scroll::-webkit-scrollbar { width: 3px; }
+        .sidebar-scroll::-webkit-scrollbar-thumb { background: rgba(0, 240, 255, 0.2); }
 
         /* Animations */
         @keyframes pulse-glow {
-            0%, 100% { box-shadow: 0 0 10px rgba(0, 240, 255, 0.4); }
-            50% { box-shadow: 0 0 20px rgba(0, 240, 255, 0.8); }
+            0%, 100% { box-shadow: 0 0 10px rgba(0, 240, 255, 0.3); }
+            50% { box-shadow: 0 0 20px rgba(0, 240, 255, 0.6); }
         }
         .animate-pulse-glow { animation: pulse-glow 2s infinite; }
         
@@ -76,187 +94,230 @@ if (!function_exists('admin_url')) {
             to { opacity: 1; transform: translateY(0); } 
         }
 
-        /* Sidebar Transition */
+        /* Nav Item Transitions */
+        .nav-item { transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1); }
+        .nav-item:hover { background: rgba(255, 255, 255, 0.05); color: #fff; }
+        .nav-item.active { 
+            background: linear-gradient(90deg, rgba(0, 240, 255, 0.15) 0%, transparent 100%);
+            color: #00f0ff; 
+            border-left: 3px solid #00f0ff; 
+            text-shadow: 0 0 10px rgba(0, 240, 255, 0.5);
+        }
+        
+        /* Responsive Sidebar Drawer */
         #adminSidebar { transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1); }
+        #sidebarOverlay { transition: opacity 0.3s ease; }
     </style>
 </head>
 <body class="flex bg-[#0f172a] min-h-screen relative selection:bg-[#00f0ff]/30 selection:text-[#00f0ff]">
 
     <!-- Global Background FX -->
     <div class="fixed inset-0 w-full h-full -z-20 pointer-events-none">
-        <div class="absolute top-0 right-0 w-[500px] h-[500px] bg-blue-600/10 rounded-full blur-[120px]"></div>
-        <div class="absolute bottom-0 left-0 w-[500px] h-[500px] bg-purple-600/10 rounded-full blur-[120px]"></div>
+        <div class="absolute top-[-10%] right-[-5%] w-[300px] md:w-[500px] h-[300px] md:h-[500px] bg-blue-600/10 rounded-full blur-[100px]"></div>
+        <div class="absolute bottom-[-10%] left-[-5%] w-[300px] md:w-[500px] h-[300px] md:h-[500px] bg-[#00f0ff]/5 rounded-full blur-[100px]"></div>
     </div>
 
-    <!-- Mobile Header (Visible only on < 1024px) -->
-    <div class="lg:hidden fixed top-0 left-0 right-0 h-16 bg-slate-900/90 backdrop-blur-md border-b border-slate-800 z-40 flex items-center justify-between px-4 shadow-lg">
+    <!-- ========================================== -->
+    <!-- MOBILE HEADER (Visible < 1024px)           -->
+    <!-- Optimized for 425px screens                -->
+    <!-- ========================================== -->
+    <div class="lg:hidden fixed top-0 left-0 right-0 h-16 bg-slate-900/95 backdrop-blur-xl border-b border-slate-800 z-40 flex items-center justify-between px-4 sm:px-6 shadow-[0_4px_20px_rgba(0,0,0,0.5)]">
         <div class="flex items-center gap-3">
-            <div class="w-8 h-8 rounded-lg bg-slate-800 flex items-center justify-center border border-[#00f0ff]/30 shadow-[0_0_10px_rgba(0,240,255,0.2)]">
-                <i class="fas fa-bolt text-[#00f0ff]"></i>
+            <div class="w-9 h-9 rounded-xl bg-slate-800 flex items-center justify-center border border-[#00f0ff]/30 shadow-[0_0_15px_rgba(0,240,255,0.2)]">
+                <i class="fas fa-bolt text-[#00f0ff] text-sm"></i>
             </div>
-            <span class="font-black text-white text-lg tracking-tight">DMMM <span class="text-[#00f0ff]">Admin</span></span>
+            <div class="flex flex-col">
+                <span class="font-black text-white text-base tracking-tight leading-none">DMMM <span class="text-[#00f0ff]">Admin</span></span>
+                <span class="text-[8px] text-slate-400 uppercase tracking-widest font-bold mt-0.5 flex items-center gap-1">
+                    <span class="w-1.5 h-1.5 rounded-full bg-green-500 animate-pulse"></span> Online
+                </span>
+            </div>
         </div>
-        <button id="mobileMenuBtn" class="w-10 h-10 rounded-lg bg-slate-800 text-slate-300 flex items-center justify-center border border-slate-700 hover:text-white transition focus:outline-none">
-            <i class="fas fa-bars"></i>
-        </button>
+        
+        <div class="flex items-center gap-3">
+            <?php if($pending_count > 0): ?>
+                <a href="<?php echo admin_url('orders', ['status' => 'pending']); ?>" class="w-9 h-9 rounded-xl bg-yellow-500/10 text-yellow-500 flex items-center justify-center border border-yellow-500/30 relative">
+                    <i class="fas fa-bell animate-pulse"></i>
+                    <span class="absolute -top-1 -right-1 w-4 h-4 bg-yellow-500 text-slate-900 text-[9px] font-black rounded-full flex items-center justify-center border border-slate-900"><?php echo $pending_count; ?></span>
+                </a>
+            <?php endif; ?>
+            <button id="mobileMenuBtn" class="w-10 h-10 rounded-xl bg-slate-800 text-slate-300 flex items-center justify-center border border-slate-700 hover:text-white hover:border-[#00f0ff]/50 transition focus:outline-none shadow-inner">
+                <i class="fas fa-bars text-lg"></i>
+            </button>
+        </div>
     </div>
 
     <!-- Mobile Overlay -->
-    <div id="sidebarOverlay" class="fixed inset-0 bg-slate-950/80 backdrop-blur-sm z-40 hidden lg:hidden transition-opacity opacity-0"></div>
+    <div id="sidebarOverlay" class="fixed inset-0 bg-slate-950/80 backdrop-blur-sm z-40 hidden lg:hidden opacity-0"></div>
 
-    <!-- SIDEBAR -->
-    <aside id="adminSidebar" class="fixed inset-y-0 left-0 w-64 bg-slate-900/95 backdrop-blur-xl border-r border-slate-800/80 z-50 transform -translate-x-full lg:translate-x-0 lg:static lg:flex shrink-0 flex-col shadow-[20px_0_50px_rgba(0,0,0,0.5)]">
+    <!-- ========================================== -->
+    <!-- SIDEBAR NAVIGATION                         -->
+    <!-- Width 64 (256px) fits perfectly on 320-425px-->
+    <!-- ========================================== -->
+    <aside id="adminSidebar" class="fixed inset-y-0 left-0 w-64 bg-slate-900/95 backdrop-blur-2xl border-r border-slate-800 z-50 transform -translate-x-full lg:translate-x-0 lg:static lg:flex shrink-0 flex-col shadow-[20px_0_50px_rgba(0,0,0,0.5)]">
         
         <!-- Brand Header -->
-        <div class="h-20 flex items-center gap-3 px-6 border-b border-slate-800/80 shrink-0 relative overflow-hidden group">
+        <div class="h-20 flex items-center justify-between px-5 border-b border-slate-800 shrink-0 relative overflow-hidden group">
             <div class="absolute inset-0 bg-gradient-to-r from-blue-600/10 to-[#00f0ff]/5 opacity-0 group-hover:opacity-100 transition duration-500 pointer-events-none"></div>
             
-            <div class="w-10 h-10 rounded-xl bg-slate-950 flex items-center justify-center border border-[#00f0ff]/50 shadow-[0_0_15px_rgba(0,240,255,0.3)] relative z-10">
-                <i class="fas fa-bolt text-[#00f0ff] text-lg"></i>
-            </div>
-            <div class="flex flex-col relative z-10">
-                <span class="font-black text-white text-xl tracking-tight leading-none">DMMM</span>
-                <span class="text-[9px] text-[#00f0ff] uppercase tracking-[0.2em] font-bold mt-0.5">Command Node</span>
+            <div class="flex items-center gap-3 relative z-10">
+                <div class="w-10 h-10 rounded-xl bg-slate-950 flex items-center justify-center border border-[#00f0ff]/50 shadow-[0_0_15px_rgba(0,240,255,0.3)]">
+                    <i class="fas fa-satellite-dish text-[#00f0ff] text-lg group-hover:animate-pulse"></i>
+                </div>
+                <div class="flex flex-col">
+                    <span class="font-black text-white text-xl tracking-tight leading-none">DMMM</span>
+                    <span class="text-[9px] text-[#00f0ff] uppercase tracking-[0.2em] font-bold mt-0.5">Command Node</span>
+                </div>
             </div>
 
             <!-- Mobile Close Btn inside sidebar -->
-            <button id="closeSidebarBtn" class="lg:hidden absolute right-4 text-slate-500 hover:text-white transition">
-                <i class="fas fa-times text-lg"></i>
+            <button id="closeSidebarBtn" class="lg:hidden text-slate-500 hover:text-white bg-slate-800 w-8 h-8 rounded-lg flex items-center justify-center transition border border-slate-700">
+                <i class="fas fa-times"></i>
             </button>
         </div>
 
         <!-- Identity Banner -->
-        <div class="p-5 border-b border-slate-800/80 shrink-0">
+        <div class="p-5 border-b border-slate-800/80 shrink-0 bg-slate-900/50">
             <div class="flex items-center gap-3">
-                <div class="w-10 h-10 rounded-full bg-gradient-to-br from-slate-700 to-slate-800 border-2 border-slate-600 flex items-center justify-center text-white font-bold shadow-inner relative">
+                <div class="w-10 h-10 rounded-full bg-slate-800 border border-[#00f0ff]/30 flex items-center justify-center text-white font-bold shadow-inner relative">
                     <?php echo strtoupper(substr($_SESSION['admin_role'] ?? 'A', 0, 1)); ?>
-                    <span class="absolute -bottom-0.5 -right-0.5 w-3 h-3 bg-green-500 border-2 border-slate-900 rounded-full"></span>
+                    <span class="absolute -bottom-0.5 -right-0.5 w-3.5 h-3.5 bg-green-500 border-2 border-slate-900 rounded-full"></span>
                 </div>
-                <div class="min-w-0">
-                    <p class="text-sm font-bold text-white truncate">Operative <?php echo $_SESSION['admin_id'] ?? '1'; ?></p>
-                    <p class="text-[10px] font-mono text-[#00f0ff] uppercase tracking-wider truncate">
-                        <?php echo str_replace('_', ' ', $_SESSION['admin_role'] ?? 'ADMIN'); ?>
+                <div class="min-w-0 flex-1">
+                    <p class="text-sm font-bold text-white truncate">Operative #<?php echo $_SESSION['admin_id'] ?? '1'; ?></p>
+                    <p class="text-[9px] font-mono text-[#00f0ff] uppercase tracking-widest truncate mt-0.5">
+                        <i class="fas fa-shield-check mr-1"></i> <?php echo str_replace('_', ' ', $_SESSION['admin_role'] ?? 'ADMIN'); ?>
                     </p>
                 </div>
             </div>
         </div>
 
         <!-- Navigation Links -->
-        <nav class="flex-1 overflow-y-auto custom-scrollbar py-4 space-y-1">
+        <nav class="flex-1 overflow-y-auto sidebar-scroll py-4 space-y-1">
             
-            <!-- Core -->
-            <div class="px-6 mb-2 mt-2">
-                <span class="text-[10px] uppercase font-black text-slate-500 tracking-[0.15em]">Core Systems</span>
+            <!-- OVERVIEW -->
+            <div class="px-5 mb-2 mt-2">
+                <span class="text-[9px] uppercase font-black text-slate-500 tracking-[0.2em]">Overview</span>
             </div>
             
-            <a href="<?php echo admin_url('dashboard'); ?>" class="mx-3 px-4 py-2.5 rounded-xl flex items-center gap-3 transition-all duration-200 <?php echo is_active('dashboard', $current_page) ? 'bg-[#00f0ff]/10 text-[#00f0ff] border-l-2 border-[#00f0ff] shadow-inner' : 'text-slate-400 hover:text-white hover:bg-slate-800 border-l-2 border-transparent'; ?>">
-                <i class="fas fa-tachometer-alt w-5 text-center"></i>
-                <span class="text-sm font-semibold tracking-wide">Dashboard</span>
+            <a href="<?php echo admin_url('dashboard'); ?>" class="nav-item flex items-center px-5 py-2.5 mx-2 rounded-xl text-sm font-medium border-l-[3px] <?php echo is_active('dashboard', $current_page) ? 'active' : 'border-transparent text-slate-400'; ?>">
+                <i class="fas fa-chart-pie w-6 text-center text-lg <?php echo is_active('dashboard', $current_page) ? 'text-[#00f0ff]' : 'opacity-70'; ?>"></i>
+                <span class="ml-2 tracking-wide">Dashboard</span>
             </a>
 
-            <!-- Catalog -->
-            <div class="px-6 mb-2 mt-6">
-                <span class="text-[10px] uppercase font-black text-slate-500 tracking-[0.15em]">Catalog Matrix</span>
+            <!-- MANAGEMENT -->
+            <div class="px-5 mb-2 mt-6">
+                <span class="text-[9px] uppercase font-black text-slate-500 tracking-[0.2em]">Management</span>
             </div>
 
-            <a href="<?php echo admin_url('categories'); ?>" class="mx-3 px-4 py-2.5 rounded-xl flex items-center gap-3 transition-all duration-200 <?php echo is_active('categories', $current_page) ? 'bg-[#00f0ff]/10 text-[#00f0ff] border-l-2 border-[#00f0ff] shadow-inner' : 'text-slate-400 hover:text-white hover:bg-slate-800 border-l-2 border-transparent'; ?>">
-                <i class="fas fa-network-wired w-5 text-center"></i>
-                <span class="text-sm font-semibold tracking-wide">Sectors (Categories)</span>
-            </a>
-            <a href="<?php echo admin_url('products'); ?>" class="mx-3 px-4 py-2.5 rounded-xl flex items-center gap-3 transition-all duration-200 <?php echo is_active('products', $current_page) ? 'bg-[#00f0ff]/10 text-[#00f0ff] border-l-2 border-[#00f0ff] shadow-inner' : 'text-slate-400 hover:text-white hover:bg-slate-800 border-l-2 border-transparent'; ?>">
-                <i class="fas fa-boxes w-5 text-center"></i>
-                <span class="text-sm font-semibold tracking-wide">Digital Assets</span>
-            </a>
-
-            <!-- Operations -->
-            <div class="px-6 mb-2 mt-6">
-                <span class="text-[10px] uppercase font-black text-slate-500 tracking-[0.15em]">Operations</span>
-            </div>
-
-            <a href="<?php echo admin_url('orders'); ?>" class="mx-3 px-4 py-2.5 rounded-xl flex items-center justify-between transition-all duration-200 <?php echo is_active('orders', $current_page) ? 'bg-[#00f0ff]/10 text-[#00f0ff] border-l-2 border-[#00f0ff] shadow-inner' : 'text-slate-400 hover:text-white hover:bg-slate-800 border-l-2 border-transparent'; ?>">
-                <div class="flex items-center gap-3">
-                    <i class="fas fa-shopping-cart w-5 text-center"></i>
-                    <span class="text-sm font-semibold tracking-wide">Orders & Comms</span>
+            <!-- Orders with Dynamic Badge -->
+            <a href="<?php echo admin_url('orders'); ?>" class="nav-item flex items-center justify-between px-5 py-2.5 mx-2 rounded-xl text-sm font-medium border-l-[3px] <?php echo is_active('orders', $current_page) || is_active('order_detail', $current_page) ? 'active' : 'border-transparent text-slate-400'; ?>">
+                <div class="flex items-center">
+                    <i class="fas fa-shopping-cart w-6 text-center text-lg <?php echo is_active('orders', $current_page) || is_active('order_detail', $current_page) ? 'text-[#00f0ff]' : 'opacity-70'; ?>"></i>
+                    <span class="ml-2 tracking-wide">Orders</span>
                 </div>
-                <!-- Dynamic Pending Badge (Optional if you calculate it) -->
-                <span class="w-2 h-2 rounded-full bg-yellow-500 animate-pulse shadow-[0_0_5px_#eab308]"></span>
-            </a>
-            <a href="<?php echo admin_url('users'); ?>" class="mx-3 px-4 py-2.5 rounded-xl flex items-center gap-3 transition-all duration-200 <?php echo is_active('users', $current_page) ? 'bg-[#00f0ff]/10 text-[#00f0ff] border-l-2 border-[#00f0ff] shadow-inner' : 'text-slate-400 hover:text-white hover:bg-slate-800 border-l-2 border-transparent'; ?>">
-                <i class="fas fa-users w-5 text-center"></i>
-                <span class="text-sm font-semibold tracking-wide">Identity Records</span>
-            </a>
-            <a href="<?php echo admin_url('reviews'); ?>" class="mx-3 px-4 py-2.5 rounded-xl flex items-center gap-3 transition-all duration-200 <?php echo is_active('reviews', $current_page) ? 'bg-[#00f0ff]/10 text-[#00f0ff] border-l-2 border-[#00f0ff] shadow-inner' : 'text-slate-400 hover:text-white hover:bg-slate-800 border-l-2 border-transparent'; ?>">
-                <i class="fas fa-star w-5 text-center"></i>
-                <span class="text-sm font-semibold tracking-wide">User Feedback</span>
+                <?php if($pending_count > 0): ?>
+                    <span class="bg-yellow-500 text-slate-900 text-[10px] font-black px-2 py-0.5 rounded border border-yellow-400 shadow-[0_0_10px_rgba(234,179,8,0.5)] animate-pulse"><?php echo $pending_count; ?></span>
+                <?php endif; ?>
             </a>
 
-            <!-- Financials & Marketing -->
-            <div class="px-6 mb-2 mt-6">
-                <span class="text-[10px] uppercase font-black text-slate-500 tracking-[0.15em]">Financial & Growth</span>
+            <a href="<?php echo admin_url('products'); ?>" class="nav-item flex items-center px-5 py-2.5 mx-2 rounded-xl text-sm font-medium border-l-[3px] <?php echo is_active('products', $current_page) || is_active('product_edit', $current_page) ? 'active' : 'border-transparent text-slate-400'; ?>">
+                <i class="fas fa-boxes w-6 text-center text-lg <?php echo is_active('products', $current_page) || is_active('product_edit', $current_page) ? 'text-[#00f0ff]' : 'opacity-70'; ?>"></i>
+                <span class="ml-2 tracking-wide">Products</span>
+            </a>
+
+            <a href="<?php echo admin_url('categories'); ?>" class="nav-item flex items-center px-5 py-2.5 mx-2 rounded-xl text-sm font-medium border-l-[3px] <?php echo is_active('categories', $current_page) || is_active('category_edit', $current_page) ? 'active' : 'border-transparent text-slate-400'; ?>">
+                <i class="fas fa-network-wired w-6 text-center text-lg <?php echo is_active('categories', $current_page) || is_active('category_edit', $current_page) ? 'text-[#00f0ff]' : 'opacity-70'; ?>"></i>
+                <span class="ml-2 tracking-wide">Categories</span>
+            </a>
+
+            <a href="<?php echo admin_url('keys'); ?>" class="nav-item flex items-center px-5 py-2.5 mx-2 rounded-xl text-sm font-medium border-l-[3px] <?php echo is_active('keys', $current_page) ? 'active' : 'border-transparent text-slate-400'; ?>">
+                <i class="fas fa-key w-6 text-center text-lg <?php echo is_active('keys', $current_page) ? 'text-[#00f0ff]' : 'opacity-70'; ?>"></i>
+                <span class="ml-2 tracking-wide">Stock / Keys</span>
+            </a>
+
+            <a href="<?php echo admin_url('users'); ?>" class="nav-item flex items-center px-5 py-2.5 mx-2 rounded-xl text-sm font-medium border-l-[3px] <?php echo is_active('users', $current_page) || is_active('user_detail', $current_page) ? 'active' : 'border-transparent text-slate-400'; ?>">
+                <i class="fas fa-users w-6 text-center text-lg <?php echo is_active('users', $current_page) || is_active('user_detail', $current_page) ? 'text-[#00f0ff]' : 'opacity-70'; ?>"></i>
+                <span class="ml-2 tracking-wide">Customers</span>
+            </a>
+
+            <a href="<?php echo admin_url('reviews'); ?>" class="nav-item flex items-center px-5 py-2.5 mx-2 rounded-xl text-sm font-medium border-l-[3px] <?php echo is_active('reviews', $current_page) ? 'active' : 'border-transparent text-slate-400'; ?>">
+                <i class="fas fa-star w-6 text-center text-lg <?php echo is_active('reviews', $current_page) ? 'text-[#00f0ff]' : 'opacity-70'; ?>"></i>
+                <span class="ml-2 tracking-wide">Reviews</span>
+            </a>
+
+            <!-- FINANCIALS & MARKETING -->
+            <div class="px-5 mb-2 mt-6">
+                <span class="text-[9px] uppercase font-black text-slate-500 tracking-[0.2em]">Finance & Growth</span>
             </div>
 
-            <a href="<?php echo admin_url('pandl'); ?>" class="mx-3 px-4 py-2.5 rounded-xl flex items-center gap-3 transition-all duration-200 <?php echo is_active('pandl', $current_page) ? 'bg-green-500/10 text-green-400 border-l-2 border-green-500 shadow-inner' : 'text-slate-400 hover:text-white hover:bg-slate-800 border-l-2 border-transparent'; ?>">
-                <i class="fas fa-chart-line w-5 text-center"></i>
-                <span class="text-sm font-semibold tracking-wide">Profit Matrix (P&L)</span>
-            </a>
-            <a href="<?php echo admin_url('reports'); ?>" class="mx-3 px-4 py-2.5 rounded-xl flex items-center gap-3 transition-all duration-200 <?php echo is_active('reports', $current_page) ? 'bg-[#00f0ff]/10 text-[#00f0ff] border-l-2 border-[#00f0ff] shadow-inner' : 'text-slate-400 hover:text-white hover:bg-slate-800 border-l-2 border-transparent'; ?>">
-                <i class="fas fa-file-invoice-dollar w-5 text-center"></i>
-                <span class="text-sm font-semibold tracking-wide">Expense Logs</span>
-            </a>
-            <a href="<?php echo admin_url('passes'); ?>" class="mx-3 px-4 py-2.5 rounded-xl flex items-center gap-3 transition-all duration-200 <?php echo is_active('passes', $current_page) ? 'bg-yellow-500/10 text-yellow-400 border-l-2 border-yellow-500 shadow-inner' : 'text-slate-400 hover:text-white hover:bg-slate-800 border-l-2 border-transparent'; ?>">
-                <i class="fas fa-crown w-5 text-center"></i>
-                <span class="text-sm font-semibold tracking-wide">Agent Tiers</span>
-            </a>
-            <a href="<?php echo admin_url('coupons'); ?>" class="mx-3 px-4 py-2.5 rounded-xl flex items-center gap-3 transition-all duration-200 <?php echo is_active('coupons', $current_page) ? 'bg-purple-500/10 text-purple-400 border-l-2 border-purple-500 shadow-inner' : 'text-slate-400 hover:text-white hover:bg-slate-800 border-l-2 border-transparent'; ?>">
-                <i class="fas fa-ticket-alt w-5 text-center"></i>
-                <span class="text-sm font-semibold tracking-wide">Promo Codes</span>
-            </a>
-            <a href="<?php echo admin_url('banners'); ?>" class="mx-3 px-4 py-2.5 rounded-xl flex items-center gap-3 transition-all duration-200 <?php echo is_active('banners', $current_page) ? 'bg-[#00f0ff]/10 text-[#00f0ff] border-l-2 border-[#00f0ff] shadow-inner' : 'text-slate-400 hover:text-white hover:bg-slate-800 border-l-2 border-transparent'; ?>">
-                <i class="fas fa-images w-5 text-center"></i>
-                <span class="text-sm font-semibold tracking-wide">Frontend Banners</span>
+            <a href="<?php echo admin_url('pandl'); ?>" class="nav-item flex items-center px-5 py-2.5 mx-2 rounded-xl text-sm font-medium border-l-[3px] <?php echo is_active('pandl', $current_page) ? 'active' : 'border-transparent text-slate-400'; ?>">
+                <i class="fas fa-chart-line w-6 text-center text-lg <?php echo is_active('pandl', $current_page) ? 'text-[#00f0ff]' : 'opacity-70'; ?>"></i>
+                <span class="ml-2 tracking-wide">P&L Matrix</span>
             </a>
 
-            <!-- System -->
-            <div class="px-6 mb-2 mt-6">
-                <span class="text-[10px] uppercase font-black text-slate-500 tracking-[0.15em]">System</span>
+            <a href="<?php echo admin_url('reports'); ?>" class="nav-item flex items-center px-5 py-2.5 mx-2 rounded-xl text-sm font-medium border-l-[3px] <?php echo is_active('reports', $current_page) ? 'active' : 'border-transparent text-slate-400'; ?>">
+                <i class="fas fa-file-invoice-dollar w-6 text-center text-lg <?php echo is_active('reports', $current_page) ? 'text-[#00f0ff]' : 'opacity-70'; ?>"></i>
+                <span class="ml-2 tracking-wide">Expenses</span>
+            </a>
+
+            <a href="<?php echo admin_url('passes'); ?>" class="nav-item flex items-center px-5 py-2.5 mx-2 rounded-xl text-sm font-medium border-l-[3px] <?php echo is_active('passes', $current_page) ? 'active' : 'border-transparent text-slate-400'; ?>">
+                <i class="fas fa-crown w-6 text-center text-lg <?php echo is_active('passes', $current_page) ? 'text-[#00f0ff]' : 'opacity-70'; ?>"></i>
+                <span class="ml-2 tracking-wide">Agent Tiers</span>
+            </a>
+
+            <a href="<?php echo admin_url('coupons'); ?>" class="nav-item flex items-center px-5 py-2.5 mx-2 rounded-xl text-sm font-medium border-l-[3px] <?php echo is_active('coupons', $current_page) ? 'active' : 'border-transparent text-slate-400'; ?>">
+                <i class="fas fa-ticket-alt w-6 text-center text-lg <?php echo is_active('coupons', $current_page) ? 'text-[#00f0ff]' : 'opacity-70'; ?>"></i>
+                <span class="ml-2 tracking-wide">Promo Codes</span>
+            </a>
+
+            <a href="<?php echo admin_url('banners'); ?>" class="nav-item flex items-center px-5 py-2.5 mx-2 rounded-xl text-sm font-medium border-l-[3px] <?php echo is_active('banners', $current_page) || is_active('banner_edit', $current_page) ? 'active' : 'border-transparent text-slate-400'; ?>">
+                <i class="fas fa-images w-6 text-center text-lg <?php echo is_active('banners', $current_page) || is_active('banner_edit', $current_page) ? 'text-[#00f0ff]' : 'opacity-70'; ?>"></i>
+                <span class="ml-2 tracking-wide">Banners</span>
+            </a>
+
+            <!-- SYSTEM -->
+            <div class="px-5 mb-2 mt-6">
+                <span class="text-[9px] uppercase font-black text-slate-500 tracking-[0.2em]">System</span>
             </div>
 
-            <a href="<?php echo admin_url('payments'); ?>" class="mx-3 px-4 py-2.5 rounded-xl flex items-center gap-3 transition-all duration-200 <?php echo is_active('payments', $current_page) ? 'bg-[#00f0ff]/10 text-[#00f0ff] border-l-2 border-[#00f0ff] shadow-inner' : 'text-slate-400 hover:text-white hover:bg-slate-800 border-l-2 border-transparent'; ?>">
-                <i class="fas fa-wallet w-5 text-center"></i>
-                <span class="text-sm font-semibold tracking-wide">Payment Nodes</span>
+            <a href="<?php echo admin_url('payments'); ?>" class="nav-item flex items-center px-5 py-2.5 mx-2 rounded-xl text-sm font-medium border-l-[3px] <?php echo is_active('payments', $current_page) || is_active('payment_edit', $current_page) ? 'active' : 'border-transparent text-slate-400'; ?>">
+                <i class="fas fa-wallet w-6 text-center text-lg <?php echo is_active('payments', $current_page) || is_active('payment_edit', $current_page) ? 'text-[#00f0ff]' : 'opacity-70'; ?>"></i>
+                <span class="ml-2 tracking-wide">Payment Nodes</span>
             </a>
             
-            <?php if ($_SESSION['admin_role'] === 'super_admin'): ?>
-            <a href="<?php echo admin_url('admins'); ?>" class="mx-3 px-4 py-2.5 rounded-xl flex items-center gap-3 transition-all duration-200 <?php echo is_active('admins', $current_page) ? 'bg-[#00f0ff]/10 text-[#00f0ff] border-l-2 border-[#00f0ff] shadow-inner' : 'text-slate-400 hover:text-white hover:bg-slate-800 border-l-2 border-transparent'; ?>">
-                <i class="fas fa-user-shield w-5 text-center"></i>
-                <span class="text-sm font-semibold tracking-wide">Staff Roster</span>
+            <?php if (isset($_SESSION['admin_role']) && $_SESSION['admin_role'] === 'super_admin'): ?>
+            <a href="<?php echo admin_url('admins'); ?>" class="nav-item flex items-center px-5 py-2.5 mx-2 rounded-xl text-sm font-medium border-l-[3px] <?php echo is_active('admins', $current_page) ? 'active' : 'border-transparent text-slate-400'; ?>">
+                <i class="fas fa-user-shield w-6 text-center text-lg <?php echo is_active('admins', $current_page) ? 'text-[#00f0ff]' : 'opacity-70'; ?>"></i>
+                <span class="ml-2 tracking-wide">Staff Roster</span>
             </a>
             <?php endif; ?>
 
-            <a href="<?php echo admin_url('settings'); ?>" class="mx-3 px-4 py-2.5 rounded-xl flex items-center gap-3 transition-all duration-200 <?php echo is_active('settings', $current_page) ? 'bg-[#00f0ff]/10 text-[#00f0ff] border-l-2 border-[#00f0ff] shadow-inner' : 'text-slate-400 hover:text-white hover:bg-slate-800 border-l-2 border-transparent'; ?>">
-                <i class="fas fa-cogs w-5 text-center"></i>
-                <span class="text-sm font-semibold tracking-wide">Settings</span>
+            <a href="<?php echo admin_url('settings'); ?>" class="nav-item flex items-center px-5 py-2.5 mx-2 rounded-xl text-sm font-medium border-l-[3px] <?php echo is_active('settings', $current_page) ? 'active' : 'border-transparent text-slate-400'; ?>">
+                <i class="fas fa-cogs w-6 text-center text-lg <?php echo is_active('settings', $current_page) ? 'text-[#00f0ff]' : 'opacity-70'; ?>"></i>
+                <span class="ml-2 tracking-wide">Settings</span>
             </a>
 
-            <div class="h-6"></div> <!-- Bottom Spacer -->
+            <div class="h-8"></div> <!-- Bottom Spacer -->
         </nav>
 
-        <!-- Logout Action -->
+        <!-- Logout Action (Sticky at bottom) -->
         <div class="p-4 border-t border-slate-800/80 bg-slate-900 shrink-0">
-            <a href="logout.php" class="flex items-center justify-center gap-2 w-full bg-red-500/10 hover:bg-red-500/20 text-red-400 hover:text-red-300 font-bold py-2.5 rounded-xl border border-red-500/20 transition-colors shadow-inner text-sm uppercase tracking-wider group">
+            <a href="logout.php" class="flex items-center justify-center gap-2 w-full bg-red-500/10 hover:bg-red-500/20 text-red-400 hover:text-red-300 font-bold py-3 rounded-xl border border-red-500/20 transition-colors shadow-inner text-xs uppercase tracking-widest group">
                 <i class="fas fa-power-off group-hover:scale-110 transition-transform"></i> Terminate
             </a>
         </div>
     </aside>
 
     <!-- MAIN CONTENT WRAPPER -->
+    <!-- Added pt-16 to account for the fixed mobile header, ensuring content doesn't hide underneath -->
     <main class="flex-1 flex flex-col min-h-screen w-full lg:w-[calc(100%-16rem)] pt-16 lg:pt-0 overflow-x-hidden relative z-10 transition-all duration-300">
         
         <!-- Top Gradient Glow (Desktop) -->
         <div class="hidden lg:block absolute top-0 left-0 w-full h-32 bg-gradient-to-b from-slate-800/30 to-transparent pointer-events-none"></div>
 
         <!-- Content Area: The actual page content will be injected here by admin/index.php -->
-        <div class="flex-1 p-4 sm:p-6 lg:p-8 animate-fade-in-down max-w-[1600px] w-full mx-auto">
+        <div class="flex-1 p-4 sm:p-6 lg:p-8 animate-fade-in-down max-w-[1600px] w-full mx-auto pb-20">
             <!-- Child pages drop into here -->
 
             <!-- Mobile UI / Sidebar JS -->
@@ -276,17 +337,17 @@ if (!function_exists('admin_url')) {
                             overlay.classList.add('opacity-0');
                             setTimeout(() => {
                                 overlay.classList.add('hidden');
-                            }, 300);
+                            }, 300); // match transition duration
                             document.body.style.overflow = '';
                         } else {
                             // Open
                             overlay.classList.remove('hidden');
-                            // Small delay to allow display:block to apply before opacity transition
+                            // Small delay to allow display:block to apply before animating opacity
                             setTimeout(() => {
                                 overlay.classList.remove('opacity-0');
                                 sidebar.classList.remove('-translate-x-full');
                             }, 10);
-                            document.body.style.overflow = 'hidden';
+                            document.body.style.overflow = 'hidden'; // Prevent background scrolling
                         }
                     };
 
