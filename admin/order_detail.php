@@ -1,6 +1,6 @@
 <?php
 // admin/order_detail.php
-// PRODUCTION v5.2 - Patched AJAX Output Bleed & Isolated Comms Terminal
+// PRODUCTION v6.0 - Zero-Reload Status Engine & Cinematic Lifecycle Tracker
 
 // Include Notification Services
 @include_once dirname(__DIR__) . '/includes/MailService.php';
@@ -9,17 +9,108 @@
 $order_id = isset($_GET['id']) ? (int)$_GET['id'] : 0;
 $admin_id = $_SESSION['admin_id'];
 
-// Helper to force HTTPS on URLs to prevent Mixed Content errors
+// Helper to force HTTPS on URLs
 function enforce_https($url) {
     if (empty($url)) return $url;
     return str_replace('http://', 'https://', $url);
 }
 
 // =====================================================================================
-// 1. AJAX ENDPOINTS (Polling & Message Sending - Standard Orders Only)
+// 1. AJAX ENDPOINTS (Chat & Status Engine)
 // =====================================================================================
 
-// A. Handle Incoming Chat Message (AJAX POST)
+// A. Handle AJAX Status Update (Zero-Reload)
+if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['ajax_status'])) {
+    if (ob_get_length()) ob_clean();
+    header('Content-Type: application/json');
+    
+    $status = trim($_POST['status']);
+    $allowed_statuses = ['pending', 'active', 'rejected'];
+    
+    if (in_array($status, $allowed_statuses) && $order_id > 0) {
+        try {
+            $pdo->beginTransaction();
+            
+            // Update Order
+            $stmt = $pdo->prepare("UPDATE orders SET status = ? WHERE id = ?");
+            $stmt->execute([$status, $order_id]);
+            
+            // Auto-Activate Agent Pass if applicable
+            if ($status === 'active') {
+                $stmt_check_pass = $pdo->prepare("SELECT user_id, pass_id FROM orders WHERE id = ? AND pass_id IS NOT NULL");
+                $stmt_check_pass->execute([$order_id]);
+                $passOrder = $stmt_check_pass->fetch();
+                
+                if ($passOrder) {
+                    $stmt_dur = $pdo->prepare("SELECT duration_days FROM passes WHERE id = ?");
+                    $stmt_dur->execute([$passOrder['pass_id']]);
+                    $days = $stmt_dur->fetchColumn() ?: 30;
+                    $expires_at = date('Y-m-d H:i:s', strtotime("+$days days"));
+                    
+                    $pdo->prepare("UPDATE user_passes SET status = 'expired' WHERE user_id = ?")->execute([$passOrder['user_id']]);
+                    $pdo->prepare("INSERT INTO user_passes (user_id, pass_id, expires_at, status) VALUES (?, ?, ?, 'active')")
+                        ->execute([$passOrder['user_id'], $passOrder['pass_id'], $expires_at]);
+                }
+            }
+
+            // Notifications
+            $stmt = $pdo->prepare("
+                SELECT o.user_id, o.total_price_paid, u.email, u.username, COALESCE(p.name, ps.name) as product_name 
+                FROM orders o 
+                JOIN users u ON o.user_id = u.id
+                LEFT JOIN products p ON o.product_id = p.id 
+                LEFT JOIN passes ps ON o.pass_id = ps.id
+                WHERE o.id = ?
+            ");
+            $stmt->execute([$order_id]);
+            $ord_meta = $stmt->fetch();
+            
+            $pdo->commit();
+
+            if ($ord_meta) {
+                $status_title = "Order Updated";
+                $status_msg = "Your order #$order_id status is now: " . ucfirst($status);
+                $url = enforce_https(BASE_URL) . "index.php?module=user&page=orders&view_chat=$order_id";
+
+                if ($status === 'active') {
+                    $status_title = "Order Complete! ✅";
+                    $status_msg = "Your order #$order_id is ready! Check your account.";
+                    
+                    // Fire off completion email silently
+                    try {
+                        if (class_exists('MailService')) {
+                            $mailer = new MailService();
+                            $mailer->sendOrderConfirmation($ord_meta['email'], $ord_meta['username'], $order_id, $ord_meta['product_name'], $ord_meta['total_price_paid']);
+                        }
+                    } catch (Exception $e) {}
+                    
+                } elseif ($status === 'rejected') {
+                    $status_title = "Order Rejected ❌";
+                    $status_msg = "There was an issue with order #$order_id. Please check support chat.";
+                }
+
+                // Push notification
+                try {
+                    if (class_exists('PushService')) {
+                        $push = new PushService($pdo);
+                        $push->sendToUser($ord_meta['user_id'], $status_title, $status_msg, $url);
+                    }
+                } catch (Exception $e) {}
+            }
+
+            echo json_encode(['success' => true, 'new_status' => $status]);
+            exit;
+        } catch (Exception $e) {
+            $pdo->rollBack();
+            echo json_encode(['success' => false, 'error' => $e->getMessage()]);
+            exit;
+        }
+    }
+    echo json_encode(['success' => false, 'error' => 'Invalid parameters']);
+    exit;
+}
+
+// B. Handle Incoming Chat Message (AJAX POST)
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['ajax_msg'])) {
     if (ob_get_length()) ob_clean();
     header('Content-Type: application/json');
@@ -33,15 +124,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['ajax_msg'])) {
             $stmt = $pdo->prepare("INSERT INTO order_messages (order_id, sender_type, message, is_credential) VALUES (?, 'admin', ?, ?)");
             $stmt->execute([$order_id, $msg, $is_cred]);
 
-            // Optional Push Notification
-            $stmt = $pdo->prepare("SELECT user_id FROM orders WHERE id = ?");
-            $stmt->execute([$order_id]);
-            $uid = $stmt->fetchColumn();
-            
-            if (class_exists('PushService')) {
-                $push = new PushService($pdo);
-                $push->sendToUser($uid, "New Message 💬", "Support replied to Order #$order_id");
-            }
             echo json_encode(['success' => true]);
             exit;
         } catch (Exception $e) {
@@ -53,14 +135,13 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['ajax_msg'])) {
     exit;
 }
 
-// B. Handle Live Chat Polling (AJAX GET)
+// C. Handle Live Chat Polling (AJAX GET)
 if (isset($_GET['ajax']) && $_GET['ajax'] == 1) {
     if (ob_get_length()) ob_clean();
     header("Cache-Control: no-store, no-cache, must-revalidate, max-age=0");
     header("Pragma: no-cache");
 
-    // FIX: Add strict payload delimiters so JS can extract ONLY the chat content,
-    // ignoring any header/sidebar HTML accidentally output by the admin/index.php wrapper.
+    // Strict payload delimiter to prevent header/sidebar bleed
     echo "<!--CHAT_PAYLOAD_START-->";
 
     $stmt = $pdo->prepare("SELECT * FROM order_messages WHERE order_id = ? ORDER BY created_at ASC");
@@ -81,7 +162,6 @@ if (isset($_GET['ajax']) && $_GET['ajax'] == 1) {
             $align = $is_admin ? 'justify-end' : 'justify-start';
             $item_align = $is_admin ? 'items-end' : 'items-start';
             
-            // Messenger style bubble tails
             $bubble_bg = $is_admin 
                 ? 'bg-gradient-to-br from-blue-600 to-[#00f0ff] text-slate-900 rounded-2xl rounded-br-sm shadow-[0_4px_15px_rgba(0,240,255,0.2)]' 
                 : 'bg-slate-800 text-slate-200 border border-slate-700 rounded-2xl rounded-bl-sm shadow-md';
@@ -113,7 +193,6 @@ if (isset($_GET['ajax']) && $_GET['ajax'] == 1) {
     exit;
 }
 
-
 // =====================================================================================
 // 2. NORMAL PAGE LOAD LOGIC
 // =====================================================================================
@@ -126,70 +205,7 @@ $quick_replies = [
     "🛠️ Let me check the system for your key. One moment please."
 ];
 
-// ACTION: UPDATE STATUS
-if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['update_status'])) {
-    
-    $status = isset($_POST['status']) ? $_POST['status'] : $_POST['update_status'];
-    
-    $stmt = $pdo->prepare("UPDATE orders SET status = ? WHERE id = ?");
-    $stmt->execute([$status, $order_id]);
-    
-    // --- AUTO-ACTIVATE AGENT PASS UPON APPROVAL ---
-    if ($status === 'active') {
-        $stmt_check_pass = $pdo->prepare("SELECT user_id, pass_id FROM orders WHERE id = ? AND pass_id IS NOT NULL");
-        $stmt_check_pass->execute([$order_id]);
-        $passOrder = $stmt_check_pass->fetch();
-        
-        if ($passOrder) {
-            $stmt_dur = $pdo->prepare("SELECT duration_days FROM passes WHERE id = ?");
-            $stmt_dur->execute([$passOrder['pass_id']]);
-            $days = $stmt_dur->fetchColumn() ?: 30;
-            
-            $expires_at = date('Y-m-d H:i:s', strtotime("+$days days"));
-            
-            $pdo->prepare("UPDATE user_passes SET status = 'expired' WHERE user_id = ?")->execute([$passOrder['user_id']]);
-            
-            $pdo->prepare("INSERT INTO user_passes (user_id, pass_id, expires_at, status) VALUES (?, ?, ?, 'active')")
-                ->execute([$passOrder['user_id'], $passOrder['pass_id'], $expires_at]);
-        }
-    }
-
-    // Notifications
-    $stmt = $pdo->prepare("
-        SELECT o.user_id, COALESCE(p.name, ps.name) as product_name 
-        FROM orders o 
-        LEFT JOIN products p ON o.product_id = p.id 
-        LEFT JOIN passes ps ON o.pass_id = ps.id
-        WHERE o.id = ?
-    ");
-    $stmt->execute([$order_id]);
-    $ord_meta = $stmt->fetch();
-    
-    if ($ord_meta) {
-        $status_title = "Order Updated";
-        $status_msg = "Your order #$order_id status is now: " . ucfirst($status);
-        $url = enforce_https(BASE_URL) . "index.php?module=user&page=orders&view_chat=$order_id";
-
-        if ($status === 'active') {
-            $status_title = "Order Complete! ✅";
-            $status_msg = "Your order #$order_id is ready! Check your account.";
-        } elseif ($status === 'rejected') {
-            $status_title = "Order Rejected ❌";
-            $status_msg = "There was an issue with order #$order_id. Please check support chat.";
-        }
-
-        try {
-            if (class_exists('PushService')) {
-                $push = new PushService($pdo);
-                $push->sendToUser($ord_meta['user_id'], $status_title, $status_msg, $url);
-            }
-        } catch (Exception $e) {}
-    }
-    echo "<script>window.location.href='index.php?page=order_detail&id=$order_id';</script>";
-    exit;
-}
-
-// 3. Fetch Full Order Data
+// Fetch Full Order Data
 $stmt = $pdo->prepare("
     SELECT o.*, u.username, u.email as user_account_email, u.phone, 
            COALESCE(p.name, ps.name) as product_name, 
@@ -215,7 +231,7 @@ if (!$order) {
 
 $is_pass_order = !empty($order['pass_id']);
 
-// 4. Fetch Available Keys
+// Fetch Available Keys
 $available_keys = [];
 if (!$is_pass_order && $order['delivery_type'] === 'unique' && !empty($order['product_id'])) {
     $stmt = $pdo->prepare("SELECT id, key_content FROM product_keys WHERE product_id = ? AND is_sold = 0 LIMIT 10");
@@ -225,6 +241,19 @@ if (!$is_pass_order && $order['delivery_type'] === 'unique' && !empty($order['pr
 
 $secure_main_url = enforce_https(defined('MAIN_SITE_URL') ? MAIN_SITE_URL : BASE_URL);
 $is_cat_image_legacy_icon = !empty($order['cat_image']) && strpos($order['cat_image'], 'fa-') === 0;
+
+// Calculate lifecycle progress
+$progress_width = 'w-0';
+$status_color = 'text-yellow-400';
+if ($order['status'] === 'active' || $order['status'] === 'completed') {
+    $progress_width = 'w-full';
+    $status_color = 'text-green-400';
+} elseif ($order['status'] === 'rejected') {
+    $progress_width = 'w-1/2';
+    $status_color = 'text-red-400';
+} else {
+    $progress_width = 'w-1/2'; // Pending
+}
 
 ?>
 
@@ -269,7 +298,7 @@ $is_cat_image_legacy_icon = !empty($order['cat_image']) && strpos($order['cat_im
     <div id="colInfo" class="w-full lg:w-1/3 xl:w-1/4 flex flex-col gap-6 overflow-y-auto custom-scrollbar lg:h-full pb-10 lg:pb-0 transition-all shrink-0 lg:shrink">
         
         <!-- Header Card -->
-        <div class="bg-slate-900/80 p-5 rounded-2xl border <?php echo $is_pass_order ? 'border-yellow-500/30' : 'border-[#00f0ff]/30'; ?> relative overflow-hidden group shrink-0">
+        <div class="bg-slate-900/80 p-5 rounded-2xl border <?php echo $is_pass_order ? 'border-yellow-500/30' : 'border-[#00f0ff]/30'; ?> relative overflow-hidden group shrink-0 shadow-[0_10px_30px_rgba(0,0,0,0.4)]">
             <div class="absolute -right-10 -top-10 w-32 h-32 <?php echo $is_pass_order ? 'bg-yellow-500/10' : 'bg-[#00f0ff]/10'; ?> rounded-full blur-3xl pointer-events-none group-hover:opacity-100 transition-opacity duration-500"></div>
             
             <div class="flex justify-between items-start mb-4 relative z-10">
@@ -284,9 +313,14 @@ $is_cat_image_legacy_icon = !empty($order['cat_image']) && strpos($order['cat_im
                         <i class="far fa-clock"></i> <?php echo date('M j, Y • H:i', strtotime($order['created_at'])); ?>
                     </p>
                 </div>
-                <a href="index.php?page=orders" class="text-xs bg-slate-800 hover:bg-slate-700 rounded-lg text-white transition border border-slate-600 flex items-center justify-center h-10 w-10 shadow-sm shrink-0">
-                    <i class="fas fa-arrow-left"></i>
-                </a>
+                <div class="flex gap-2">
+                    <button onclick="copyToClipboard('<?php echo MAIN_SITE_URL . 'index.php?module=user&page=invoice&id=' . $order['id']; ?>')" class="text-xs bg-slate-800 hover:bg-slate-700 rounded-lg text-slate-400 hover:text-[#00f0ff] transition border border-slate-600 flex items-center justify-center h-10 w-10 shadow-sm shrink-0" title="Copy Invoice Link">
+                        <i class="fas fa-link"></i>
+                    </button>
+                    <a href="index.php?page=orders" class="text-xs bg-slate-800 hover:bg-slate-700 rounded-lg text-white transition border border-slate-600 flex items-center justify-center h-10 w-10 shadow-sm shrink-0">
+                        <i class="fas fa-arrow-left"></i>
+                    </a>
+                </div>
             </div>
 
             <!-- Product Mini Info -->
@@ -310,19 +344,33 @@ $is_cat_image_legacy_icon = !empty($order['cat_image']) && strpos($order['cat_im
                 </div>
             </div>
             
-            <?php if(!$is_pass_order): ?>
-            <!-- Status Manager -->
-            <form method="POST" class="mt-4 relative z-10 flex gap-2">
-                <select name="status" class="flex-1 h-11 bg-slate-900 border border-slate-600 rounded-xl pl-3 pr-8 text-white text-xs md:text-sm focus:border-[#00f0ff] outline-none cursor-pointer shadow-inner appearance-none font-bold">
+            <!-- Cinematic Lifecycle Tracker -->
+            <div class="mt-5 relative z-10 bg-slate-950/50 p-3 rounded-xl border border-slate-700 shadow-inner">
+                <div class="flex justify-between items-center mb-2">
+                    <span class="text-[9px] font-black uppercase tracking-widest text-slate-500">Lifecycle</span>
+                    <span id="status-text-display" class="text-[9px] font-black uppercase tracking-widest <?php echo $status_color; ?>">
+                        <?php echo $order['status'] === 'active' ? 'Complete' : $order['status']; ?>
+                    </span>
+                </div>
+                <div class="relative h-1.5 bg-slate-800 rounded-full overflow-hidden">
+                    <div id="lifecycle-bar" class="absolute top-0 left-0 h-full <?php echo $progress_width; ?> <?php echo str_replace('text-', 'bg-', $status_color); ?> transition-all duration-700 ease-out shadow-[0_0_10px_currentColor]"></div>
+                </div>
+            </div>
+
+            <!-- Zero-Reload Status Manager -->
+            <div class="mt-4 relative z-10 flex gap-2">
+                <select id="statusSelect" class="flex-1 h-11 bg-slate-900 border border-slate-600 rounded-xl pl-3 pr-8 text-white text-xs md:text-sm focus:border-[#00f0ff] outline-none cursor-pointer shadow-inner appearance-none font-bold <?php echo $order['status'] !== 'pending' ? 'opacity-70 pointer-events-none' : ''; ?>" <?php echo $order['status'] !== 'pending' ? 'disabled' : ''; ?>>
                     <option value="pending" <?php echo $order['status']=='pending'?'selected':''; ?>>🟡 Awaiting Auth</option>
                     <option value="active" <?php echo $order['status']=='active'?'selected':''; ?>>🟢 Complete (Active)</option>
                     <option value="rejected" <?php echo $order['status']=='rejected'?'selected':''; ?>>🔴 Terminate</option>
                 </select>
-                <button type="submit" name="update_status" class="h-11 bg-gradient-to-r from-blue-600 to-[#00f0ff] text-slate-900 px-4 rounded-xl font-black text-sm shadow-[0_0_15px_rgba(0,240,255,0.3)] shrink-0 flex items-center justify-center transition active:scale-95">
+                <button id="updateStatusBtn" onclick="updateOrderStatus()" class="h-11 bg-gradient-to-r from-blue-600 to-[#00f0ff] text-slate-900 px-4 rounded-xl font-black text-sm shadow-[0_0_15px_rgba(0,240,255,0.3)] shrink-0 flex items-center justify-center transition active:scale-95 <?php echo $order['status'] !== 'pending' ? 'hidden' : ''; ?>">
                     <i class="fas fa-save"></i>
                 </button>
-            </form>
-            <?php endif; ?>
+            </div>
+            <div id="statusToast" class="hidden mt-3 text-[10px] font-bold text-green-400 text-center bg-green-900/20 py-1.5 rounded border border-green-500/30 uppercase tracking-widest animate-fade-in-up">
+                Status Updated Successfully
+            </div>
         </div>
 
         <!-- Identity & Form Data -->
@@ -397,25 +445,27 @@ $is_cat_image_legacy_icon = !empty($order['cat_image']) && strpos($order['cat_im
                 
                 <h3 class="text-2xl font-black text-white mb-2 relative z-10 tracking-tight shrink-0">Agent Tier Authorization</h3>
                 <p class="text-slate-400 text-sm max-w-sm mx-auto mb-8 relative z-10 shrink-0">
-                    Verify the payment screenshot. If correct, approve the request to automatically grant reseller privileges.
+                    Verify the payment screenshot. Automated deployment will engage upon approval.
                 </p>
 
-                <div class="w-full max-w-sm bg-slate-900 border border-slate-700 p-5 rounded-2xl shadow-inner relative z-10 shrink-0">
-                    <div class="flex items-center justify-between mb-5">
-                        <span class="text-[10px] font-bold text-slate-500 uppercase tracking-widest">Current Status</span>
-                        <span class="px-2 py-0.5 rounded text-[10px] font-black uppercase tracking-wider <?php echo $order['status'] == 'pending' ? 'bg-yellow-500/20 text-yellow-400' : ($order['status'] == 'active' ? 'bg-green-500/20 text-green-400' : 'bg-red-500/20 text-red-400'); ?>">
-                            <?php echo $order['status']; ?>
-                        </span>
-                    </div>
-                    
-                    <form method="POST" class="grid grid-cols-2 gap-3">
-                        <button type="submit" name="update_status" value="active" <?php echo $order['status'] == 'active' ? 'disabled' : ''; ?> class="h-12 bg-green-600 hover:bg-green-500 text-white font-bold rounded-xl shadow-[0_0_15px_rgba(16,185,129,0.3)] transition active:scale-95 flex items-center justify-center gap-2 text-xs <?php echo $order['status'] == 'active' ? 'opacity-50 cursor-not-allowed' : ''; ?>">
-                            <i class="fas fa-check-circle"></i> Approve
-                        </button>
-                        <button type="submit" name="update_status" value="rejected" <?php echo $order['status'] == 'rejected' ? 'disabled' : ''; ?> class="h-12 bg-slate-800 hover:bg-red-600 text-slate-300 hover:text-white font-bold rounded-xl border border-slate-600 transition shadow-sm flex items-center justify-center gap-2 text-xs <?php echo $order['status'] == 'rejected' ? 'opacity-50 cursor-not-allowed' : ''; ?>">
-                            <i class="fas fa-times-circle"></i> Reject
-                        </button>
-                    </form>
+                <div class="w-full max-w-sm bg-slate-900 border border-slate-700 p-5 rounded-2xl shadow-inner relative z-10 shrink-0" id="agentPassPanel">
+                    <?php if ($order['status'] === 'pending'): ?>
+                        <div class="flex flex-col gap-3">
+                            <button onclick="updateOrderStatus('active')" class="h-12 bg-green-600 hover:bg-green-500 text-white font-bold rounded-xl shadow-[0_0_15px_rgba(16,185,129,0.3)] transition active:scale-95 flex items-center justify-center gap-2 text-xs">
+                                <i class="fas fa-check-circle"></i> Approve & Deploy
+                            </button>
+                            <button onclick="updateOrderStatus('rejected')" class="h-12 bg-slate-800 hover:bg-red-600 text-slate-300 hover:text-white font-bold rounded-xl border border-slate-600 transition shadow-sm flex items-center justify-center gap-2 text-xs">
+                                <i class="fas fa-times-circle"></i> Reject
+                            </button>
+                        </div>
+                    <?php else: ?>
+                        <div class="p-4 border border-slate-700 rounded-xl bg-slate-800/50">
+                            <p class="text-xs text-slate-400 font-bold uppercase tracking-widest mb-1">Deployment Status</p>
+                            <h4 class="text-lg font-black <?php echo $order['status'] == 'active' ? 'text-green-400' : 'text-red-400'; ?> uppercase">
+                                <?php echo $order['status']; ?>
+                            </h4>
+                        </div>
+                    <?php endif; ?>
                 </div>
             </div>
 
@@ -442,30 +492,33 @@ $is_cat_image_legacy_icon = !empty($order['cat_image']) && strpos($order['cat_im
                         <?php endif; ?>
                     </div>
                     
-                    <!-- Quick Keys / Universal Data Injection -->
-                    <div>
+                    <!-- Quick Keys / Universal Data Injection (Hide if rejected) -->
+                    <div id="fulfillmentInjector" class="<?php echo $order['status'] === 'rejected' ? 'hidden' : 'block'; ?>">
                         <?php if($order['delivery_type'] === 'unique' && !empty($available_keys)): ?>
                             <div class="flex gap-2 overflow-x-auto pb-1 custom-scrollbar snap-x">
                                 <?php foreach($available_keys as $k): ?>
-                                    <button type="button" onclick="autoPasteKey('<?php echo addslashes($k['key_content']); ?>')" class="snap-start bg-slate-900 border border-slate-700 rounded-lg py-2 px-3 min-w-[180px] flex justify-between items-center group hover:border-[#00f0ff]/50 transition-colors shrink-0 cursor-pointer">
-                                        <code class="text-[10px] text-green-400 font-mono font-bold truncate mr-2"><?php echo htmlspecialchars($k['key_content']); ?></code>
-                                        <i class="fas fa-paper-plane text-slate-500 group-hover:text-[#00f0ff] text-xs"></i>
+                                    <!-- Combined Macro: Send Key AND Set Active -->
+                                    <button type="button" onclick="executeMacroFulfillment('<?php echo addslashes($k['key_content']); ?>')" class="snap-start bg-slate-900 border border-slate-700 rounded-lg py-2 px-3 min-w-[180px] flex justify-between items-center group hover:border-[#00f0ff]/50 transition-colors shrink-0 cursor-pointer shadow-md relative overflow-hidden">
+                                        <div class="absolute inset-0 bg-gradient-to-r from-green-500/10 to-transparent opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none"></div>
+                                        <code class="text-[10px] text-green-400 font-mono font-bold truncate mr-2 relative z-10"><?php echo htmlspecialchars($k['key_content']); ?></code>
+                                        <i class="fas fa-rocket text-slate-500 group-hover:text-[#00f0ff] text-xs relative z-10"></i>
                                     </button>
                                 <?php endforeach; ?>
                             </div>
+                            <p class="text-[8px] text-slate-500 mt-1 uppercase tracking-widest"><i class="fas fa-info-circle text-[#00f0ff]"></i> Clicking a key automatically sends it & marks order Complete.</p>
                         <?php elseif($order['delivery_type'] === 'universal'): ?>
                             <div class="bg-slate-900 border border-slate-700 rounded-lg p-2 flex justify-between items-center group shadow-inner">
                                 <div class="text-[10px] text-slate-300 font-mono font-bold truncate pr-2"><?php echo htmlspecialchars($order['universal_content']); ?></div>
-                                <button type="button" onclick="autoPasteKey('<?php echo addslashes($order['universal_content']); ?>')" class="bg-slate-700 hover:bg-[#00f0ff] hover:text-slate-900 text-white text-[9px] font-black px-3 py-1.5 rounded-md transition shadow-sm uppercase tracking-widest shrink-0">
-                                    Inject
+                                <button type="button" onclick="executeMacroFulfillment('<?php echo addslashes($order['universal_content']); ?>')" class="bg-slate-700 hover:bg-[#00f0ff] hover:text-slate-900 text-white text-[9px] font-black px-3 py-1.5 rounded-md transition shadow-sm uppercase tracking-widest shrink-0 flex items-center gap-1">
+                                    <i class="fas fa-rocket"></i> Inject
                                 </button>
                             </div>
+                            <p class="text-[8px] text-slate-500 mt-1 uppercase tracking-widest"><i class="fas fa-info-circle text-[#00f0ff]"></i> Clicking Inject automatically sends data & marks order Complete.</p>
                         <?php endif; ?>
                     </div>
                 </div>
 
                 <!-- Dynamic SPA Chat Area -->
-                <!-- min-h-0 allows the flex item to scroll properly within bounded parent -->
                 <div class="flex-1 min-h-0 overflow-y-auto p-4 chat-bg-pattern relative z-0 scroll-smooth" id="chatBox">
                     <div class="flex items-center justify-center h-full text-slate-500" id="chatLoading">
                         <i class="fas fa-circle-notch fa-spin text-2xl text-[#00f0ff]"></i>
@@ -550,15 +603,145 @@ $is_cat_image_legacy_icon = !empty($order['cat_image']) && strpos($order['cat_im
             btnChat.className = "flex-1 py-2.5 text-xs font-bold uppercase tracking-wider rounded-lg transition-all bg-slate-700 text-white shadow-sm relative";
             btnInfo.className = "flex-1 py-2.5 text-xs font-bold uppercase tracking-wider rounded-lg transition-all text-slate-400 hover:text-white";
             
-            // Scroll chat to bottom when opened
             const chatBox = document.getElementById('chatBox');
             if(chatBox) chatBox.scrollTop = chatBox.scrollHeight;
         }
     }
 
-    // --- Chat Logic ---
     const orderId = <?php echo $order_id; ?>;
     const isPassOrder = <?php echo $is_pass_order ? 'true' : 'false'; ?>;
+
+    // ==========================================
+    // ZERO-RELOAD STATUS ENGINE
+    // ==========================================
+    async function updateOrderStatus(forcedStatus = null) {
+        const selectEl = document.getElementById('statusSelect');
+        const status = forcedStatus || (selectEl ? selectEl.value : null);
+        if(!status || !orderId) return;
+
+        // Visual feedback immediately
+        const btn = document.getElementById('updateStatusBtn');
+        if(btn) btn.innerHTML = '<i class="fas fa-circle-notch fa-spin"></i>';
+
+        try {
+            const formData = new FormData();
+            formData.append('ajax_status', '1');
+            formData.append('status', status);
+
+            const response = await fetch(`index.php?page=order_detail&id=${orderId}`, {
+                method: 'POST',
+                body: formData,
+                headers: { 'X-Requested-With': 'XMLHttpRequest' }
+            });
+            const data = await response.json();
+
+            if (data.success) {
+                // Update UI Lifecycle Tracker
+                const bar = document.getElementById('lifecycle-bar');
+                const textDisplay = document.getElementById('status-text-display');
+                const injector = document.getElementById('fulfillmentInjector');
+                
+                if(bar && textDisplay) {
+                    bar.className = 'absolute top-0 left-0 h-full transition-all duration-700 ease-out shadow-[0_0_10px_currentColor] ';
+                    if (status === 'active') {
+                        bar.classList.add('w-full', 'bg-green-400');
+                        textDisplay.innerText = 'COMPLETE';
+                        textDisplay.className = 'text-[9px] font-black uppercase tracking-widest text-green-400';
+                        if(selectEl) { selectEl.classList.add('opacity-70', 'pointer-events-none'); selectEl.disabled = true; }
+                        if(btn) btn.classList.add('hidden');
+                        if(injector) injector.classList.remove('hidden');
+                    } else if (status === 'rejected') {
+                        bar.classList.add('w-1/2', 'bg-red-400');
+                        textDisplay.innerText = 'REJECTED';
+                        textDisplay.className = 'text-[9px] font-black uppercase tracking-widest text-red-400';
+                        if(selectEl) { selectEl.classList.add('opacity-70', 'pointer-events-none'); selectEl.disabled = true; }
+                        if(btn) btn.classList.add('hidden');
+                        if(injector) injector.classList.add('hidden'); // Hide keys if rejected
+                    } else {
+                        bar.classList.add('w-1/2', 'bg-yellow-400');
+                        textDisplay.innerText = 'PENDING';
+                        textDisplay.className = 'text-[9px] font-black uppercase tracking-widest text-yellow-400';
+                    }
+                }
+
+                // Agent Pass Panel Update
+                if(isPassOrder) {
+                    const agentPanel = document.getElementById('agentPassPanel');
+                    if(agentPanel) {
+                        const statusColor = status === 'active' ? 'text-green-400' : 'text-red-400';
+                        agentPanel.innerHTML = `
+                            <div class="p-4 border border-slate-700 rounded-xl bg-slate-800/50 animate-fade-in-down">
+                                <p class="text-xs text-slate-400 font-bold uppercase tracking-widest mb-1">Deployment Status</p>
+                                <h4 class="text-lg font-black ${statusColor} uppercase">${status}</h4>
+                            </div>
+                        `;
+                    }
+                }
+
+                // Show Success Toast
+                const toast = document.getElementById('statusToast');
+                if(toast) {
+                    toast.classList.remove('hidden');
+                    setTimeout(() => { toast.classList.add('hidden'); }, 3000);
+                }
+                
+                if(btn) btn.innerHTML = '<i class="fas fa-check"></i>';
+                setTimeout(() => { if(btn) btn.innerHTML = '<i class="fas fa-save"></i>'; }, 2000);
+
+            } else {
+                alert('Matrix Error: ' + data.error);
+                if(btn) btn.innerHTML = '<i class="fas fa-save"></i>';
+            }
+        } catch(err) {
+            console.error(err);
+            if(btn) btn.innerHTML = '<i class="fas fa-save"></i>';
+        }
+    }
+
+    // ==========================================
+    // ONE-CLICK MACRO FULFILLMENT
+    // ==========================================
+    async function executeMacroFulfillment(content) {
+        if(!confirm("Deploy this asset and mark order as COMPLETE?")) return;
+        
+        // 1. Send the message securely
+        const chatInput = document.getElementById('chatInput');
+        const secureToggle = document.getElementById('secureToggle');
+        
+        if(chatInput) chatInput.value = content;
+        if(secureToggle) secureToggle.checked = true;
+        
+        // Trigger submit
+        const form = document.getElementById('adminChatForm');
+        if(form) {
+            const formData = new FormData(form);
+            formData.append('ajax_msg', '1');
+            
+            chatInput.value = ''; // clear immediately
+            try {
+                await fetch(`index.php?page=order_detail&id=${orderId}`, {
+                    method: 'POST',
+                    body: formData,
+                    headers: { 'X-Requested-With': 'XMLHttpRequest' }
+                });
+                
+                // Fetch new chat
+                fetchChat();
+                
+                // 2. Mark Order as Active (Ajax)
+                const selectEl = document.getElementById('statusSelect');
+                if(selectEl && selectEl.value !== 'active') {
+                    selectEl.value = 'active';
+                    await updateOrderStatus('active');
+                }
+                
+            } catch(err) {
+                console.error('Macro execution failed:', err);
+            }
+        }
+    }
+
+    // --- Chat Logic ---
     const chatBox = document.getElementById('chatBox');
     const chatInput = document.getElementById('chatInput');
     const secureToggle = document.getElementById('secureToggle');
@@ -567,7 +750,6 @@ $is_cat_image_legacy_icon = !empty($order['cat_image']) && strpos($order['cat_im
     let lastChatHtml = '';
 
     if (!isPassOrder && chatBox) {
-        // Detect scrolling to prevent auto-scroll if reading history
         chatBox.addEventListener('scroll', () => {
             const isAtBottom = chatBox.scrollHeight - chatBox.scrollTop <= chatBox.clientHeight + 50;
             isUserScrolling = !isAtBottom;
@@ -582,7 +764,7 @@ $is_cat_image_legacy_icon = !empty($order['cat_image']) && strpos($order['cat_im
                     const loading = document.getElementById('chatLoading');
                     if(loading) loading.remove();
 
-                    // FIX: Extract ONLY the chat payload to prevent Admin Header/Sidebar bleed
+                    // Extract ONLY the chat payload
                     const match = html.match(/<!--CHAT_PAYLOAD_START-->([\s\S]*?)<!--CHAT_PAYLOAD_END-->/);
                     const chatContent = match ? match[1] : html;
 
@@ -611,9 +793,8 @@ $is_cat_image_legacy_icon = !empty($order['cat_image']) && strpos($order['cat_im
                 const formData = new FormData(this);
                 formData.append('ajax_msg', '1');
                 
-                // Reset input UI instantly
                 chatInput.value = ''; 
-                chatInput.style.height = '44px'; // Base height
+                chatInput.style.height = '44px';
                 
                 try {
                     await fetch(`index.php?page=order_detail&id=${orderId}`, {
@@ -628,7 +809,6 @@ $is_cat_image_legacy_icon = !empty($order['cat_image']) && strpos($order['cat_im
             });
         }
         
-        // Enter key to submit (Shift+Enter for new line)
         if(chatInput) {
             chatInput.addEventListener('keydown', function(e) {
                 if(e.key === 'Enter' && !e.shiftKey) {
@@ -656,14 +836,11 @@ $is_cat_image_legacy_icon = !empty($order['cat_image']) && strpos($order['cat_im
             chatInput.focus();
             chatInput.style.height = 'auto';
             chatInput.style.height = chatInput.scrollHeight + 'px';
-            if(secureToggle) secureToggle.checked = true; // Auto secure for keys
+            if(secureToggle) secureToggle.checked = true;
             
-            // Visual flash
             const wrapper = chatInput.parentElement;
             wrapper.classList.add('border-[#00f0ff]', 'shadow-[0_0_20px_rgba(0,240,255,0.4)]');
-            setTimeout(() => {
-                wrapper.classList.remove('border-[#00f0ff]', 'shadow-[0_0_20px_rgba(0,240,255,0.4)]');
-            }, 600);
+            setTimeout(() => { wrapper.classList.remove('border-[#00f0ff]', 'shadow-[0_0_20px_rgba(0,240,255,0.4)]'); }, 600);
         }
     }
 
@@ -679,12 +856,18 @@ $is_cat_image_legacy_icon = !empty($order['cat_image']) && strpos($order['cat_im
                 chatInput.style.height = 'auto';
                 chatInput.style.height = chatInput.scrollHeight + 'px';
                 
-                // Visual flash
                 const wrapper = chatInput.parentElement;
                 wrapper.classList.add('border-purple-500', 'shadow-[0_0_20px_rgba(168,85,247,0.4)]');
                 setTimeout(() => wrapper.classList.remove('border-purple-500', 'shadow-[0_0_20px_rgba(168,85,247,0.4)]'), 600);
             }
         }
+    }
+
+    // --- Clipboard ---
+    function copyToClipboard(text) {
+        navigator.clipboard.writeText(text).then(() => {
+            alert('Invoice Link Copied to Clipboard!');
+        });
     }
 
     // --- Lightbox ---
