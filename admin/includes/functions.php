@@ -63,7 +63,8 @@ function get_admin_view() {
         'payment_edit' => 'payment_edit.php',  // NEW
         'settings'     => 'settings.php',
         'passes'       => 'passes.php', 
-        'admins'       => 'admins.php'        
+        'admins'       => 'admins.php',
+        'pandl'         => 'pandl.php'
     ];
 
     // Check if page exists in whitelist

@@ -336,9 +336,12 @@ if ($_SESSION['login_attempts'] >= 5 && time() < $_SESSION['login_lockout']) {
             </div>
 
             <div class="input-group">
-                <input type="password" name="password" placeholder="Master Password" required autocomplete="current-password"
-                       class="input-field w-full bg-slate-900/60 border border-slate-600 rounded-xl py-4 text-white focus:border-[#00f0ff] outline-none placeholder-slate-500 backdrop-blur-sm">
+                <input type="password" id="password" name="password" placeholder="Master Password" required autocomplete="current-password"
+                       class="input-field w-full bg-slate-900/60 border border-slate-600 rounded-xl py-4 text-white focus:border-[#00f0ff] outline-none placeholder-slate-500 backdrop-blur-sm pr-12">
                 <i class="fas fa-lock input-icon"></i>
+                <button type="button" id="togglePassword" class="absolute right-3 top-1/2 transform -translate-y-1/2 text-slate-400 hover:text-[#00f0ff] transition-colors duration-200">
+                    <i class="fas fa-eye"></i>
+                </button>
             </div>
 
             <div class="flex justify-between items-center px-1">
@@ -396,6 +399,23 @@ if ($_SESSION['login_attempts'] >= 5 && time() < $_SESSION['login_lockout']) {
         </div>
     </div>
     <?php endif; ?>
+
+    <script>
+        document.getElementById('togglePassword').addEventListener('click', function() {
+            const passwordInput = document.getElementById('password');
+            const icon = this.querySelector('i');
+            
+            if (passwordInput.type === 'password') {
+                passwordInput.type = 'text';
+                icon.classList.remove('fa-eye');
+                icon.classList.add('fa-eye-slash');
+            } else {
+                passwordInput.type = 'password';
+                icon.classList.remove('fa-eye-slash');
+                icon.classList.add('fa-eye');
+            }
+        });
+    </script>
 
 </body>
 </html>
