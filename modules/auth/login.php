@@ -1,5 +1,8 @@
 <?php
 // modules/auth/login.php
+// PRODUCTION v5.0 - Google Auth V3, CSRF State Protection & Auto-Provisioning
+
+require_once 'includes/MailService.php';
 
 // 1. Redirect if already logged in
 if (is_logged_in()) {
@@ -49,96 +52,116 @@ if ($_SESSION['login_attempts'] >= 5 && time() < $_SESSION['login_lockout']) {
         $_SESSION['login_lockout'] = 0;
     }
 
-    // --- 5. GOOGLE OAUTH HANDLER ---
-    // Make sure GOOGLE_CLIENT_ID and GOOGLE_CLIENT_SECRET are set in your .env
-    $google_login_url = "https://accounts.google.com/o/oauth2/v2/auth?response_type=code&client_id=" . urlencode(GOOGLE_CLIENT_ID) . "&redirect_uri=" . urlencode(GOOGLE_REDIRECT_URL) . "&scope=email%20profile";
+    // --- 5. GOOGLE OAUTH HANDLER V3 ---
+    $google_client_id = defined('GOOGLE_CLIENT_ID') ? GOOGLE_CLIENT_ID : '';
+    $google_client_secret = defined('GOOGLE_CLIENT_SECRET') ? GOOGLE_CLIENT_SECRET : '';
+    $google_redirect_url = defined('GOOGLE_REDIRECT_URL') ? GOOGLE_REDIRECT_URL : '';
+    
+    // Generate secure state token to prevent CSRF
+    if (empty($_SESSION['g_state'])) {
+        $_SESSION['g_state'] = bin2hex(random_bytes(16));
+    }
+    
+    $google_login_url = "https://accounts.google.com/o/oauth2/v2/auth?response_type=code&client_id=" . urlencode($google_client_id) . "&redirect_uri=" . urlencode($google_redirect_url) . "&scope=email%20profile&state=" . $_SESSION['g_state'];
 
-    if (isset($_GET['code'])) {
-        $token_url = 'https://oauth2.googleapis.com/token';
-        $params = [
-            'code' => $_GET['code'],
-            'client_id' => GOOGLE_CLIENT_ID,
-            'client_secret' => GOOGLE_CLIENT_SECRET,
-            'redirect_uri' => GOOGLE_REDIRECT_URL,
-            'grant_type' => 'authorization_code'
-        ];
-
-        // Ensure cURL is configured securely
-        $ch = curl_init();
-        curl_setopt($ch, CURLOPT_URL, $token_url);
-        curl_setopt($ch, CURLOPT_POST, 1);
-        curl_setopt($ch, CURLOPT_POSTFIELDS, http_build_query($params));
-        curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
-        // Important for production: Verify SSL
-        curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, true); 
-        $response = curl_exec($ch);
+    if (isset($_GET['code']) && !empty($google_client_id)) {
         
-        if(curl_errno($ch)){
-            $error = 'Google Login Error: ' . curl_error($ch);
-        }
-        curl_close($ch);
-        
-        $token_data = json_decode($response, true);
+        // CSRF State Validation
+        if (!isset($_GET['state']) || $_GET['state'] !== $_SESSION['g_state']) {
+            $error = "OAuth Security Error: Invalid State Token. Please try again.";
+        } else {
+            $token_url = 'https://oauth2.googleapis.com/token';
+            $params = [
+                'code' => $_GET['code'],
+                'client_id' => $google_client_id,
+                'client_secret' => $google_client_secret,
+                'redirect_uri' => $google_redirect_url,
+                'grant_type' => 'authorization_code'
+            ];
 
-        if (isset($token_data['access_token'])) {
-            $info_url = 'https://www.googleapis.com/oauth2/v3/userinfo';
             $ch = curl_init();
-            curl_setopt($ch, CURLOPT_URL, $info_url);
-            curl_setopt($ch, CURLOPT_HTTPHEADER, ['Authorization: Bearer ' . $token_data['access_token']]);
+            curl_setopt($ch, CURLOPT_URL, $token_url);
+            curl_setopt($ch, CURLOPT_POST, 1);
+            curl_setopt($ch, CURLOPT_POSTFIELDS, http_build_query($params));
             curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
-            curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, true);
-            $user_info = json_decode(curl_exec($ch), true);
-            curl_close($ch);
-
-            if (isset($user_info['email'])) {
-                $g_email = filter_var($user_info['email'], FILTER_SANITIZE_EMAIL);
-                $g_name = htmlspecialchars(trim($user_info['name']));
-                
-                $stmt = $pdo->prepare("SELECT * FROM users WHERE email = ?");
-                $stmt->execute([$g_email]);
-                $user = $stmt->fetch();
-
-                if ($user) {
-                    // Auto-verify if they logged in via Google
-                    if ($user['is_verified'] == 0) {
-                        $pdo->prepare("UPDATE users SET is_verified = 1 WHERE id = ?")->execute([$user['id']]);
-                    }
-                    
-                    // Log them in
-                    $_SESSION['user_id'] = $user['id'];
-                    $_SESSION['user_name'] = $user['username'];
-                    $_SESSION['user_email'] = $user['email'];
-                    
-                    redirect('index.php?module=user&page=dashboard');
-                } else {
-                    // Auto-Register New User (Google)
-                    // Generate a safe username
-                    $base_username = strtolower(preg_replace('/[^a-zA-Z0-9]/', '', $g_name));
-                    if (empty($base_username)) $base_username = 'user';
-                    $username = $base_username . rand(1000, 9999);
-                    
-                    $random_pass = bin2hex(random_bytes(12));
-                    $hashed = password_hash($random_pass, PASSWORD_DEFAULT);
-                    
-                    try {
-                        $stmt = $pdo->prepare("INSERT INTO users (full_name, username, email, password, is_verified) VALUES (?, ?, ?, ?, 1)");
-                        if ($stmt->execute([$g_name, $username, $g_email, $hashed])) {
-                            $_SESSION['user_id'] = $pdo->lastInsertId();
-                            $_SESSION['user_name'] = $username;
-                            $_SESSION['user_email'] = $g_email;
-                            redirect('index.php?module=user&page=dashboard');
-                        } else {
-                            $error = "Failed to create account with Google. Database error.";
-                        }
-                    } catch(PDOException $e) {
-                         $error = "System error during Google registration.";
-                    }
-                }
-            } else {
-                $error = "Could not retrieve email from Google.";
+            curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, true); 
+            $response = curl_exec($ch);
+            
+            if(curl_errno($ch)){
+                $error = 'Google Login Error: ' . curl_error($ch);
             }
-        } elseif (isset($token_data['error'])) {
-             $error = "Google Authentication Failed: " . htmlspecialchars($token_data['error_description'] ?? 'Unknown error');
+            curl_close($ch);
+            
+            $token_data = json_decode($response, true);
+
+            if (isset($token_data['access_token'])) {
+                $info_url = 'https://www.googleapis.com/oauth2/v3/userinfo';
+                $ch = curl_init();
+                curl_setopt($ch, CURLOPT_URL, $info_url);
+                curl_setopt($ch, CURLOPT_HTTPHEADER, ['Authorization: Bearer ' . $token_data['access_token']]);
+                curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
+                curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, true);
+                $user_info = json_decode(curl_exec($ch), true);
+                curl_close($ch);
+
+                if (isset($user_info['email'])) {
+                    $g_email = filter_var($user_info['email'], FILTER_SANITIZE_EMAIL);
+                    $g_name = htmlspecialchars(trim($user_info['name']));
+                    
+                    $stmt = $pdo->prepare("SELECT * FROM users WHERE email = ?");
+                    $stmt->execute([$g_email]);
+                    $user = $stmt->fetch();
+
+                    if ($user) {
+                        // Auto-verify if they logged in via Google
+                        if ($user['is_verified'] == 0) {
+                            $pdo->prepare("UPDATE users SET is_verified = 1 WHERE id = ?")->execute([$user['id']]);
+                        }
+                        
+                        // Log them in
+                        $_SESSION['user_id'] = $user['id'];
+                        $_SESSION['user_name'] = $user['username'];
+                        $_SESSION['user_email'] = $user['email'];
+                        
+                        redirect('index.php?module=user&dashboard');
+                    } else {
+                        // Auto-Register New User (Google V3)
+                        $base_username = strtolower(preg_replace('/[^a-zA-Z0-9]/', '', $g_name));
+                        if (empty($base_username)) $base_username = 'user';
+                        $username = $base_username . rand(1000, 9999);
+                        
+                        $random_pass = bin2hex(random_bytes(6)); // 12 char secure key
+                        $hashed = password_hash($random_pass, PASSWORD_DEFAULT);
+                        
+                        try {
+                            $stmt = $pdo->prepare("INSERT INTO users (full_name, username, email, password, is_verified) VALUES (?, ?, ?, ?, 1)");
+                            if ($stmt->execute([$g_name, $username, $g_email, $hashed])) {
+                                $_SESSION['user_id'] = $pdo->lastInsertId();
+                                $_SESSION['user_name'] = $username;
+                                $_SESSION['user_email'] = $g_email;
+                                
+                                // Dispatch Generated Credentials via MailService
+                                try {
+                                    $mailer = new MailService();
+                                    $mailer->sendGoogleAuthPassword($g_email, $g_name, $random_pass);
+                                } catch (Exception $e) {
+                                    error_log("Google Mail Dispatch Failed: " . $e->getMessage());
+                                }
+
+                                redirect('index.php?module=user&page=dashboard');
+                            } else {
+                                $error = "Failed to deploy account via Google node. Database error.";
+                            }
+                        } catch(PDOException $e) {
+                             $error = "System error during Google deployment protocol.";
+                        }
+                    }
+                } else {
+                    $error = "Could not retrieve secure comms (email) from Google.";
+                }
+            } elseif (isset($token_data['error'])) {
+                 $error = "Google Authentication Failed: " . htmlspecialchars($token_data['error_description'] ?? 'Unknown error');
+            }
         }
     }
 
@@ -148,7 +171,7 @@ if ($_SESSION['login_attempts'] >= 5 && time() < $_SESSION['login_lockout']) {
         $post_token = $_POST['csrf_token'] ?? '';
         
         if (empty($session_token) || !hash_equals($session_token, $post_token)) {
-            $error = "Security session expired. Please refresh the page and try again.";
+            $error = "Security session expired. Please refresh the matrix and try again.";
         } else {
             $email = filter_var(trim($_POST['email']), FILTER_SANITIZE_EMAIL);
             $password = $_POST['password'];
@@ -162,7 +185,7 @@ if ($_SESSION['login_attempts'] >= 5 && time() < $_SESSION['login_lockout']) {
                 
                 // 🔒 Check Verification
                 if ($user['is_verified'] == 0) {
-                    $error = "Your email address has not been verified.";
+                    $error = "Your identity has not been verified.";
                     $unverified_email_attempt = $email; 
                 } else {
                     // Success
@@ -179,7 +202,6 @@ if ($_SESSION['login_attempts'] >= 5 && time() < $_SESSION['login_lockout']) {
                     }
 
                     $redirect_url = isset($_GET['redirect']) ? urldecode($_GET['redirect']) : 'index.php?module=user&page=dashboard';
-                    // Prevent open redirects
                     if (!preg_match('/^index\.php/', $redirect_url)) {
                         $redirect_url = 'index.php';
                     }
@@ -192,7 +214,7 @@ if ($_SESSION['login_attempts'] >= 5 && time() < $_SESSION['login_lockout']) {
                 if ($_SESSION['login_attempts'] >= 5) {
                     $_SESSION['login_lockout'] = time() + (5 * 60); // Lock for 5 mins
                 }
-                $error = "Invalid email or password.";
+                $error = "Invalid secure comms or master key.";
             }
         }
     }
@@ -212,7 +234,6 @@ if ($_SESSION['login_attempts'] >= 5 && time() < $_SESSION['login_lockout']) {
             background: #0f172a; 
             color: white; 
             font-family: 'Inter', sans-serif; 
-            /* Fix mobile viewport height issues */
             min-height: 100vh;
             min-height: -webkit-fill-available;
         }
@@ -224,7 +245,6 @@ if ($_SESSION['login_attempts'] >= 5 && time() < $_SESSION['login_lockout']) {
             box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.5), 0 0 30px rgba(0, 240, 255, 0.05); 
         }
         
-        /* Mobile Optimized Inputs */
         .input-group { position: relative; }
         .input-icon { 
             position: absolute; 
@@ -239,7 +259,6 @@ if ($_SESSION['login_attempts'] >= 5 && time() < $_SESSION['login_lockout']) {
             padding-left: 3.25rem; 
             padding-right: 1rem;
             transition: all 0.3s ease; 
-            /* Prevent iOS zoom on focus */
             font-size: 16px !important; 
         }
         .input-field:focus + .input-icon { color: #00f0ff; }
@@ -248,7 +267,6 @@ if ($_SESSION['login_attempts'] >= 5 && time() < $_SESSION['login_lockout']) {
             box-shadow: inset 0 0 10px rgba(0, 240, 255, 0.1); 
         }
 
-        /* Abstract Background Animations */
         @keyframes blob {
             0% { transform: translate(0px, 0px) scale(1); }
             33% { transform: translate(30px, -50px) scale(1.1); }
@@ -294,7 +312,7 @@ if ($_SESSION['login_attempts'] >= 5 && time() < $_SESSION['login_lockout']) {
                     <div class="mt-4 pt-3 border-t border-red-500/30">
                         <a href="index.php?module=auth&page=verify_resend&email=<?php echo urlencode($unverified_email_attempt); ?>" 
                            class="block w-full bg-red-600 hover:bg-red-500 text-white text-center py-3 rounded-lg text-sm font-bold transition shadow-lg flex items-center justify-center gap-2">
-                           <i class="fas fa-paper-plane"></i> Send New Code
+                           <i class="fas fa-paper-plane"></i> Dispatch New Code
                         </a>
                     </div>
                 <?php endif; ?>
@@ -309,39 +327,34 @@ if ($_SESSION['login_attempts'] >= 5 && time() < $_SESSION['login_lockout']) {
         <?php endif; ?>
 
         <!-- Google OAuth Button -->
-        <!-- <a href="
-         
-        <?php // echo $google_login_url; ?>
-
-         " class="w-full bg-white hover:bg-gray-100 text-slate-900 font-black py-3.5 px-4 rounded-xl shadow-lg transition flex items-center justify-center gap-3 mb-6 group">
-            <img src="https://www.svgrepo.com/show/475656/google-color.svg" class="w-6 h-6 transition-transform group-hover:scale-110" alt="Google">
-            <span class="text-sm tracking-wide">Continue with Google</span>
-        </a> -->
+        <?php if(!empty($google_client_id)): ?>
+        <a href="<?php echo $google_login_url; ?>" class="w-full bg-slate-800 border border-slate-600 hover:border-slate-500 hover:bg-slate-700 text-white font-bold py-3.5 px-4 rounded-xl shadow-lg transition transform active:scale-[0.98] flex items-center justify-center gap-3 mb-6 group">
+            <img src="https://www.svgrepo.com/show/475656/google-color.svg" class="w-5 h-5 transition-transform group-hover:scale-110" alt="Google">
+            <span class="text-sm tracking-wide">Sync with Google</span>
+        </a>
 
         <!-- Divider -->
-        <!-- <div class="flex items-center gap-4 mb-6">
+        <div class="flex items-center gap-4 mb-6">
             <div class="h-px bg-slate-700/80 flex-1"></div>
             <span class="text-[10px] text-slate-500 uppercase font-black tracking-widest">Or standard login</span>
             <div class="h-px bg-slate-700/80 flex-1"></div>
-        </div> -->
+        </div>
+        <?php endif; ?>
 
         <!-- Login Form -->
         <form method="POST" class="space-y-5">
             <input type="hidden" name="csrf_token" value="<?php echo generate_csrf_token(); ?>">
             
             <div class="input-group">
-                <input type="email" name="email" placeholder="Email Address" required autocomplete="email"
+                <input type="email" name="email" placeholder="Secure Comm (Email)" required autocomplete="email"
                        class="input-field w-full bg-slate-900/60 border border-slate-600 rounded-xl py-4 text-white focus:border-[#00f0ff] outline-none placeholder-slate-500 backdrop-blur-sm">
                 <i class="fas fa-envelope input-icon"></i>
             </div>
 
             <div class="input-group">
-                <input type="password" id="password" name="password" placeholder="Master Password" required autocomplete="current-password"
-                       class="input-field w-full bg-slate-900/60 border border-slate-600 rounded-xl py-4 text-white focus:border-[#00f0ff] outline-none placeholder-slate-500 backdrop-blur-sm pr-12">
+                <input type="password" name="password" placeholder="Master Key" required autocomplete="current-password"
+                       class="input-field w-full bg-slate-900/60 border border-slate-600 rounded-xl py-4 text-white focus:border-[#00f0ff] outline-none placeholder-slate-500 backdrop-blur-sm">
                 <i class="fas fa-lock input-icon"></i>
-                <button type="button" id="togglePassword" class="absolute right-3 top-1/2 transform -translate-y-1/2 text-slate-400 hover:text-[#00f0ff] transition-colors duration-200">
-                    <i class="fas fa-eye"></i>
-                </button>
             </div>
 
             <div class="flex justify-between items-center px-1">
@@ -349,13 +362,13 @@ if ($_SESSION['login_attempts'] >= 5 && time() < $_SESSION['login_lockout']) {
                     <div class="relative flex items-center">
                         <input type="checkbox" name="remember" class="w-4 h-4 rounded border-slate-600 bg-slate-800 text-[#00f0ff] focus:ring-[#00f0ff] focus:ring-offset-slate-900 cursor-pointer transition">
                     </div>
-                    <span class="text-xs text-slate-400 group-hover:text-white transition font-medium">Remember me</span>
+                    <span class="text-xs text-slate-400 group-hover:text-white transition font-medium">Keep Connection</span>
                 </label>
-                <a href="index.php?module=auth&page=forgot_password" class="text-xs text-[#00f0ff] hover:text-white transition font-bold tracking-wide">Recover Password</a>
+                <a href="index.php?module=auth&page=forgot_password" class="text-xs text-[#00f0ff] hover:text-white transition font-bold tracking-wide">Recover Key</a>
             </div>
 
             <button type="submit" class="w-full bg-gradient-to-r from-blue-600 to-[#00f0ff] hover:from-blue-500 hover:to-[#00f0ff] text-slate-900 font-black py-4 rounded-xl shadow-[0_0_20px_rgba(0,240,255,0.2)] hover:shadow-[0_0_30px_rgba(0,240,255,0.4)] transform transition active:scale-[0.98] text-sm uppercase tracking-widest mt-2 flex justify-center items-center gap-2">
-                <span>Initiate Login</span>
+                <span>Initialize Login</span>
                 <i class="fas fa-sign-in-alt"></i>
             </button>
         </form>
@@ -363,7 +376,7 @@ if ($_SESSION['login_attempts'] >= 5 && time() < $_SESSION['login_lockout']) {
         <!-- Footer Links -->
         <div class="mt-8 pt-6 border-t border-slate-700/50 text-center space-y-4">
             <p class="text-sm text-slate-400 font-medium">
-                No account yet? <a href="index.php?module=auth&page=register" class="text-[#00f0ff] font-bold hover:underline ml-1">Deploy New User</a>
+                No identity yet? <a href="index.php?module=auth&page=register" class="text-[#00f0ff] font-bold hover:underline ml-1">Deploy New User</a>
             </p>
             <a href="index.php" class="inline-flex items-center gap-2 text-xs text-slate-500 hover:text-white transition group font-bold uppercase tracking-wider">
                 <i class="fas fa-home group-hover:-translate-x-1 transition-transform"></i> Return to Hub
@@ -375,7 +388,6 @@ if ($_SESSION['login_attempts'] >= 5 && time() < $_SESSION['login_lockout']) {
     <?php if($show_verify_modal): ?>
     <div class="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/80 backdrop-blur-xl animate-fade-in">
         <div class="bg-slate-900 border border-[#00f0ff]/30 rounded-3xl max-w-sm w-full p-8 text-center shadow-[0_0_50px_rgba(0,240,255,0.1)] transform transition-all relative overflow-hidden">
-            <!-- Glow FX -->
             <div class="absolute top-0 inset-x-0 h-1 bg-gradient-to-r from-transparent via-[#00f0ff] to-transparent"></div>
             
             <div class="w-20 h-20 bg-green-500/10 border border-green-500/30 rounded-full flex items-center justify-center mx-auto mb-6 shadow-[0_0_30px_rgba(34,197,94,0.2)]">
@@ -389,7 +401,7 @@ if ($_SESSION['login_attempts'] >= 5 && time() < $_SESSION['login_lockout']) {
             </p>
             
             <div class="space-y-3">
-                <a href="<?php echo $email_link; ?>" target="_blank" class="flex items-center justify-center gap-2 w-full bg-blue-600 hover:bg-[#00f0ff] hover:text-slate-900 text-white font-bold py-4 rounded-xl transition shadow-lg text-sm tracking-wide">
+                <a href="<?php echo $email_link; ?>" target="_blank" class="flex items-center justify-center gap-2 w-full bg-gradient-to-r from-blue-600 to-[#00f0ff] hover:from-blue-500 hover:to-[#00f0ff] text-slate-900 font-black py-4 rounded-xl transition shadow-lg text-sm tracking-wide uppercase">
                     <i class="<?php echo $email_icon; ?> text-lg"></i> <?php echo $email_btn_text; ?>
                 </a>
                 <button onclick="this.closest('.fixed').remove()" class="block w-full bg-slate-800 hover:bg-slate-700 text-slate-400 hover:text-white font-bold py-4 rounded-xl transition text-sm">
@@ -399,23 +411,6 @@ if ($_SESSION['login_attempts'] >= 5 && time() < $_SESSION['login_lockout']) {
         </div>
     </div>
     <?php endif; ?>
-
-    <script>
-        document.getElementById('togglePassword').addEventListener('click', function() {
-            const passwordInput = document.getElementById('password');
-            const icon = this.querySelector('i');
-            
-            if (passwordInput.type === 'password') {
-                passwordInput.type = 'text';
-                icon.classList.remove('fa-eye');
-                icon.classList.add('fa-eye-slash');
-            } else {
-                passwordInput.type = 'password';
-                icon.classList.remove('fa-eye-slash');
-                icon.classList.add('fa-eye');
-            }
-        });
-    </script>
 
 </body>
 </html>
