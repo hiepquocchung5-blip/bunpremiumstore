@@ -278,9 +278,9 @@ $display_orders = max($total_orders_count, 8500);
     <!-- SECTION 4: Feature Strip (Circuit Node Style) -->
     <div class="grid grid-cols-1 md:grid-cols-3 gap-6 mb-16 relative">
         <!-- Connecting Line Background -->
-        <div class="hidden md:block absolute top-1/2 left-10 right-10 h-1 bg-slate-800 -z-10 transform -translate-y-1/2 shadow-inner rounded-full">
+        <!-- <div class="hidden md:block absolute top-1/2 left-10 right-10 h-1 bg-slate-800 -z-10 transform -translate-y-1/2 shadow-inner rounded-full">
             <div class="h-full bg-gradient-to-r from-green-500 via-purple-500 to-yellow-500 opacity-50 w-full animate-pulse rounded-full"></div>
-        </div>
+        </div> -->
 
         <div class="glass border border-slate-700/50 p-6 md:p-8 rounded-3xl flex flex-col items-center text-center gap-4 relative overflow-hidden group hover:border-green-500/50 transition-colors shadow-lg">
             <div class="w-16 h-16 rounded-2xl bg-green-500/10 flex items-center justify-center text-green-400 text-3xl border border-green-500/20 shadow-[0_0_20px_rgba(34,197,94,0.15)] group-hover:scale-110 transition duration-300 rotate-3"><i class="fas fa-bolt"></i></div>
