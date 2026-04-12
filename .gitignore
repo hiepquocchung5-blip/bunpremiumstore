@@ -1,4 +1,4 @@
-.env.env
+.env
 /vendor/
 composer.phar
 /node_modules/
@@ -20,3 +20,5 @@ backups/
 .DS_Store
 Thumbs.db
 .phpunit.result.cache
+.well-known/appspecific/com.chrome.devtools.json
+

@@ -241,9 +241,7 @@ $curr_symbol = $curr_currency == 'USD' ? '$' : 'Ks';
                                     <a href="index.php?module=user&page=wishlist" class="block px-3 py-2 rounded-lg text-sm text-slate-300 hover:bg-slate-700 hover:text-white transition flex items-center gap-3 group/link">
                                         <i class="fas fa-heart w-5 text-center text-slate-500 group-hover/link:text-rose-400 transition-colors"></i> Wishlist
                                     </a>
-                                    <a href="index.php?module=user&page=wallet" class="block px-3 py-2 rounded-lg text-sm text-slate-300 hover:bg-slate-700 hover:text-white transition flex items-center gap-3 group/link">
-                                        <i class="fas fa-wallet w-5 text-center text-slate-500 group-hover/link:text-purple-400 transition-colors"></i> Wallet
-                                    </a>
+                                    
                                 </div>
 
                                 <div class="border-t border-slate-700 p-2 bg-slate-900/30">

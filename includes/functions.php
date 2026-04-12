@@ -1,5 +1,6 @@
 <?php
 // includes/functions.php
+// PRODUCTION v5.0 - Telegram Photo Integration & Dynamic Asset Retrieval
 
 /**
  * --------------------------------------------------------------------------
@@ -9,7 +10,8 @@
 if (!defined('TG_BOT_TOKEN')) {
     // REPLACE WITH YOUR ACTUAL BOT TOKEN & CHAT ID
     define('TG_BOT_TOKEN', '8394551492:AAEC3JtdKSHDHrvKApZcIhI9Jwd14bpDayY'); 
-    define('TG_ADMIN_CHAT_ID', '1616955680'); 
+    define('TG_ADMIN_CHAT_ID', '1616955680 ,8125603481'); // Multiple IDs can be comma-separated for broader access
+    // define('TG_ADMIN_CHAT_ID', '1616955680,123456789,987654321,555555555');for more user access
 }
 
 // if (!defined('EXCHANGE_RATE')) {
@@ -91,23 +93,39 @@ function format_price($amount_mmk) {
  */
 
 function send_telegram_alert($order_id, $product_name, $price, $username) {
+    global $pdo;
+    
     $token = TG_BOT_TOKEN;
     $chat_id = TG_ADMIN_CHAT_ID;
     
     // Construct Admin Link
     $admin_url = ADMIN_URL . "index.php?page=order_detail&id=" . $order_id;
     
-    // Build Message
+    // 1. Fetch Order Extra Details (Txn ID & Image Path)
+    $txn_id = "N/A";
+    $proof_path = "";
+    try {
+        $stmt = $pdo->prepare("SELECT transaction_last_6, proof_image_path FROM orders WHERE id = ?");
+        $stmt->execute([$order_id]);
+        if ($row = $stmt->fetch()) {
+            $txn_id = $row['transaction_last_6'];
+            $proof_path = $row['proof_image_path'];
+        }
+    } catch (Exception $e) {
+        error_log('Telegram Alert DB Error: ' . $e->getMessage());
+    }
+
+    // 2. Build Message / Caption
     $message = "🚨 <b>New Order Received!</b>\n\n";
     $message .= "🆔 <b>Order ID:</b> #{$order_id}\n";
     $message .= "👤 <b>User:</b> " . htmlspecialchars($username) . "\n";
     $message .= "📦 <b>Item:</b> " . htmlspecialchars($product_name) . "\n";
     $message .= "💰 <b>Paid:</b> " . number_format($price) . " Ks\n";
+    $message .= "💳 <b>Txn ID:</b> <code>{$txn_id}</code>\n";
     $message .= "\n👇 <a href='{$admin_url}'>Click to Process Order</a>";
 
-    // Telegram API Endpoint
+    // 3. Default to text message
     $url = "https://api.telegram.org/bot{$token}/sendMessage";
-    
     $data = [
         'chat_id' => $chat_id,
         'text' => $message,
@@ -115,13 +133,30 @@ function send_telegram_alert($order_id, $product_name, $price, $username) {
         'disable_web_page_preview' => true
     ];
 
-    // Send Request via CURL
+    // 4. Upgrade to Photo message if proof image exists
+    if (!empty($proof_path)) {
+        // Resolve absolute local file path to bypass localhost/URL restrictions
+        $local_file = realpath(__DIR__ . '/../' . ltrim($proof_path, '/'));
+        
+        if ($local_file && file_exists($local_file)) {
+            $url = "https://api.telegram.org/bot{$token}/sendPhoto";
+            $data = [
+                'chat_id' => $chat_id,
+                'photo' => new CURLFile($local_file),
+                'caption' => $message,
+                'parse_mode' => 'HTML'
+            ];
+        }
+    }
+
+    // 5. Send Request via CURL
     $ch = curl_init();
     curl_setopt($ch, CURLOPT_URL, $url);
     curl_setopt($ch, CURLOPT_POST, true);
     curl_setopt($ch, CURLOPT_POSTFIELDS, $data);
     curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
-    curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, false); // Disable SSL check for localhost
+    curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, false); // Disable SSL check for local/testing env
+    
     $result = curl_exec($ch);
     
     // Log error if needed
