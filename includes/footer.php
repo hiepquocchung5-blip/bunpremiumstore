@@ -38,7 +38,7 @@
                     </p>
                     <div class="flex gap-3 pt-2">
                         <a href="https://t.me/bunpremiumstore" target="_blank" class="w-9 h-9 rounded-lg bg-blue-500/10 flex items-center justify-center text-blue-400 hover:bg-blue-500 hover:text-white transition border border-blue-500/20"><i class="fab fa-telegram-plane"></i></a>
-                        <a href="#" class="w-9 h-9 rounded-lg bg-pink-500/10 flex items-center justify-center text-pink-400 hover:bg-pink-500 hover:text-white transition border border-pink-500/20"><i class="fab fa-instagram"></i></a>
+                        <a href="https://facebook.com" target="_blank" class="w-9 h-9 rounded-lg bg-blue-600/10 flex items-center justify-center text-blue-500 hover:bg-blue-600 hover:text-white transition border border-blue-500/20"><i class="fab fa-facebook-f"></i></a>
                         <a href="#" class="w-9 h-9 rounded-lg bg-slate-700/50 flex items-center justify-center text-white hover:bg-slate-600 transition border border-slate-600"><i class="fab fa-tiktok"></i></a>
                     </div>
                 </div>
