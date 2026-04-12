@@ -9,7 +9,7 @@
 if (!defined('TG_BOT_TOKEN')) {
     // REPLACE WITH YOUR ACTUAL BOT TOKEN & CHAT ID
     define('TG_BOT_TOKEN', '8394551492:AAEC3JtdKSHDHrvKApZcIhI9Jwd14bpDayY'); 
-    define('TG_ADMIN_CHAT_ID', '8125603481'); 
+    define('TG_ADMIN_CHAT_ID', '1616955680'); 
 }
 
 // if (!defined('EXCHANGE_RATE')) {
