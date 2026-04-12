@@ -3,8 +3,8 @@
 // PRODUCTION v2.0 - Advanced HTML UI, Dynamic Telemetry & Asset Delivery
 
 // Load Config
-require_once '../includes/config.php';
-require_once '../includes/functions.php'; // For DB connection $pdo
+require_once 'includes/config.php';
+require_once 'includes/functions.php'; // For DB connection $pdo
 
 // 1. Get Incoming Update
 $content = file_get_contents("php://input");
