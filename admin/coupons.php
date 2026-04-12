@@ -1,6 +1,6 @@
 <?php
 // admin/coupons.php
-// PRODUCTION v1.0 - Full CRUD for Promotional Codes
+// PRODUCTION v1.1 - Full CRUD & Patched MySQL Datetime Formatting
 
 // 1. Handle Create (Add Coupon)
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['add_coupon'])) {
@@ -27,13 +27,11 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['add_coupon'])) {
             $error = "Transmission code '{$code}' already exists in the matrix.";
         } else {
             try {
-                // Ensure time is set to end of day if not specified
-                if (strpos($expiry, ' ') === false) {
-                    $expiry .= ' 23:59:59';
-                }
+                // Convert HTML5 datetime-local (YYYY-MM-DDThh:mm) to strict MySQL format (YYYY-MM-DD HH:MM:SS)
+                $mysql_expiry = date('Y-m-d H:i:s', strtotime($expiry));
                 
                 $stmt = $pdo->prepare("INSERT INTO coupons (code, discount_percent, max_usage, expires_at) VALUES (?, ?, ?, ?)");
-                $stmt->execute([$code, $percent, $limit, $expiry]);
+                $stmt->execute([$code, $percent, $limit, $mysql_expiry]);
                 redirect(admin_url('coupons', ['success' => 'created']));
             } catch (PDOException $e) {
                 $error = "Database Error: " . $e->getMessage();
