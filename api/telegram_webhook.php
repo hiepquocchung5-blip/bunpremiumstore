@@ -1,15 +1,24 @@
 <?php
 // api/telegram_webhook.php
-// PRODUCTION v2.0 - Advanced HTML UI, Dynamic Telemetry & Asset Delivery
+// PRODUCTION v2.3 - Advanced HTML UI & Standalone Multi-Admin Auth
 
 // Load Config
 require_once '../includes/config.php';
 require_once '../includes/functions.php'; // For DB connection $pdo
 
-// Check for direct access
-if ($_SERVER['REQUEST_METHOD'] === 'GET') {
-    echo "connections successfully";
-    exit;
+// =====================================================================================
+// FALLBACK SECURITY: Ensure Admin IDs and Auth Logic exist in the Webhook Scope
+// =====================================================================================
+if (!defined('TG_ADMIN_CHAT_ID')) {
+    define('TG_ADMIN_CHAT_ID', '1616955680,8125603481'); 
+}
+
+if (!function_exists('is_telegram_admin')) {
+    function is_telegram_admin($chat_id) {
+        if (empty($chat_id)) return false;
+        $admin_ids = array_map('trim', explode(',', TG_ADMIN_CHAT_ID));
+        return in_array((string)$chat_id, $admin_ids);
+    }
 }
 
 // 1. Get Incoming Update
@@ -30,7 +39,9 @@ $username = $update['message']['from']['username'] ?? 'Unknown';
 if ($chat_id) {
     
     $reply = "";
-    $isAdmin = ($chat_id == TG_ADMIN_CHAT_ID);
+    
+    // Utilize the core helper to check if this node is authorized
+    $isAdmin = is_telegram_admin($chat_id);
 
     // Split command and arguments (e.g., "/approve 123" -> ["/approve", "123"])
     $parts = explode(' ', $text);
@@ -56,7 +67,7 @@ if ($chat_id) {
             break;
 
         case '/myid':
-            $reply = "🆔 <b>Identity Verified:</b>\n\n<code>$chat_id</code>\n\n<i>Inject this sequence into includes/functions.php under TG_ADMIN_CHAT_ID to establish the admin uplink.</i>";
+            $reply = "🆔 <b>Identity Verified:</b>\n\n<code>$chat_id</code>\n\n<i>Inject this sequence into includes/functions.php under TG_ADMIN_CHAT_ID to establish the admin uplink. Separate multiple IDs with commas.</i>";
             break;
 
         case '/stats':
