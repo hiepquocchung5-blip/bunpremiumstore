@@ -1,6 +1,6 @@
 <?php
 // modules/shop/product.php
-// PRODUCTION v4.0 - Fixed Math, Added Tabs, Stock Checking & Sharing
+// PRODUCTION v4.3 - Mobile DOM Reordering & Strict Flash Sale Math
 
 $product_id = isset($_GET['id']) ? (int)$_GET['id'] : 0;
 
@@ -80,20 +80,31 @@ if (is_logged_in()) {
 }
 
 // ==========================================
-// 5. Pricing & Discount Math Logic (FIXED)
+// 5. STRICT PRICING & DISCOUNT MATH ENGINE
 // ==========================================
-$discount = is_logged_in() ? get_user_discount($_SESSION['user_id']) : 0;
+// Ensure pure floating-point arithmetic to prevent string concatenation bugs
+$discount = is_logged_in() ? (float)get_user_discount($_SESSION['user_id']) : 0.0;
 
-$original_price = $product['price'];
-$sale_price = $product['sale_price'];
+$retail_value = (float)$product['price'];
+$db_sale_price = (float)$product['sale_price'];
 
-// Base price is sale price if it exists, otherwise original
-$base_price = $sale_price ?: $original_price;
-$sale_savings = $original_price - $base_price;
+// Safely determine if a valid flash sale exists
+$is_flash_sale = ($db_sale_price > 0 && $db_sale_price < $retail_value);
 
-// Calculate Agent Savings
-$agent_savings = $base_price * ($discount / 100);
-$final_price = $base_price - $agent_savings;
+if ($is_flash_sale) {
+    $current_payable = $db_sale_price; // Total Pay is explicitly the sale price from DB
+    $flash_sale_deduction = $retail_value - $db_sale_price; // Display deduction as Retail - Sale
+} else {
+    $current_payable = $retail_value;
+    $flash_sale_deduction = 0;
+}
+
+// Calculate Agent Savings dynamically
+$agent_deduction = $current_payable * ($discount / 100);
+$final_payable = $current_payable - $agent_deduction;
+
+// Absolute Failsafe: Price cannot drop below 0
+$final_payable = max(0, $final_payable);
 
 // ==========================================
 // 6. Stock Check Logic
@@ -139,25 +150,27 @@ $has_cat_image = !empty($product['cat_image']);
 </style>
 
 <div class="max-w-7xl mx-auto px-4 py-8">
-    <div class="grid grid-cols-1 lg:grid-cols-3 gap-8">
+    
+    <!-- Breadcrumb Navigation -->
+    <div class="mb-4 flex items-center justify-between">
+        <a href="index.php" class="inline-flex items-center gap-2 text-xs font-bold text-slate-500 hover:text-[#00f0ff] transition uppercase tracking-wider group">
+            <i class="fas fa-arrow-left group-hover:-translate-x-1 transition-transform"></i> Store Hub
+        </a>
         
-        <!-- LEFT: Main Content -->
-        <div class="lg:col-span-2 space-y-8">
-            
-            <!-- Breadcrumb Navigation -->
-            <div class="mb-2 flex items-center justify-between">
-                <a href="index.php" class="inline-flex items-center gap-2 text-xs font-bold text-slate-500 hover:text-[#00f0ff] transition uppercase tracking-wider group">
-                    <i class="fas fa-arrow-left group-hover:-translate-x-1 transition-transform"></i> Store Hub
-                </a>
-                
-                <!-- Quick Actions (Share) -->
-                <button onclick="shareProduct()" class="text-xs font-bold text-slate-500 hover:text-white transition uppercase tracking-wider flex items-center gap-2 bg-slate-800 px-3 py-1.5 rounded-lg border border-slate-700 hover:border-slate-500 shadow-sm">
-                    <i class="fas fa-share-alt"></i> <span id="shareText">Share Node</span>
-                </button>
-            </div>
+        <!-- Quick Actions (Share) -->
+        <button onclick="shareProduct()" class="text-[10px] md:text-xs font-bold text-slate-500 hover:text-white transition uppercase tracking-wider flex items-center gap-2 bg-slate-800 px-3 py-1.5 rounded-lg border border-slate-700 hover:border-slate-500 shadow-sm">
+            <i class="fas fa-share-alt"></i> <span id="shareText">Share Node</span>
+        </button>
+    </div>
 
+    <!-- MAIN GRID LAYOUT -->
+    <div class="grid grid-cols-1 lg:grid-cols-3 gap-6 lg:gap-8">
+        
+        <!-- LEFT: Main Content & Tabs -->
+        <div class="lg:col-span-2 space-y-6 lg:space-y-8">
+            
             <!-- Hero Section -->
-            <div class="glass p-6 sm:p-8 rounded-3xl border border-[#00f0ff]/20 shadow-[0_20px_50px_rgba(0,0,0,0.5)] bg-slate-900/80 backdrop-blur-xl relative overflow-hidden group">
+            <div class="glass p-6 md:p-8 rounded-3xl border border-[#00f0ff]/20 shadow-[0_20px_50px_rgba(0,0,0,0.5)] bg-slate-900/80 backdrop-blur-xl relative overflow-hidden group">
                 
                 <!-- Dynamic Background -->
                 <div class="absolute inset-0 opacity-20 pointer-events-none bg-gradient-to-br from-blue-900 via-slate-900 to-slate-900"></div>
@@ -224,7 +237,7 @@ $has_cat_image = !empty($product['cat_image']);
                                     <i class="fas <?php echo $product['delivery_type'] == 'unique' ? 'fa-bolt' : 'fa-clock'; ?>"></i>
                                 </div>
                                 <div class="text-left">
-                                    <p class="text-[10px] text-slate-500 font-bold uppercase tracking-wider">Delivery Time</p>
+                                    <p class="text-[9px] md:text-[10px] text-slate-500 font-bold uppercase tracking-wider">Delivery Time</p>
                                     <p class="text-xs text-white font-medium"><?php echo $product['delivery_type'] == 'unique' ? 'Instant Auto-Send' : '5-15 Mins (Manual)'; ?></p>
                                 </div>
                             </div>
@@ -233,7 +246,7 @@ $has_cat_image = !empty($product['cat_image']);
                                     <i class="fas fa-shield-alt"></i>
                                 </div>
                                 <div class="text-left">
-                                    <p class="text-[10px] text-slate-500 font-bold uppercase tracking-wider">Warranty</p>
+                                    <p class="text-[9px] md:text-[10px] text-slate-500 font-bold uppercase tracking-wider">Warranty</p>
                                     <p class="text-xs text-white font-medium"><?php echo $product['duration_days'] ? $product['duration_days'].' Days Coverage' : 'Lifetime Valid'; ?></p>
                                 </div>
                             </div>
@@ -246,19 +259,19 @@ $has_cat_image = !empty($product['cat_image']);
             <div class="glass rounded-3xl border border-slate-700 shadow-xl bg-slate-900/60 backdrop-blur-xl overflow-hidden">
                 <!-- Tab Headers -->
                 <div class="flex border-b border-slate-700/50 bg-slate-800/40 px-2 pt-2 overflow-x-auto no-scrollbar">
-                    <button onclick="switchTab('desc')" id="btn-tab-desc" class="px-6 py-3.5 text-sm font-black uppercase tracking-wider text-[#00f0ff] border-b-2 border-[#00f0ff] transition-all whitespace-nowrap">
+                    <button onclick="switchTab('desc')" id="btn-tab-desc" class="px-5 py-3.5 text-xs md:text-sm font-black uppercase tracking-wider text-[#00f0ff] border-b-2 border-[#00f0ff] transition-all whitespace-nowrap">
                         Overview
                     </button>
-                    <button onclick="switchTab('inst')" id="btn-tab-inst" class="px-6 py-3.5 text-sm font-bold uppercase tracking-wider text-slate-400 border-b-2 border-transparent hover:text-white transition-all whitespace-nowrap">
+                    <button onclick="switchTab('inst')" id="btn-tab-inst" class="px-5 py-3.5 text-xs md:text-sm font-bold uppercase tracking-wider text-slate-400 border-b-2 border-transparent hover:text-white transition-all whitespace-nowrap">
                         Protocol Guide
                     </button>
-                    <button onclick="switchTab('rev')" id="btn-tab-rev" class="px-6 py-3.5 text-sm font-bold uppercase tracking-wider text-slate-400 border-b-2 border-transparent hover:text-white transition-all whitespace-nowrap">
+                    <button onclick="switchTab('rev')" id="btn-tab-rev" class="px-5 py-3.5 text-xs md:text-sm font-bold uppercase tracking-wider text-slate-400 border-b-2 border-transparent hover:text-white transition-all whitespace-nowrap">
                         Comms (<?php echo count($reviews); ?>)
                     </button>
                 </div>
 
                 <!-- Tab Contents -->
-                <div class="p-6 md:p-8">
+                <div class="p-5 md:p-8">
                     
                     <!-- Description Tab -->
                     <div id="tab-desc" class="tab-content active text-slate-300 text-sm leading-relaxed space-y-4">
@@ -302,14 +315,14 @@ $has_cat_image = !empty($product['cat_image']);
                         <?php if(isset($error)) echo "<div class='bg-red-500/10 text-red-400 p-4 rounded-xl mb-6 text-sm font-medium border border-red-500/30 flex items-center gap-3 shadow-lg'><i class='fas fa-exclamation-triangle text-lg'></i> $error</div>"; ?>
 
                         <?php if(is_logged_in()): ?>
-                            <form method="POST" class="mb-10 p-6 bg-slate-800/50 rounded-2xl border border-slate-700 transition focus-within:border-[#00f0ff]/50 shadow-inner">
+                            <form method="POST" class="mb-10 p-5 md:p-6 bg-slate-800/50 rounded-2xl border border-slate-700 transition focus-within:border-[#00f0ff]/50 shadow-inner">
                                 <input type="hidden" name="csrf_token" value="<?php echo generate_csrf_token(); ?>">
                                 <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-4">
                                     <span class="text-sm font-bold text-slate-300 uppercase tracking-wider">Evaluate Sector</span>
                                     <div class="flex flex-row-reverse justify-end gap-2 group">
                                         <?php for($i=5; $i>=1; $i--): ?>
                                             <input type="radio" name="rating" value="<?php echo $i; ?>" id="star<?php echo $i; ?>" class="peer hidden" required>
-                                            <label for="star<?php echo $i; ?>" class="cursor-pointer text-slate-600 peer-checked:text-yellow-400 hover:text-yellow-400 peer-hover:text-yellow-400 transition-colors text-2xl drop-shadow-md"><i class="fas fa-star"></i></label>
+                                            <label for="star<?php echo $i; ?>" class="cursor-pointer text-slate-600 peer-checked:text-yellow-400 hover:text-yellow-400 peer-hover:text-yellow-400 transition-colors text-xl md:text-2xl drop-shadow-md"><i class="fas fa-star"></i></label>
                                         <?php endfor; ?>
                                     </div>
                                 </div>
@@ -339,7 +352,7 @@ $has_cat_image = !empty($product['cat_image']);
                                     <div class="p-5 rounded-2xl bg-slate-800/30 border border-slate-700/50 hover:border-slate-600 transition-colors">
                                         <div class="flex justify-between items-start mb-3">
                                             <div class="flex items-center gap-3">
-                                                <div class="w-10 h-10 rounded-xl bg-slate-800 flex items-center justify-center text-sm font-bold text-white shadow-inner border border-slate-700">
+                                                <div class="w-10 h-10 rounded-xl bg-slate-800 flex items-center justify-center text-sm font-bold text-white shadow-inner border border-slate-700 shrink-0">
                                                     <?php echo strtoupper(substr($rev['username'], 0, 2)); ?>
                                                 </div>
                                                 <div>
@@ -362,77 +375,59 @@ $has_cat_image = !empty($product['cat_image']);
                 </div>
             </div>
 
-            <!-- Related Products Grid -->
-            <?php if(!empty($related_items)): ?>
-                <div class="pt-4">
-                    <h3 class="text-xl md:text-2xl font-black text-white mb-6 tracking-tight flex items-center gap-3">
-                        <i class="fas fa-layer-group text-[#00f0ff]"></i> Similar Nodes
-                    </h3>
-                    <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
-                        <?php 
-                        foreach($related_items as $item) {
-                            $product_temp = $product; 
-                            $product = $item; 
-                            include __DIR__ . '/../home/product_card.php';
-                            $product = $product_temp; 
-                        } 
-                        ?>
-                    </div>
-                </div>
-            <?php endif; ?>
-
         </div>
 
         <!-- RIGHT: Pricing & Upsell (Sticky Sidebar) -->
         <div class="lg:col-span-1">
             
-            <div class="glass p-6 md:p-8 rounded-3xl border border-slate-700 shadow-[0_20px_40px_rgba(0,0,0,0.4)] sticky top-24 bg-slate-900/80 backdrop-blur-xl relative overflow-hidden">
+            <div class="glass p-5 md:p-8 rounded-3xl border border-slate-700 shadow-[0_20px_40px_rgba(0,0,0,0.4)] lg:sticky lg:top-24 bg-slate-900/80 backdrop-blur-xl relative overflow-hidden">
                 <!-- Decorative Glow -->
                 <div class="absolute -right-10 -top-10 w-32 h-32 bg-[#00f0ff]/10 rounded-full blur-3xl pointer-events-none"></div>
 
-                <h3 class="text-slate-400 text-xs uppercase font-black mb-6 tracking-widest flex items-center gap-2 border-b border-slate-700/50 pb-4">
+                <h3 class="text-slate-300 text-xs uppercase font-black mb-5 tracking-widest flex items-center gap-2 border-b border-slate-700/50 pb-4">
                     <i class="fas fa-receipt text-[#00f0ff]"></i> Acquisition Summary
                 </h3>
                 
-                <div class="space-y-4 mb-8 border-b border-slate-700/50 pb-6">
+                <!-- Enhanced Pricing Matrix Box -->
+                <div class="space-y-3 mb-6 bg-slate-950/60 p-4 md:p-5 rounded-2xl border border-slate-800 shadow-inner">
                     
-                    <!-- Original / Base Price -->
-                    <div class="flex justify-between items-center text-sm">
-                        <span class="text-slate-400 font-medium">Retail Value</span>
-                        <span class="font-mono <?php echo ($sale_savings > 0 || $discount > 0) ? 'text-slate-500 line-through decoration-slate-600' : 'text-white font-bold'; ?>">
-                            <?php echo format_price($original_price); ?>
+                    <!-- Original / Retail Price -->
+                    <div class="flex justify-between items-center text-xs md:text-sm">
+                        <span class="text-slate-400 font-bold">Retail Value</span>
+                        <span class="font-mono <?php echo ($is_flash_sale || $discount > 0) ? 'text-slate-500 line-through decoration-red-500/60' : 'text-white font-bold'; ?>">
+                            <?php echo format_price($retail_value); ?>
                         </span>
                     </div>
                     
-                    <!-- Sale Savings -->
-                    <?php if($sale_savings > 0): ?>
-                    <div class="flex justify-between items-center text-sm">
-                        <span class="text-red-400 font-bold flex items-center gap-1.5"><i class="fas fa-bolt text-[10px]"></i> Flash Sale</span>
-                        <span class="text-red-400 font-mono font-bold">- <?php echo format_price($sale_savings); ?></span>
+                    <!-- Flash Sale Savings -->
+                    <?php if($is_flash_sale): ?>
+                    <div class="flex justify-between items-center text-xs md:text-sm">
+                        <span class="text-red-400 font-black flex items-center gap-1.5"><i class="fas fa-bolt text-[10px] animate-pulse"></i> Flash Sale</span>
+                        <span class="text-red-400 font-mono font-bold">- <?php echo format_price($flash_sale_deduction); ?></span>
                     </div>
                     <?php endif; ?>
 
                     <!-- Agent Discount -->
                     <?php if($discount > 0): ?>
-                    <div class="flex justify-between items-center text-sm">
-                        <span class="text-yellow-400 font-bold flex items-center gap-1.5"><i class="fas fa-crown text-[10px]"></i> Agent Offset (-<?php echo $discount; ?>%)</span>
-                        <span class="text-yellow-400 font-mono font-bold">- <?php echo format_price($agent_savings); ?></span>
+                    <div class="flex justify-between items-center text-xs md:text-sm">
+                        <span class="text-yellow-400 font-black flex items-center gap-1.5"><i class="fas fa-crown text-[10px]"></i> Agent (-<?php echo $discount; ?>%)</span>
+                        <span class="text-yellow-400 font-mono font-bold">- <?php echo format_price($agent_deduction); ?></span>
                     </div>
                     <?php endif; ?>
                 </div>
 
-                <div class="flex justify-between items-end mb-8 relative z-10">
-                    <span class="text-slate-300 font-black text-xs uppercase tracking-widest">Total Pay</span>
-                    <span class="text-4xl font-black text-[#00f0ff] tracking-tighter drop-shadow-[0_0_15px_rgba(0,240,255,0.4)]"><?php echo format_price($final_price); ?></span>
+                <div class="flex justify-between items-end mb-8 relative z-10 border-t border-slate-700/50 pt-5">
+                    <span class="text-slate-300 font-black text-xs md:text-sm uppercase tracking-widest">Total Pay</span>
+                    <span class="text-3xl md:text-4xl font-black text-[#00f0ff] tracking-tighter drop-shadow-[0_0_15px_rgba(0,240,255,0.4)]"><?php echo format_price($final_payable); ?></span>
                 </div>
 
                 <!-- Checkout Action -->
                 <?php if($can_buy): ?>
-                    <a href="index.php?module=shop&page=checkout&id=<?php echo $product['id']; ?>" class="block w-full bg-gradient-to-r from-blue-600 to-[#00f0ff] hover:from-blue-500 hover:to-[#00f0ff] text-slate-900 font-black py-4 rounded-xl text-center shadow-[0_0_20px_rgba(0,240,255,0.3)] hover:shadow-[0_0_30px_rgba(0,240,255,0.4)] transform hover:-translate-y-1 transition duration-300 uppercase tracking-widest flex items-center justify-center gap-2 group relative z-10">
+                    <a href="index.php?module=shop&page=checkout&id=<?php echo $product['id']; ?>" class="block w-full bg-gradient-to-r from-blue-600 to-[#00f0ff] hover:from-blue-500 hover:to-[#00f0ff] text-slate-900 font-black py-4 rounded-xl text-center shadow-[0_0_20px_rgba(0,240,255,0.3)] hover:shadow-[0_0_30px_rgba(0,240,255,0.4)] transform hover:-translate-y-1 transition duration-300 uppercase tracking-widest flex items-center justify-center gap-2 group relative z-10 text-xs md:text-sm">
                         <i class="fas fa-lock"></i> <span>Initiate Checkout</span>
                     </a>
                 <?php else: ?>
-                    <button disabled class="w-full bg-slate-800 border border-slate-700 text-slate-500 font-black py-4 rounded-xl text-center shadow-inner cursor-not-allowed uppercase tracking-widest flex items-center justify-center gap-2 relative z-10">
+                    <button disabled class="w-full bg-slate-800 border border-slate-700 text-slate-500 font-black py-4 rounded-xl text-center shadow-inner cursor-not-allowed uppercase tracking-widest flex items-center justify-center gap-2 relative z-10 text-xs md:text-sm">
                         <i class="fas fa-ban"></i> <span>Out of Stock</span>
                     </button>
                     <p class="text-center text-[10px] text-red-400 mt-3 font-bold">This node is currently depleted. Check back later.</p>
@@ -451,8 +446,31 @@ $has_cat_image = !empty($product['cat_image']);
             </div>
 
         </div>
+
     </div>
 </div>
+
+<!-- MOVED OUTSIDE THE MAIN GRID FOR FULL WIDTH BOTTOM FLOW ON MOBILE & DESKTOP -->
+<!-- Related Products Grid (Similar Nodes) -->
+<?php if(!empty($related_items)): ?>
+<div class="max-w-7xl mx-auto px-4 pb-12 pt-6 md:pt-12">
+    <div class="border-t border-slate-700/50 pt-8 md:pt-12">
+        <h3 class="text-xl md:text-2xl font-black text-white mb-6 md:mb-8 tracking-tight flex items-center gap-3">
+            <i class="fas fa-layer-group text-[#00f0ff]"></i> Similar Nodes
+        </h3>
+        <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
+            <?php 
+            foreach($related_items as $item) {
+                $product_temp = $product; 
+                $product = $item; 
+                include __DIR__ . '/../home/product_card.php';
+                $product = $product_temp; 
+            } 
+            ?>
+        </div>
+    </div>
+</div>
+<?php endif; ?>
 
 <!-- Lightbox Element -->
 <div id="productLightbox" class="lightbox flex" onclick="closeLightbox()" style="display:none;">
@@ -467,13 +485,13 @@ $has_cat_image = !empty($product['cat_image']);
         document.querySelectorAll('.tab-content').forEach(el => el.classList.remove('active'));
         // Reset all buttons
         document.querySelectorAll('[id^="btn-tab-"]').forEach(el => {
-            el.className = "px-6 py-3.5 text-sm font-bold uppercase tracking-wider text-slate-400 border-b-2 border-transparent hover:text-white transition-all whitespace-nowrap";
+            el.className = "px-5 py-3.5 text-xs md:text-sm font-bold uppercase tracking-wider text-slate-400 border-b-2 border-transparent hover:text-white transition-all whitespace-nowrap";
         });
         
         // Show target
         document.getElementById('tab-' + tabId).classList.add('active');
         // Highlight button
-        document.getElementById('btn-tab-' + tabId).className = "px-6 py-3.5 text-sm font-black uppercase tracking-wider text-[#00f0ff] border-b-2 border-[#00f0ff] transition-all whitespace-nowrap";
+        document.getElementById('btn-tab-' + tabId).className = "px-5 py-3.5 text-xs md:text-sm font-black uppercase tracking-wider text-[#00f0ff] border-b-2 border-[#00f0ff] transition-all whitespace-nowrap";
     }
 
     // Share URL Logic
