@@ -95,7 +95,7 @@ function send_telegram_alert($order_id, $product_name, $price, $username) {
     $chat_id = TG_ADMIN_CHAT_ID;
     
     // Construct Admin Link
-    $admin_url = BASE_URL . "admin/order_detail.php?id=" . $order_id;
+    $admin_url = ADMIN_URL . "admin/order_detail.php?id=" . $order_id;
     
     // Build Message
     $message = "🚨 <b>New Order Received!</b>\n\n";
