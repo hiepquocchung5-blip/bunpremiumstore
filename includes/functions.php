@@ -1,6 +1,6 @@
 <?php
 // includes/functions.php
-// PRODUCTION v5.0 - Telegram Photo Integration & Dynamic Asset Retrieval
+// PRODUCTION v5.1 - Multi-Admin Broadcast & Telegram Photo Integration
 
 /**
  * --------------------------------------------------------------------------
@@ -10,8 +10,8 @@
 if (!defined('TG_BOT_TOKEN')) {
     // REPLACE WITH YOUR ACTUAL BOT TOKEN & CHAT ID
     define('TG_BOT_TOKEN', '8394551492:AAEC3JtdKSHDHrvKApZcIhI9Jwd14bpDayY'); 
-    define('TG_ADMIN_CHAT_ID', '1616955680 ,8125603481'); // Multiple IDs can be comma-separated for broader access
-    // define('TG_ADMIN_CHAT_ID', '1616955680,123456789,987654321,555555555');for more user access
+    // Multiple IDs can be comma-separated for broader access (e.g., '1616955680,8125603481,123456789,987654321')
+    define('TG_ADMIN_CHAT_ID', '1616955680,8125603481'); 
 }
 
 // if (!defined('EXCHANGE_RATE')) {
@@ -96,7 +96,9 @@ function send_telegram_alert($order_id, $product_name, $price, $username) {
     global $pdo;
     
     $token = TG_BOT_TOKEN;
-    $chat_id = TG_ADMIN_CHAT_ID;
+    
+    // Convert the comma-separated string into an array of admin IDs
+    $admin_ids = array_map('trim', explode(',', TG_ADMIN_CHAT_ID));
     
     // Construct Admin Link
     $admin_url = ADMIN_URL . "index.php?page=order_detail&id=" . $order_id;
@@ -124,49 +126,56 @@ function send_telegram_alert($order_id, $product_name, $price, $username) {
     $message .= "💳 <b>Txn ID:</b> <code>{$txn_id}</code>\n";
     $message .= "\n👇 <a href='{$admin_url}'>Click to Process Order</a>";
 
-    // 3. Default to text message
-    $url = "https://api.telegram.org/bot{$token}/sendMessage";
-    $data = [
-        'chat_id' => $chat_id,
-        'text' => $message,
-        'parse_mode' => 'HTML',
-        'disable_web_page_preview' => true
-    ];
+    $results = [];
 
-    // 4. Upgrade to Photo message if proof image exists
-    if (!empty($proof_path)) {
-        // Resolve absolute local file path to bypass localhost/URL restrictions
-        $local_file = realpath(__DIR__ . '/../' . ltrim($proof_path, '/'));
-        
-        if ($local_file && file_exists($local_file)) {
-            $url = "https://api.telegram.org/bot{$token}/sendPhoto";
-            $data = [
-                'chat_id' => $chat_id,
-                'photo' => new CURLFile($local_file),
-                'caption' => $message,
-                'parse_mode' => 'HTML'
-            ];
+    // 3. Loop through each Admin Node and broadcast the payload
+    foreach ($admin_ids as $chat_id) {
+        if (empty($chat_id)) continue;
+
+        // Default to text message
+        $url = "https://api.telegram.org/bot{$token}/sendMessage";
+        $data = [
+            'chat_id' => $chat_id,
+            'text' => $message,
+            'parse_mode' => 'HTML',
+            'disable_web_page_preview' => true
+        ];
+
+        // Upgrade to Photo message if proof image exists
+        if (!empty($proof_path)) {
+            // Resolve absolute local file path to bypass localhost/URL restrictions
+            $local_file = realpath(__DIR__ . '/../' . ltrim($proof_path, '/'));
+            
+            if ($local_file && file_exists($local_file)) {
+                $url = "https://api.telegram.org/bot{$token}/sendPhoto";
+                $data = [
+                    'chat_id' => $chat_id,
+                    'photo' => new CURLFile($local_file),
+                    'caption' => $message,
+                    'parse_mode' => 'HTML'
+                ];
+            }
         }
-    }
 
-    // 5. Send Request via CURL
-    $ch = curl_init();
-    curl_setopt($ch, CURLOPT_URL, $url);
-    curl_setopt($ch, CURLOPT_POST, true);
-    curl_setopt($ch, CURLOPT_POSTFIELDS, $data);
-    curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
-    curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, false); // Disable SSL check for local/testing env
-    
-    $result = curl_exec($ch);
-    
-    // Log error if needed
-    if(curl_errno($ch)){
-        error_log('Telegram Curl Error: ' . curl_error($ch));
+        // Send Request via CURL
+        $ch = curl_init();
+        curl_setopt($ch, CURLOPT_URL, $url);
+        curl_setopt($ch, CURLOPT_POST, true);
+        curl_setopt($ch, CURLOPT_POSTFIELDS, $data);
+        curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
+        curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, false); // Disable SSL check for local/testing env
+        
+        $results[] = curl_exec($ch);
+        
+        // Log error if needed
+        if(curl_errno($ch)){
+            error_log("Telegram Curl Error for ID {$chat_id}: " . curl_error($ch));
+        }
+        
+        curl_close($ch);
     }
     
-    curl_close($ch);
-    
-    return $result;
+    return $results;
 }
 
 /**
