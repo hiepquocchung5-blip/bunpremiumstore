@@ -1,6 +1,6 @@
 <?php
 // admin/includes/header.php
-// PRODUCTION v6.2 - DB Auto-Heal, Node Telemetry & Unified Responsive Header
+// PRODUCTION v6.3 - Node Telemetry & Unified Responsive Header
 
 require_once dirname(__DIR__) . '/config/db.php';
 require_once dirname(__DIR__) . '/includes/functions.php';
@@ -35,28 +35,17 @@ if (!function_exists('admin_url')) {
     }
 }
 
-// Database Connection & Auto-Heal Routines
+// Database Connection & Telemetry Routines
 $pending_count = 0;
 $push_nodes_count = 0;
 
 if (isset($pdo)) {
     try {
-        // 1. AUTO-HEAL: Ensure Push Subscriptions Table Exists
-        $pdo->exec("CREATE TABLE IF NOT EXISTS push_subscriptions (
-            id INT AUTO_INCREMENT PRIMARY KEY,
-            user_id INT NOT NULL,
-            endpoint VARCHAR(500) NOT NULL UNIQUE,
-            p256dh VARCHAR(255) NOT NULL,
-            auth VARCHAR(255) NOT NULL,
-            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-            FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
-        )");
-
-        // 2. Fetch Pending Orders
+        // 1. Fetch Pending Orders
         $stmt = $pdo->query("SELECT COUNT(*) FROM orders WHERE status = 'pending'");
         $pending_count = $stmt->fetchColumn();
 
-        // 3. Fetch Active Push Nodes
+        // 2. Fetch Active Push Nodes
         $stmt_push = $pdo->query("SELECT COUNT(*) FROM push_subscriptions");
         $push_nodes_count = $stmt_push->fetchColumn();
 
