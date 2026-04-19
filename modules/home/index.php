@@ -1,6 +1,6 @@
 <?php
 // modules/home/index.php
-// PRODUCTION READY v4.1 - Cinematic Poster Banners, Expanded Inventory & Payment Directory
+// PRODUCTION READY v5.0 - Dynamic Live Telemetry, Gacha Nodes & Cinematic UX
 
 // 1. Fetch Banners (Active Slides)
 $stmt = $pdo->query("SELECT * FROM banners ORDER BY display_order ASC, id DESC LIMIT 5");
@@ -9,6 +9,10 @@ $banners = $stmt->fetchAll();
 // 2. Fetch Categories (Strictly using image_url)
 $stmt = $pdo->query("SELECT id, name, image_url, description, type FROM categories ORDER BY id ASC");
 $categories = $stmt->fetchAll();
+
+// 2.5 Fetch Active Blind Boxes (Gacha Nodes)
+$stmt = $pdo->query("SELECT * FROM blindboxes WHERE is_active = 1 ORDER BY id DESC LIMIT 4");
+$blindboxes = $stmt->fetchAll();
 
 // 3. Fetch "Hot Deals" (Sale Items)
 $stmt = $pdo->query("
@@ -20,7 +24,7 @@ $stmt = $pdo->query("
 ");
 $flash_sales = $stmt->fetchAll();
 
-// 4. Fetch "Best Sellers" (Based on active orders) - Increased Limit to 6
+// 4. Fetch "Best Sellers" (Based on active orders)
 $stmt = $pdo->query("
     SELECT p.*, c.name as cat_name, c.image_url as cat_image, COUNT(o.id) as sales_count
     FROM products p 
@@ -31,7 +35,7 @@ $stmt = $pdo->query("
 ");
 $best_sellers = $stmt->fetchAll();
 
-// 5. Fetch "Recent Arrivals" (Main Grid) - Increased Limit to 18
+// 5. Fetch "Recent Arrivals" (Main Grid)
 $stmt = $pdo->query("
     SELECT p.*, c.name as cat_name, c.image_url as cat_image
     FROM products p 
@@ -40,7 +44,7 @@ $stmt = $pdo->query("
 ");
 $recent_products = $stmt->fetchAll();
 
-// 6. Fetch "Community Trust" (Recent 5-star reviews) - Increased Limit to 4
+// 6. Fetch "Community Trust" (Recent 5-star reviews)
 $stmt = $pdo->query("
     SELECT r.*, u.username, p.name as product_name, p.id as pid, p.image_path as p_image
     FROM reviews r
@@ -64,6 +68,9 @@ $total_users_count = $pdo->query("SELECT COUNT(*) FROM users")->fetchColumn();
 $total_orders_count = $pdo->query("SELECT COUNT(*) FROM orders WHERE status = 'active'")->fetchColumn();
 $display_users = max($total_users_count, 1250); 
 $display_orders = max($total_orders_count, 8500);
+
+// Generate an initial random seed for the live online user counter (10 to 1000)
+$live_online = rand(120, 850); 
 ?>
 
 <style>
@@ -106,6 +113,16 @@ $display_orders = max($total_orders_count, 8500);
     }
     .animate-pan-image {
         animation: panImage 20s ease-in-out infinite;
+    }
+
+    /* Smooth Infinite Marquee */
+    @keyframes marquee-infinite {
+        0% { transform: translateX(0); }
+        100% { transform: translateX(-50%); }
+    }
+    .animate-marquee-infinite {
+        animation: marquee-infinite 35s linear infinite;
+        width: max-content;
     }
 </style>
 
@@ -174,32 +191,48 @@ $display_orders = max($total_orders_count, 8500);
     </div>
     <?php endif; ?>
 
-    <!-- SECTION 1.5: System Telemetry (Social Proof Counters) -->
-    <div class="grid grid-cols-2 md:grid-cols-4 gap-4 mb-14 relative z-10">
-        <div class="bg-slate-900/60 backdrop-blur border border-slate-700/50 rounded-2xl p-4 md:p-5 text-center group hover:border-[#00f0ff]/50 transition-colors shadow-inner">
-            <i class="fas fa-server text-2xl text-slate-500 group-hover:text-[#00f0ff] mb-2 transition-colors"></i>
-            <div class="text-2xl md:text-3xl font-black text-white tracking-tighter"><span class="telemetry-counter" data-target="99.9" data-suffix="%">0</span></div>
-            <div class="text-[9px] md:text-[10px] text-slate-400 uppercase tracking-widest font-bold mt-1">Uptime</div>
+    <!-- SECTION 1.5: System Telemetry (Dynamic Social Proof Matrix) -->
+    <div class="grid grid-cols-2 md:grid-cols-4 gap-4 md:gap-6 mb-14 relative z-10">
+        
+        <!-- Uptime -->
+        <div class="bg-slate-900/80 backdrop-blur-xl border border-blue-500/20 rounded-3xl p-5 text-center group hover:border-[#00f0ff]/50 transition-all duration-300 shadow-[0_0_15px_rgba(0,0,0,0.5)] hover:shadow-[0_0_25px_rgba(0,240,255,0.15)] relative overflow-hidden">
+            <div class="absolute -left-6 -top-6 w-20 h-20 bg-blue-500/10 rounded-full blur-2xl group-hover:bg-[#00f0ff]/20 transition-colors"></div>
+            <i class="fas fa-server text-2xl text-slate-500 group-hover:text-[#00f0ff] mb-2 transition-colors relative z-10"></i>
+            <div class="text-2xl md:text-3xl font-black text-white tracking-tighter relative z-10"><span class="telemetry-counter" data-target="99.99" data-suffix="%">0</span></div>
+            <div class="text-[9px] md:text-[10px] text-slate-400 uppercase tracking-widest font-bold mt-1 relative z-10">Server Uptime</div>
         </div>
-        <div class="bg-slate-900/60 backdrop-blur border border-slate-700/50 rounded-2xl p-4 md:p-5 text-center group hover:border-purple-500/50 transition-colors shadow-inner">
-            <i class="fas fa-users text-2xl text-slate-500 group-hover:text-purple-400 mb-2 transition-colors"></i>
-            <div class="text-2xl md:text-3xl font-black text-white tracking-tighter"><span class="telemetry-counter" data-target="<?php echo $display_users; ?>" data-suffix="+">0</span></div>
-            <div class="text-[9px] md:text-[10px] text-slate-400 uppercase tracking-widest font-bold mt-1">Active Nodes</div>
+        
+        <!-- Live Connections (Dynamic Fluctuation) -->
+        <div class="bg-slate-900/80 backdrop-blur-xl border border-purple-500/20 rounded-3xl p-5 text-center group hover:border-purple-500/50 transition-all duration-300 shadow-[0_0_15px_rgba(0,0,0,0.5)] hover:shadow-[0_0_25px_rgba(168,85,247,0.15)] relative overflow-hidden">
+            <div class="absolute -right-6 -bottom-6 w-20 h-20 bg-purple-500/10 rounded-full blur-2xl group-hover:bg-purple-500/20 transition-colors"></div>
+            <div class="absolute top-4 right-4 flex items-center gap-1.5">
+                <span class="w-1.5 h-1.5 rounded-full bg-green-500 animate-pulse shadow-[0_0_5px_#22c55e]"></span>
+                <span class="text-[8px] text-green-400 font-bold uppercase tracking-widest">Live</span>
+            </div>
+            <i class="fas fa-network-wired text-2xl text-slate-500 group-hover:text-purple-400 mb-2 transition-colors relative z-10"></i>
+            <div class="text-2xl md:text-3xl font-black text-white tracking-tighter relative z-10"><span id="liveUsersCounter" class="text-purple-300 drop-shadow-[0_0_8px_rgba(168,85,247,0.5)] transition-colors duration-300"><?php echo number_format($live_online); ?></span></div>
+            <div class="text-[9px] md:text-[10px] text-slate-400 uppercase tracking-widest font-bold mt-1 relative z-10">Active Connections</div>
         </div>
-        <div class="bg-slate-900/60 backdrop-blur border border-slate-700/50 rounded-2xl p-4 md:p-5 text-center group hover:border-green-500/50 transition-colors shadow-inner">
-            <i class="fas fa-box-open text-2xl text-slate-500 group-hover:text-green-400 mb-2 transition-colors"></i>
-            <div class="text-2xl md:text-3xl font-black text-white tracking-tighter"><span class="telemetry-counter" data-target="<?php echo $display_orders; ?>" data-suffix="+">0</span></div>
-            <div class="text-[9px] md:text-[10px] text-slate-400 uppercase tracking-widest font-bold mt-1">Deliveries</div>
+
+        <!-- Deliveries (Live Ticker) -->
+        <div class="bg-slate-900/80 backdrop-blur-xl border border-green-500/20 rounded-3xl p-5 text-center group hover:border-green-500/50 transition-all duration-300 shadow-[0_0_15px_rgba(0,0,0,0.5)] hover:shadow-[0_0_25px_rgba(34,197,94,0.15)] relative overflow-hidden" id="deliveriesCard">
+            <div class="absolute -left-6 -bottom-6 w-20 h-20 bg-green-500/10 rounded-full blur-2xl group-hover:bg-green-500/20 transition-colors"></div>
+            <i class="fas fa-parachute-box text-2xl text-slate-500 group-hover:text-green-400 mb-2 transition-colors relative z-10"></i>
+            <div class="text-2xl md:text-3xl font-black text-white tracking-tighter relative z-10"><span id="liveDeliveriesCounter" class="telemetry-counter text-green-300 transition-colors duration-300" data-target="<?php echo $display_orders; ?>" data-suffix="+">0</span></div>
+            <div class="text-[9px] md:text-[10px] text-slate-400 uppercase tracking-widest font-bold mt-1 relative z-10">Assets Deployed</div>
         </div>
-        <div class="bg-slate-900/60 backdrop-blur border border-slate-700/50 rounded-2xl p-4 md:p-5 text-center group hover:border-yellow-500/50 transition-colors shadow-inner">
-            <i class="fas fa-bolt text-2xl text-slate-500 group-hover:text-yellow-400 mb-2 transition-colors"></i>
-            <div class="text-2xl md:text-3xl font-black text-white tracking-tighter"><span class="telemetry-counter" data-target="24" data-suffix="/7">0</span></div>
-            <div class="text-[9px] md:text-[10px] text-slate-400 uppercase tracking-widest font-bold mt-1">Auto System</div>
+
+        <!-- System Status -->
+        <div class="bg-slate-900/80 backdrop-blur-xl border border-yellow-500/20 rounded-3xl p-5 text-center group hover:border-yellow-500/50 transition-all duration-300 shadow-[0_0_15px_rgba(0,0,0,0.5)] hover:shadow-[0_0_25px_rgba(234,179,8,0.15)] relative overflow-hidden">
+            <div class="absolute -right-6 -top-6 w-20 h-20 bg-yellow-500/10 rounded-full blur-2xl group-hover:bg-yellow-500/20 transition-colors"></div>
+            <i class="fas fa-shield-check text-2xl text-slate-500 group-hover:text-yellow-400 mb-2 transition-colors relative z-10"></i>
+            <div class="text-2xl md:text-3xl font-black text-white tracking-tighter relative z-10"><span class="telemetry-counter text-yellow-300" data-target="24" data-suffix="/7">0</span></div>
+            <div class="text-[9px] md:text-[10px] text-slate-400 uppercase tracking-widest font-bold mt-1 relative z-10">Automated Protocol</div>
         </div>
     </div>
 
     <!-- SECTION 2: Interactive Category Slider -->
-    <div class="mb-16 relative">
+    <div class="mb-14 relative">
         <div class="flex items-end justify-between mb-6">
             <h2 class="text-2xl md:text-3xl font-black text-white tracking-tight flex items-center gap-3">
                 <i class="fas fa-network-wired text-[#00f0ff]"></i> Sector Directory
@@ -251,6 +284,46 @@ $display_orders = max($total_orders_count, 8500);
         </div>
     </div>
 
+    <!-- SECTION 2.5: Blind Boxes / Gacha Nodes -->
+    <?php if(!empty($blindboxes)): ?>
+    <div class="mb-16 border-t border-slate-800 pt-10 relative">
+        <div class="absolute right-0 top-10 w-64 h-64 bg-purple-600/10 rounded-full blur-3xl pointer-events-none"></div>
+        <div class="flex items-center gap-3 mb-6 relative z-10">
+            <span class="relative flex h-5 w-5">
+              <span class="animate-ping absolute inline-flex h-full w-full rounded-full bg-purple-400 opacity-75"></span>
+              <span class="relative inline-flex rounded-full h-5 w-5 bg-purple-500 shadow-[0_0_15px_rgba(168,85,247,0.8)]"></span>
+            </span>
+            <h2 class="text-2xl md:text-3xl font-black text-white tracking-tight">Quantum Gacha Nodes</h2>
+            <span class="bg-blue-500/10 border border-blue-500/30 text-blue-400 text-[9px] font-bold px-2 py-0.5 rounded-md uppercase tracking-widest hidden sm:inline-block">Public Access</span>
+        </div>
+
+        <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6 relative z-10">
+            <?php foreach($blindboxes as $box): ?>
+                <div class="bg-slate-900/80 backdrop-blur-xl border border-purple-500/30 rounded-3xl p-5 flex flex-col items-center text-center shadow-[0_10px_30px_rgba(168,85,247,0.1)] hover:shadow-[0_10px_40px_rgba(168,85,247,0.3)] hover:border-purple-400 transition-all duration-300 group">
+                    <div class="w-32 h-32 mb-4 relative">
+                        <div class="absolute inset-0 bg-purple-500/20 rounded-full blur-xl group-hover:bg-purple-500/40 transition"></div>
+                        <?php if(!empty($box['image_path'])): ?>
+                            <img src="<?php echo BASE_URL . $box['image_path']; ?>" class="w-full h-full object-contain relative z-10 group-hover:scale-110 transition duration-500 drop-shadow-[0_0_15px_rgba(168,85,247,0.5)]">
+                        <?php else: ?>
+                            <i class="fas fa-box-open text-6xl text-purple-400 relative z-10 flex items-center justify-center h-full group-hover:scale-110 transition duration-500 drop-shadow-[0_0_15px_rgba(168,85,247,0.5)]"></i>
+                        <?php endif; ?>
+                    </div>
+                    
+                    <h3 class="text-lg font-black text-white mb-1 group-hover:text-purple-400 transition"><?php echo htmlspecialchars($box['title']); ?></h3>
+                    <p class="text-[10px] text-slate-400 font-bold uppercase tracking-widest mb-4">Mystery Drop Array</p>
+                    
+                    <div class="mt-auto w-full">
+                        <p class="text-xs text-purple-300 font-mono font-bold mb-3"><?php echo format_price($box['price']); ?></p>
+                        <a href="index.php?module=shop&page=blindbox&hash=<?php echo $box['box_hash']; ?>" class="block w-full bg-gradient-to-r from-purple-600 to-fuchsia-600 hover:from-purple-500 hover:to-fuchsia-500 text-white font-black py-2.5 rounded-xl text-xs uppercase tracking-widest shadow-[0_0_15px_rgba(168,85,247,0.4)] transition transform active:scale-95 flex items-center justify-center gap-2">
+                            <i class="fas fa-key"></i> Decrypt Node
+                        </a>
+                    </div>
+                </div>
+            <?php endforeach; ?>
+        </div>
+    </div>
+    <?php endif; ?>
+
     <!-- SECTION 3: Hot Deals (Flash Sales) -->
     <?php if(!empty($flash_sales)): ?>
     <div class="mb-16">
@@ -276,33 +349,56 @@ $display_orders = max($total_orders_count, 8500);
     <?php endif; ?>
 
     <!-- SECTION 4: Feature Strip (Circuit Node Style) -->
-    <div class="grid grid-cols-1 md:grid-cols-3 gap-6 mb-16 relative">
-        <!-- Connecting Line Background -->
-        <!-- <div class="hidden md:block absolute top-1/2 left-10 right-10 h-1 bg-slate-800 -z-10 transform -translate-y-1/2 shadow-inner rounded-full">
-            <div class="h-full bg-gradient-to-r from-green-500 via-purple-500 to-yellow-500 opacity-50 w-full animate-pulse rounded-full"></div>
-        </div> -->
-
-        <div class="glass border border-slate-700/50 p-6 md:p-8 rounded-3xl flex flex-col items-center text-center gap-4 relative overflow-hidden group hover:border-green-500/50 transition-colors shadow-lg">
-            <div class="w-16 h-16 rounded-2xl bg-green-500/10 flex items-center justify-center text-green-400 text-3xl border border-green-500/20 shadow-[0_0_20px_rgba(34,197,94,0.15)] group-hover:scale-110 transition duration-300 rotate-3"><i class="fas fa-bolt"></i></div>
-            <div>
-                <div class="text-sm font-black text-white tracking-widest uppercase mb-1.5">Instant Delivery</div>
-                <div class="text-[10px] md:text-xs text-slate-400 font-medium leading-relaxed">Automated 24/7 Matrix Processing</div>
-            </div>
+    <div class="mb-16 relative mt-10">
+        <!-- Connecting Circuit Line Background -->
+        <div class="absolute top-1/2 left-10 right-10 h-[2px] bg-slate-800 -translate-y-1/2 hidden md:block overflow-hidden rounded-full z-0">
+            <div class="h-full w-1/3 bg-gradient-to-r from-transparent via-[#00f0ff] to-transparent animate-[marquee_3s_linear_infinite]"></div>
         </div>
 
-        <div class="glass border border-slate-700/50 p-6 md:p-8 rounded-3xl flex flex-col items-center text-center gap-4 relative overflow-hidden group hover:border-purple-500/50 transition-colors shadow-lg">
-            <div class="w-16 h-16 rounded-2xl bg-purple-500/10 flex items-center justify-center text-purple-400 text-3xl border border-purple-500/20 shadow-[0_0_20px_rgba(168,85,247,0.15)] group-hover:scale-110 transition duration-300 -rotate-3"><i class="fas fa-shield-alt"></i></div>
-            <div>
-                <div class="text-sm font-black text-white tracking-widest uppercase mb-1.5">Official Warranty</div>
-                <div class="text-[10px] md:text-xs text-slate-400 font-medium leading-relaxed">Secure Encrypted Service Protocol</div>
+        <div class="grid grid-cols-1 md:grid-cols-3 gap-6 md:gap-8 relative z-10">
+            <!-- 1. Instant Delivery (Focus Node) -->
+            <div class="bg-slate-900/90 backdrop-blur-xl border border-green-500/40 p-6 md:p-8 rounded-3xl flex flex-col items-center text-center gap-4 relative overflow-hidden group shadow-[0_10px_30px_rgba(34,197,94,0.15)] hover:shadow-[0_15px_40px_rgba(34,197,94,0.3)] hover:border-green-400 transition-all duration-500 transform hover:-translate-y-1.5">
+                <div class="absolute inset-0 bg-gradient-to-b from-green-500/10 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-500 z-0"></div>
+                <div class="absolute -top-10 -right-10 w-32 h-32 bg-green-500/20 rounded-full blur-3xl group-hover:bg-green-500/40 transition-colors duration-500 z-0"></div>
+                
+                <div class="w-20 h-20 rounded-2xl bg-slate-950 flex items-center justify-center text-green-400 text-4xl border border-green-500/50 shadow-[inset_0_0_20px_rgba(34,197,94,0.2),0_0_25px_rgba(34,197,94,0.3)] group-hover:scale-110 transition-transform duration-500 relative z-10">
+                    <i class="fas fa-bolt drop-shadow-[0_0_15px_rgba(34,197,94,0.8)] animate-pulse"></i>
+                </div>
+                
+                <div class="relative z-10 w-full">
+                    <div class="text-sm font-black text-white tracking-widest uppercase mb-2 group-hover:text-green-400 transition-colors">Instant Delivery</div>
+                    <div class="text-[10px] md:text-xs text-slate-400 font-medium leading-relaxed bg-slate-950/60 px-4 py-2.5 rounded-xl border border-slate-800 shadow-inner">24/7 Automated Matrix Dispenser. Zero Latency.</div>
+                </div>
             </div>
-        </div>
 
-        <div class="glass border border-slate-700/50 p-6 md:p-8 rounded-3xl flex flex-col items-center text-center gap-4 relative overflow-hidden group hover:border-yellow-500/50 transition-colors shadow-lg">
-            <div class="w-16 h-16 rounded-2xl bg-yellow-500/10 flex items-center justify-center text-yellow-400 text-3xl border border-yellow-500/20 shadow-[0_0_20px_rgba(234,179,8,0.15)] group-hover:scale-110 transition duration-300 rotate-3"><i class="fas fa-wallet"></i></div>
-            <div>
-                <div class="text-sm font-black text-white tracking-widest uppercase mb-1.5">Local Payment</div>
-                <div class="text-[10px] md:text-xs text-slate-400 font-medium leading-relaxed">KPay / Wave Pay Systems Supported</div>
+            <!-- 2. Official Warranty -->
+            <div class="bg-slate-900/90 backdrop-blur-xl border border-purple-500/30 p-6 md:p-8 rounded-3xl flex flex-col items-center text-center gap-4 relative overflow-hidden group shadow-[0_10px_30px_rgba(168,85,247,0.1)] hover:shadow-[0_15px_40px_rgba(168,85,247,0.2)] hover:border-purple-400 transition-all duration-500 transform hover:-translate-y-1.5">
+                <div class="absolute inset-0 bg-gradient-to-b from-purple-500/10 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-500 z-0"></div>
+                <div class="absolute -top-10 -right-10 w-32 h-32 bg-purple-500/20 rounded-full blur-3xl group-hover:bg-purple-500/30 transition-colors duration-500 z-0"></div>
+                
+                <div class="w-20 h-20 rounded-2xl bg-slate-950 flex items-center justify-center text-purple-400 text-4xl border border-purple-500/40 shadow-[inset_0_0_15px_rgba(168,85,247,0.2),0_0_20px_rgba(168,85,247,0.2)] group-hover:scale-110 transition-transform duration-500 relative z-10">
+                    <i class="fas fa-shield-check drop-shadow-[0_0_15px_rgba(168,85,247,0.8)]"></i>
+                </div>
+                
+                <div class="relative z-10 w-full">
+                    <div class="text-sm font-black text-white tracking-widest uppercase mb-2 group-hover:text-purple-400 transition-colors">Official Warranty</div>
+                    <div class="text-[10px] md:text-xs text-slate-400 font-medium leading-relaxed bg-slate-950/60 px-4 py-2.5 rounded-xl border border-slate-800 shadow-inner">Secure Encrypted Protocol. 100% Guaranteed.</div>
+                </div>
+            </div>
+
+            <!-- 3. Local Payment -->
+            <div class="bg-slate-900/90 backdrop-blur-xl border border-yellow-500/30 p-6 md:p-8 rounded-3xl flex flex-col items-center text-center gap-4 relative overflow-hidden group shadow-[0_10px_30px_rgba(234,179,8,0.1)] hover:shadow-[0_15px_40px_rgba(234,179,8,0.2)] hover:border-yellow-400 transition-all duration-500 transform hover:-translate-y-1.5">
+                <div class="absolute inset-0 bg-gradient-to-b from-yellow-500/10 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-500 z-0"></div>
+                <div class="absolute -top-10 -right-10 w-32 h-32 bg-yellow-500/20 rounded-full blur-3xl group-hover:bg-yellow-500/30 transition-colors duration-500 z-0"></div>
+                
+                <div class="w-20 h-20 rounded-2xl bg-slate-950 flex items-center justify-center text-yellow-400 text-4xl border border-yellow-500/40 shadow-[inset_0_0_15px_rgba(234,179,8,0.2),0_0_20px_rgba(234,179,8,0.2)] group-hover:scale-110 transition-transform duration-500 relative z-10">
+                    <i class="fas fa-wallet drop-shadow-[0_0_15px_rgba(234,179,8,0.8)]"></i>
+                </div>
+                
+                <div class="relative z-10 w-full">
+                    <div class="text-sm font-black text-white tracking-widest uppercase mb-2 group-hover:text-yellow-400 transition-colors">Local Payment</div>
+                    <div class="text-[10px] md:text-xs text-slate-400 font-medium leading-relaxed bg-slate-950/60 px-4 py-2.5 rounded-xl border border-slate-800 shadow-inner">KPay & Wave Pay Ecosystems Linked.</div>
+                </div>
             </div>
         </div>
     </div>
@@ -529,7 +625,6 @@ document.addEventListener('DOMContentLoaded', () => {
         startHero();
     }
 
-
     // --- 2. CATEGORY SLIDER PROGRESS ---
     const cSlider = document.getElementById('categorySlider');
     const cProgress = document.getElementById('catScrollProgress');
@@ -553,5 +648,50 @@ document.addEventListener('DOMContentLoaded', () => {
         });
     }
 
+    // --- 3. DYNAMIC LIVE TELEMETRY ENGINE ---
+    
+    // Live User Fluctuation
+    const liveUsersEl = document.getElementById('liveUsersCounter');
+    if (liveUsersEl) {
+        let currentUsers = parseInt(liveUsersEl.innerText.replace(/,/g, '')) || 342;
+        setInterval(() => {
+            // Fluctuate by -3 to +5
+            const change = Math.floor(Math.random() * 9) - 3;
+            currentUsers += change;
+            
+            // Keep bounds realistic (10 to 1000)
+            if (currentUsers < 10) currentUsers = 10 + Math.floor(Math.random() * 10);
+            if (currentUsers > 1000) currentUsers = 1000 - Math.floor(Math.random() * 20);
+            
+            liveUsersEl.innerText = currentUsers.toLocaleString();
+            
+            // Pulse effect
+            liveUsersEl.classList.add('text-white', 'scale-110');
+            setTimeout(() => liveUsersEl.classList.remove('text-white', 'scale-110'), 300);
+        }, 3500); // Every 3.5 seconds
+    }
+
+    // Live Delivery Ticker
+    const deliveriesCard = document.getElementById('deliveriesCard');
+    const deliveriesEl = document.getElementById('liveDeliveriesCounter');
+    if (deliveriesEl && deliveriesCard) {
+        setInterval(() => {
+            // Randomly increment to simulate live purchases
+            if(Math.random() > 0.5) {
+                let currentDel = parseInt(deliveriesEl.innerText.replace(/[^0-9]/g, '')) || 8500;
+                currentDel += 1;
+                deliveriesEl.innerText = currentDel.toLocaleString() + '+';
+                
+                // Neon Flash effect on the whole card
+                deliveriesCard.classList.remove('border-green-500/20');
+                deliveriesCard.classList.add('border-green-400', 'shadow-[0_0_30px_rgba(34,197,94,0.4)]');
+                
+                setTimeout(() => {
+                    deliveriesCard.classList.add('border-green-500/20');
+                    deliveriesCard.classList.remove('border-green-400', 'shadow-[0_0_30px_rgba(34,197,94,0.4)]');
+                }, 800);
+            }
+        }, 6000); // Check every 6 seconds
+    }
 });
 </script>
