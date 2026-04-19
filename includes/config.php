@@ -33,6 +33,7 @@ try {
 
 // 4. System Settings
 define('BASE_URL', $_ENV['APP_URL'] ?? 'http://digitalmarketplacemm.com/');
+define('MAIN_SITE_URL', 'https://digitalmarketplacemm.com/'); // Point to where uploads folder lives
 define('ADMIN_URL', $_ENV['ADMIN_URL'] ?? 'http://bunsadminconfig.digitalmarketplacemm.com/');
 define('EXCHANGE_RATE', (int)($_ENV['EXCHANGE_RATE'] ?? 4200));
 
