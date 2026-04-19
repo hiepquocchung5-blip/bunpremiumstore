@@ -1,13 +1,14 @@
 // assets/js/app.js
-// PRODUCTION v3.0 - Instant Local Welcome Push & Smart Subscriptions
+// PRODUCTION v3.1 - Fixed SW Root Scope & Instant Local Welcome Push
 
 /**
  * --------------------------------------------------------------------------
  * CONFIGURATION
  * --------------------------------------------------------------------------
  */
-// Public VAPID Key for Web Push (Injected from server .env via window.AppConfig)
+// Public VAPID Key & Base URL for Web Push (Injected from server .env)
 const PUBLIC_VAPID_KEY = window.AppConfig?.vapidPublicKey || '';
+const BASE_URL = window.AppConfig?.baseUrl || '/';
 
 /**
  * --------------------------------------------------------------------------
@@ -42,7 +43,9 @@ window.registerServiceWorker = async function(triggerWelcome = false) {
     }
 
     try {
-        const register = await navigator.serviceWorker.register('assets/sw.js');
+        // Registering the SW at the ROOT domain scope, not in /assets/
+        const swUrl = BASE_URL + 'sw.js';
+        const register = await navigator.serviceWorker.register(swUrl, { scope: BASE_URL });
         await navigator.serviceWorker.ready;
 
         const subscription = await register.pushManager.subscribe({
@@ -54,10 +57,10 @@ window.registerServiceWorker = async function(triggerWelcome = false) {
         if (triggerWelcome && Notification.permission === 'granted') {
             register.showNotification('System Uplink Active ⚡️', {
                 body: 'Welcome to DigitalMarketplaceMM! Proceed to the authorization portal to access premium digital assets.',
-                icon: 'https://digitalmarketplacemm.com/assets/images/logo.png',
-                badge: 'https://digitalmarketplacemm.com/assets/images/logo.png',
+                icon: BASE_URL + 'assets/images/logo.png',
+                badge: BASE_URL + 'assets/images/logo.png',
                 vibrate: [100, 50, 100, 50, 200],
-                data: { url: 'https://digitalmarketplacemm.com/index.php?module=auth&page=login' },
+                data: { url: BASE_URL + 'index.php?module=auth&page=login' },
                 actions: [
                     { action: 'open', title: 'Initialize Login' },
                     { action: 'close', title: 'Abort' }
@@ -66,13 +69,13 @@ window.registerServiceWorker = async function(triggerWelcome = false) {
         }
 
         // 2. Sync endpoint with server (for logged in users)
-        await fetch('api/push_subscribe.php', {
+        await fetch(BASE_URL + 'api/push_subscribe.php', {
             method: 'POST',
             body: JSON.stringify(subscription),
             headers: { 'Content-Type': 'application/json' }
         });
 
-        console.log('Push Notification Subscribed');
+        console.log('[Matrix] Push Notification Uplink Secured.');
         return true;
     } catch (err) {
         console.error('Service Worker Error:', err);
@@ -98,7 +101,7 @@ document.addEventListener('DOMContentLoaded', () => {
         const dropdown = parent ? parent.querySelector('div.absolute') : null;
 
         function checkNotifications() {
-            fetch('api/notifications.php')
+            fetch(BASE_URL + 'api/notifications.php')
                 .then(response => {
                     if (!response.ok) throw new Error('Network response was not ok');
                     return response.json();
@@ -116,7 +119,7 @@ document.addEventListener('DOMContentLoaded', () => {
                         let contentHtml = '';
                         if (data.notifications && Array.isArray(data.notifications) && data.notifications.length > 0) {
                              contentHtml = data.notifications.map(n => `
-                                <a href="${n.link}" class="block px-4 py-3 text-xs text-gray-300 hover:bg-gray-700 hover:text-white transition border-b border-gray-700 last:border-0 flex items-start gap-2">
+                                <a href="${BASE_URL}${n.link}" class="block px-4 py-3 text-xs text-gray-300 hover:bg-gray-700 hover:text-white transition border-b border-gray-700 last:border-0 flex items-start gap-2">
                                     <i class="fas fa-circle text-[6px] text-blue-500 mt-1.5 shrink-0"></i>
                                     <span>${n.text}</span>
                                 </a>
@@ -232,32 +235,10 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     /**
-     * 7. Push Permission Button Hook (Header & Anywhere)
+     * 7. Push Permission Hider
+     * Note: Actual button click logic is handled inline in header.php 
+     * to prevent z-index/loading conflicts.
      */
-    const pushBtns = document.querySelectorAll('.enable-push-btn');
-    pushBtns.forEach(btn => {
-        btn.addEventListener('click', (e) => {
-            e.preventDefault();
-            const icon = btn.querySelector('i');
-            
-            if (icon) icon.className = "fas fa-spinner fa-spin text-yellow-400";
-            
-            // Pass 'true' to trigger the Welcome Notification
-            window.registerServiceWorker(true)
-                .then(() => {
-                    // Hide the button gracefully after enabling
-                    btn.classList.add('opacity-0', 'scale-95');
-                    setTimeout(() => btn.remove(), 300);
-                })
-                .catch(err => {
-                    console.error(err);
-                    alert('❌ Could not establish uplink. Please check your browser settings.');
-                    if (icon) icon.className = "fas fa-bell-slash text-red-400";
-                });
-        });
-    });
-
-    // Auto-hide push buttons if permission is already granted or denied
     if ('Notification' in window && (Notification.permission === 'granted' || Notification.permission === 'denied')) {
         document.querySelectorAll('.enable-push-wrapper').forEach(el => el.remove());
     }
