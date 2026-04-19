@@ -274,6 +274,10 @@ if (isset($pdo)) {
                 <i class="fas fa-images w-6 text-center text-lg <?php echo is_active('banners', $current_page) || is_active('banner_edit', $current_page) ? 'text-[#00f0ff]' : 'opacity-70'; ?>"></i>
                 <span class="ml-2 tracking-wide">Banners</span>
             </a>
+            <a href="<?php echo admin_url('notifications'); ?>" class="nav-item flex items-center px-5 py-2.5 mx-2 rounded-xl text-sm font-medium border-l-[3px] <?php echo is_active('notifications', $current_page) ? 'active' : 'border-transparent text-slate-400'; ?>">
+                <i class="fas fa-bell w-6 text-center text-lg <?php echo is_active('notifications', $current_page) ? 'text-[#00f0ff]' : 'opacity-70'; ?>"></i>
+                <span class="ml-2 tracking-wide">Notifications</span>
+            </a>
 
             <!-- SYSTEM -->
             <div class="px-5 mb-2 mt-6">
