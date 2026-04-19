@@ -1,6 +1,6 @@
 <?php
 // includes/header.php
-// PRODUCTION v5.1 - Unified Bell UI, Smart Uplink Prompts & Debug Failsafes
+// PRODUCTION v5.2 - Unified Bell UI, Smart Uplink Prompts & Clean Matrix
 
 // 1. Secure Session Start
 if (session_status() === PHP_SESSION_NONE) {
@@ -36,24 +36,6 @@ $lang_text = $curr_lang == 'my' ? 'MY' : 'EN';
 // 4. Current Currency
 $curr_currency = $_SESSION['currency'] ?? 'MMK';
 $curr_symbol = $curr_currency == 'USD' ? '$' : 'Ks';
-
-// 5. Auto-Heal Database Schema (Fixes Push Subscription Error)
-global $pdo;
-if (isset($pdo)) {
-    try {
-        $pdo->exec("CREATE TABLE IF NOT EXISTS push_subscriptions (
-            id INT AUTO_INCREMENT PRIMARY KEY,
-            user_id INT NOT NULL,
-            endpoint VARCHAR(500) NOT NULL UNIQUE,
-            p256dh VARCHAR(255) NOT NULL,
-            auth VARCHAR(255) NOT NULL,
-            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-            FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
-        )");
-    } catch (PDOException $e) {
-        // Fails gracefully
-    }
-}
 ?>
 <!DOCTYPE html>
 <html lang="en" class="scroll-smooth">
@@ -449,7 +431,7 @@ if (isset($pdo)) {
             <div class="absolute top-20 -left-40 w-96 h-96 bg-[#00f0ff]/10 rounded-full blur-3xl opacity-30"></div>
         </div>
 
- <script>
+    <script>
         // Keyboard shortcuts for search modal
         document.addEventListener('keydown', (e) => {
             if ((e.ctrlKey || e.metaKey) && e.key === 'k') {
@@ -493,7 +475,7 @@ if (isset($pdo)) {
             });
         });
 
-        // ⚡️ SILENT PUSH SUBSCRIPTION SYNC (Auto-Healing Matrix)
+        // ⚡️ SILENT PUSH SUBSCRIPTION SYNC
         <?php if(isset($_SESSION['user_id'])): ?>
         window.addEventListener('load', async () => {
             if ('serviceWorker' in navigator && 'Notification' in window && Notification.permission === 'granted') {
