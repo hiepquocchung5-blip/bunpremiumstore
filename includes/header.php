@@ -1,5 +1,6 @@
 <?php
 // includes/header.php
+// PRODUCTION v5.1 - Unified Bell UI, Smart Uplink Prompts & Debug Failsafes
 
 // 1. Secure Session Start
 if (session_status() === PHP_SESSION_NONE) {
@@ -94,6 +95,16 @@ if (isset($pdo)) {
         /* Bottom Nav Safe Area */
         main { padding-bottom: 90px; }
         @media (min-width: 1024px) { main { padding-bottom: 0; } }
+
+        /* Animation specific for the Bell */
+        @keyframes shake-bell {
+            0%, 100% { transform: rotate(0deg); }
+            20% { transform: rotate(15deg); }
+            40% { transform: rotate(-15deg); }
+            60% { transform: rotate(10deg); }
+            80% { transform: rotate(-10deg); }
+        }
+        .animate-shake-bell { animation: shake-bell 0.5s ease-in-out; }
     </style>
 
     <!-- Google Translate API (Hidden but functional) -->
@@ -159,13 +170,6 @@ if (isset($pdo)) {
                 <!-- 3. Right Toolbar (Desktop & Mobile Mixed) -->
                 <div class="flex items-center gap-3 lg:gap-5 relative z-10">
                     
-                    <!-- NEW: Smart Push Uplink Button -->
-                    <div class="enable-push-wrapper hidden sm:block">
-                        <button class="enable-push-btn flex items-center gap-2 bg-[#00f0ff]/10 border border-[#00f0ff]/30 hover:bg-[#00f0ff]/20 text-[#00f0ff] px-3 py-2 rounded-lg text-[10px] font-black uppercase tracking-widest transition-all shadow-[0_0_10px_rgba(0,240,255,0.1)]">
-                            <i class="fas fa-satellite-dish animate-pulse"></i> Connect
-                        </button>
-                    </div>
-
                     <!-- Desktop Main Navigation Links -->
                     <div class="hidden lg:flex items-center gap-4 border-r border-slate-700 pr-5 mr-1">
                         <a href="index.php?module=shop&page=search" class="text-sm font-bold uppercase tracking-wider <?php echo isActive('shop', 'search'); ?>">Store</a>
@@ -174,7 +178,7 @@ if (isset($pdo)) {
                         </a>
                     </div>
 
-                    <!-- MATRIX LOCALIZATION DROPDOWN (Upgraded UI) -->
+                    <!-- MATRIX LOCALIZATION DROPDOWN -->
                     <div class="relative group">
                         <button class="flex items-center gap-2 bg-slate-900/80 border border-slate-700 hover:border-[#00f0ff]/50 rounded-xl px-2.5 py-1.5 lg:px-3 lg:py-2 transition-all duration-300 shadow-[inset_0_0_10px_rgba(0,0,0,0.3)] group-hover:shadow-[0_0_15px_rgba(0,240,255,0.2)] focus:outline-none">
                             <i class="fas fa-globe text-slate-400 group-hover:text-[#00f0ff] transition-colors"></i>
@@ -183,7 +187,6 @@ if (isset($pdo)) {
                         
                         <!-- Dropdown Menu -->
                         <div class="absolute right-0 top-full mt-2 w-56 bg-slate-900/95 backdrop-blur-xl rounded-xl shadow-[0_20px_50px_rgba(0,0,0,0.7)] border border-slate-700 opacity-0 invisible group-hover:opacity-100 group-hover:visible dropdown-menu z-50 overflow-hidden">
-                            
                             <div class="absolute -right-10 -top-10 w-32 h-32 bg-[#00f0ff]/10 rounded-full blur-3xl pointer-events-none"></div>
 
                             <div class="px-4 py-2.5 bg-slate-800/50 border-b border-slate-700/50 flex items-center gap-2">
@@ -218,24 +221,38 @@ if (isset($pdo)) {
                         </div>
                     </div>
 
-                    <!-- User Actions (Desktop Only & Unified Notification) -->
+                    <!-- User Actions -->
                     <?php if(isset($_SESSION['user_id'])): ?>
                         
-                        <!-- Notifications -->
+                        <!-- NOTIFICATION BELL (Logged In - Dropdown) -->
                         <div class="relative cursor-pointer text-slate-400 hover:text-[#00f0ff] transition group hidden sm:block">
-                            <div class="w-9 h-9 lg:w-10 lg:h-10 rounded-xl hover:bg-slate-800 flex items-center justify-center transition border border-transparent hover:border-slate-700">
-                                <i class="far fa-bell text-lg"></i>
+                            <div class="w-9 h-9 lg:w-10 lg:h-10 rounded-xl hover:bg-slate-800 flex items-center justify-center transition border border-transparent hover:border-slate-700 relative shadow-[inset_0_0_10px_rgba(0,0,0,0.5)]">
+                                <i class="far fa-bell text-lg group-hover:animate-shake-bell"></i>
+                                <span class="absolute top-1.5 right-1.5 w-2 h-2 bg-red-500 rounded-full animate-pulse border border-slate-900 hidden" id="nav-notif-badge"></span>
                             </div>
-                            <span class="absolute top-1.5 right-1.5 w-2 h-2 bg-red-500 rounded-full animate-pulse border border-slate-900 hidden" id="nav-notif-badge"></span>
                             
-                            <div class="absolute right-0 top-full mt-2 w-72 lg:w-80 bg-slate-800/95 backdrop-blur-xl rounded-xl shadow-[0_10px_40px_rgba(0,0,0,0.5)] border border-slate-700 opacity-0 invisible group-hover:opacity-100 group-hover:visible dropdown-menu z-50">
-                                <div class="px-4 py-3 border-b border-slate-700 flex justify-between items-center bg-slate-900/50 rounded-t-xl">
-                                    <h4 class="text-[10px] font-bold text-slate-400 uppercase tracking-widest">System Alerts</h4>
-                                    <span class="text-[10px] text-[#00f0ff] cursor-pointer hover:underline">Mark read</span>
+                            <div class="absolute right-0 top-full mt-2 w-72 lg:w-80 bg-slate-800/95 backdrop-blur-xl rounded-xl shadow-[0_20px_50px_rgba(0,0,0,0.7)] border border-slate-700 opacity-0 invisible group-hover:opacity-100 group-hover:visible dropdown-menu z-50 overflow-hidden">
+                                
+                                <div class="px-4 py-3 border-b border-slate-700 flex justify-between items-center bg-slate-900/80">
+                                    <h4 class="text-[10px] font-bold text-white uppercase tracking-widest flex items-center gap-2"><i class="fas fa-satellite-dish text-[#00f0ff]"></i> System Alerts</h4>
                                 </div>
+                                
+                                <!-- Push Subscription Prompt (Inside Dropdown) -->
+                                <div class="enable-push-wrapper bg-gradient-to-r from-blue-900/40 to-slate-900 border-b border-blue-500/30 p-3 flex justify-between items-center group/prompt">
+                                    <div class="flex items-center gap-2">
+                                        <div class="w-6 h-6 rounded-full bg-[#00f0ff]/10 flex items-center justify-center border border-[#00f0ff]/20">
+                                            <i class="fas fa-bolt text-[#00f0ff] text-xs animate-pulse"></i>
+                                        </div>
+                                        <span class="text-[9px] text-blue-300 font-black uppercase tracking-wider">Browser Uplink</span>
+                                    </div>
+                                    <button type="button" class="enable-push-btn bg-[#00f0ff] hover:bg-blue-400 text-slate-900 px-3 py-1.5 rounded-lg text-[9px] font-black uppercase tracking-widest transition shadow-[0_0_10px_rgba(0,240,255,0.4)] transform active:scale-95">
+                                        Connect
+                                    </button>
+                                </div>
+
                                 <div class="max-h-64 overflow-y-auto custom-scrollbar" id="nav-notif-list">
                                     <div class="text-xs text-center py-8 text-slate-500">
-                                        <i class="fas fa-check-circle text-2xl mb-2 opacity-20"></i><br>All caught up
+                                        <i class="fas fa-check-circle text-2xl mb-2 opacity-20 text-green-500"></i><br>All caught up
                                     </div>
                                 </div>
                             </div>
@@ -244,11 +261,11 @@ if (isset($pdo)) {
                         <!-- Profile Dropdown (Desktop Only) -->
                         <div class="relative group hidden lg:block">
                             <button class="flex items-center gap-3 focus:outline-none pl-2">
-                                <div class="w-10 h-10 rounded-full bg-slate-800 p-0.5 shadow-lg border border-[#00f0ff]/30 group-hover:border-[#00f0ff] transition-all relative">
+                                <div class="w-10 h-10 rounded-full bg-slate-800 p-0.5 shadow-[0_0_15px_rgba(0,240,255,0.15)] border border-[#00f0ff]/30 group-hover:border-[#00f0ff] transition-all relative">
                                     <div class="w-full h-full rounded-full bg-slate-900 flex items-center justify-center text-white font-bold text-sm">
                                         <?php echo strtoupper(substr($_SESSION['user_name'] ?? 'U', 0, 1)); ?>
                                     </div>
-                                    <div class="absolute -bottom-0.5 -right-0.5 w-3.5 h-3.5 bg-green-500 border-2 border-slate-900 rounded-full"></div>
+                                    <div class="absolute -bottom-0.5 -right-0.5 w-3.5 h-3.5 bg-green-500 border-2 border-slate-900 rounded-full shadow-[0_0_8px_#22c55e]"></div>
                                 </div>
                             </button>
                             
@@ -286,7 +303,17 @@ if (isset($pdo)) {
                                 </div>
                             </div>
                         </div>
+
                     <?php else: ?>
+                        
+                        <!-- NOTIFICATION BELL (Guests - Initiates Subscription) -->
+                        <div class="enable-push-wrapper hidden sm:block">
+                            <button type="button" class="enable-push-btn relative w-9 h-9 lg:w-10 lg:h-10 rounded-xl bg-slate-900/80 hover:bg-slate-800 border border-[#00f0ff]/30 hover:border-[#00f0ff] text-[#00f0ff] flex items-center justify-center transition-all shadow-[inset_0_0_10px_rgba(0,240,255,0.1),0_0_15px_rgba(0,240,255,0.2)] group" title="Enable System Alerts">
+                                <i class="fas fa-bell group-hover:animate-shake-bell relative z-10"></i>
+                                <span class="absolute top-2 right-2 w-2 h-2 bg-[#00f0ff] rounded-full shadow-[0_0_8px_#00f0ff] animate-pulse"></span>
+                            </button>
+                        </div>
+
                         <div class="hidden lg:flex items-center gap-3 ml-2">
                             <a href="index.php?module=auth&page=login" class="text-slate-300 hover:text-white font-medium text-sm transition px-4 py-2 rounded-lg hover:bg-slate-800 border border-transparent hover:border-slate-700">Login</a>
                             <a href="index.php?module=auth&page=register" class="bg-gradient-to-r from-blue-600 to-[#00f0ff] hover:from-blue-500 hover:to-[#00f0ff] text-slate-900 px-5 py-2 rounded-xl font-black text-sm shadow-[0_0_15px_rgba(0,240,255,0.3)] transition-all">Sign Up</a>
@@ -382,8 +409,8 @@ if (isset($pdo)) {
             <?php else: ?>
                 <div class="space-y-3 mt-4">
                     <div class="enable-push-wrapper">
-                        <button class="enable-push-btn block w-full text-center p-3 bg-slate-800 border border-slate-600 text-[#00f0ff] font-black uppercase tracking-widest rounded-xl shadow-lg">
-                            <i class="fas fa-satellite-dish mr-1"></i> Enable Push Alerts
+                        <button type="button" class="enable-push-btn block w-full text-center p-4 bg-slate-800/80 border border-[#00f0ff]/30 text-[#00f0ff] font-black uppercase tracking-widest rounded-xl shadow-[0_0_15px_rgba(0,240,255,0.1)] transition-all active:scale-95 flex items-center justify-center gap-2">
+                            <i class="fas fa-bell animate-pulse"></i> Enable Alerts
                         </button>
                     </div>
                     <a href="index.php?module=auth&page=login" class="block w-full text-center p-3 bg-slate-800 border border-slate-600 text-white font-bold rounded-xl shadow-lg">Initiate Login</a>
@@ -434,6 +461,36 @@ if (isset($pdo)) {
             if (e.key === 'Escape') {
                 document.getElementById('search-modal').classList.add('hidden');
             }
+        });
+
+        // ⚡️ INLINE DEBUG & FAILSAFE FOR PUSH BUTTON (Overrides app.js if needed)
+        document.addEventListener('DOMContentLoaded', () => {
+            document.querySelectorAll('.enable-push-btn').forEach(btn => {
+                btn.onclick = (e) => {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    
+                    const icon = btn.querySelector('i');
+                    if (icon) icon.className = "fas fa-spinner fa-spin";
+                    
+                    if (typeof window.registerServiceWorker === 'function') {
+                        // Pass 'true' to ensure the local welcome push triggers
+                        window.registerServiceWorker(true).then(() => {
+                            // Visually remove the prompt block upon success
+                            const wrapper = btn.closest('.enable-push-wrapper');
+                            if (wrapper) wrapper.remove();
+                            else btn.remove();
+                        }).catch(err => {
+                            console.error('Manual Uplink Error:', err);
+                            if (icon) icon.className = "fas fa-bell-slash text-red-500";
+                            alert("Uplink failed. Ensure notifications are allowed in site settings.");
+                        });
+                    } else {
+                        console.error('Matrix App.js not loaded.');
+                        if (icon) icon.className = "fas fa-exclamation-triangle text-red-500";
+                    }
+                };
+            });
         });
 
         // ⚡️ SILENT PUSH SUBSCRIPTION SYNC (Auto-Healing Matrix)
