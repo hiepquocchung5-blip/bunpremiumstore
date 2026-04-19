@@ -42,7 +42,8 @@ $allowed_routes = [
         'category', 
         'product', 
         'checkout', 
-        'search'
+        'search',
+        'blindbox'
     ],
     
     // User Account Management

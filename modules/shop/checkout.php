@@ -116,6 +116,18 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 $mailer = new MailService();
                 $mailer->sendOrderConfirmation($_SESSION['user_email'], $_SESSION['user_name'], $new_order_id, $product['name'], $final_price);
 
+                // --- NEW: PUSH NOTIFICATION TO USER FOR PENDING ORDER ---
+                if (file_exists('includes/PushService.php')) {
+                    require_once 'includes/PushService.php';
+                    try {
+                        $push = new PushService($pdo);
+                        $target_url = BASE_URL . "index.php?module=user&page=orders&view_chat=" . $new_order_id;
+                        $push->sendToUser($user_id, "Order Processing ⏳", "Your payment for Order #{$new_order_id} is currently under verification.", $target_url);
+                    } catch (Exception $e) {
+                        // Silent fail
+                    }
+                }
+
                 redirect('index.php?module=user&page=orders&view_chat=' . $new_order_id);
             } else {
                 $error = "Failed to upload proof. Please try again.";

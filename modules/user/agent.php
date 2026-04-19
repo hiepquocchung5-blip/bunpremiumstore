@@ -62,6 +62,18 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['buy_pass'])) {
                         send_telegram_alert($order_id, "Agent Pass Upgrade: " . $pass['name'], $pass['price'], $_SESSION['user_name']);
                     }
                     
+                    // --- NEW: PUSH NOTIFICATION TO USER FOR PENDING AGENT UPGRADE ---
+                    if (file_exists('includes/PushService.php')) {
+                        require_once 'includes/PushService.php';
+                        try {
+                            $push = new PushService($pdo);
+                            $target_url = BASE_URL . "index.php?module=user&page=orders&view_chat=" . $order_id;
+                            $push->sendToUser($user_id, "Upgrade Initiated 👑", "Your Agent Pass upgrade is awaiting admin verification.", $target_url);
+                        } catch (Exception $e) {
+                            // Silent fail
+                        }
+                    }
+
                     $success = "Upgrade sequence initiated! Admin will verify your transfer and authorize access shortly.";
                     
                 } catch (PDOException $e) {
@@ -243,6 +255,7 @@ $total_savings = $total_orders_stmt->fetchColumn() ?: 0;
                 
                 <div class="relative bg-slate-900/90 backdrop-blur-xl p-6 sm:p-8 rounded-3xl border border-yellow-500/30 flex flex-col h-full shadow-2xl overflow-hidden">
                     
+                    <!-- Decorative Background -->
                     <div class="absolute -right-10 -top-10 w-32 h-32 bg-yellow-500/10 rounded-full blur-3xl pointer-events-none"></div>
 
                     <?php if($isUpgrade && !$isActive): ?>

@@ -65,7 +65,9 @@ function get_admin_view() {
         'passes'       => 'passes.php', 
         'admins'       => 'admins.php',
         'pandl'         => 'pandl.php',
-        'coupons'       => 'coupons.php'
+        'coupons'       => 'coupons.php',
+        'notifications'=> 'notifications.php', 
+        'blindboxes'      => 'blindboxes.php'
     ];
 
     // Check if page exists in whitelist

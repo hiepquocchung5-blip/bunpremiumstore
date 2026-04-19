@@ -1,5 +1,6 @@
 <?php
 // includes/PushService.php
+// PRODUCTION v2.1 - Updated VAPID Cryptographic Keys & Bulk Broadcast Matrix
 
 use Minishlink\WebPush\WebPush;
 use Minishlink\WebPush\Subscription;
@@ -11,10 +12,10 @@ class PushService {
     private $webPush;
     private $pdo;
 
-    // REPLACE THESE WITH YOUR GENERATED KEYS
-    const VAPID_SUBJECT = 'mailto:admin@digitalmarketplacemm.com';
-    const PUBLIC_KEY    = 'BN8UEB3CSeOF0iWGN1FiBBR88hwxSzOf0i1zQQJlflF4GASn3LlndfgrZz7Z6akSPORPAfmwLO2GKn33aiSINHU'; 
-    const PRIVATE_KEY   = 'dngL_yeyREkxn2ohyd3Odgy4z_L5P0oYTRxwMd5cTLo';
+    // YOUR LIVE CRYPTOGRAPHIC KEYS
+    const VAPID_SUBJECT = 'mailto:noreply-otpsender@digitalmarketplacemm.com';
+    const PUBLIC_KEY    = 'BH9ppIX9b68N76wmcNsrevG4Jl6RRCMuOFptWOgE9C0-0hLTTLhnEB2orPy_POTaM1PJxvH1pW0jyG1x8gnqWh0'; 
+    const PRIVATE_KEY   = 'JBhrzriKcczPYpx8vgC-D-ObrXksntdJBbkut-Xmrwc';
 
     public function __construct($pdo) {
         $this->pdo = $pdo;
@@ -31,25 +32,49 @@ class PushService {
     }
 
     /**
-     * Send a notification to a specific user
+     * Transmit to a single specific user node
      */
     public function sendToUser($userId, $title, $body, $url = null) {
-        // 1. Fetch user's subscriptions (a user might be logged in on multiple devices)
         $stmt = $this->pdo->prepare("SELECT * FROM push_subscriptions WHERE user_id = ?");
         $stmt->execute([$userId]);
-        $subscriptions = $stmt->fetchAll();
+        return $this->dispatchPayload($stmt->fetchAll(), $title, $body, $url);
+    }
 
-        if (!$subscriptions) return false;
+    /**
+     * Transmit to ALL subscribed nodes in the matrix
+     */
+    public function sendToAll($title, $body, $url = null) {
+        $stmt = $this->pdo->query("SELECT * FROM push_subscriptions");
+        return $this->dispatchPayload($stmt->fetchAll(), $title, $body, $url);
+    }
 
-        // 2. Prepare Payload
+    /**
+     * Transmit ONLY to Active Resellers (Agent Tiers)
+     */
+    public function sendToAgents($title, $body, $url = null) {
+        $stmt = $this->pdo->query("
+            SELECT ps.* FROM push_subscriptions ps
+            JOIN user_passes up ON ps.user_id = up.user_id
+            WHERE up.status = 'active' AND up.expires_at > NOW()
+            GROUP BY ps.id
+        ");
+        return $this->dispatchPayload($stmt->fetchAll(), $title, $body, $url);
+    }
+
+    /**
+     * Core Dispatch Engine
+     */
+    private function dispatchPayload($subscriptions, $title, $body, $url = null) {
+        if (!$subscriptions) return 0; // 0 sent
+
         $payload = json_encode([
             'title' => $title,
             'body'  => $body,
-            'icon'  => BASE_URL . 'assets/images/logo.png',
-            'url'   => $url ?? BASE_URL . 'index.php?module=user&page=orders'
+            'icon'  => 'https://digitalmarketplacemm.com/assets/images/logo.png',
+            'url'   => $url ?? 'https://digitalmarketplacemm.com/index.php?module=user&page=dashboard'
         ]);
 
-        // 3. Queue notifications
+        $queued = 0;
         foreach ($subscriptions as $sub) {
             $subscription = Subscription::create([
                 'endpoint' => $sub['endpoint'],
@@ -58,22 +83,22 @@ class PushService {
                     'auth' => $sub['auth']
                 ],
             ]);
-
             $this->webPush->queueNotification($subscription, $payload);
+            $queued++;
         }
 
-        // 4. Send all
         $report = $this->webPush->flush();
+        $success_count = 0;
 
-        // 5. Clean up expired subscriptions
         foreach ($report as $result) {
             if (!$result->isSuccess() && $result->isSubscriptionExpired()) {
-                $endpoint = $result->getRequest()->getUri()->__toString();
-                $this->deleteSubscription($endpoint);
+                $this->deleteSubscription($result->getRequest()->getUri()->__toString());
+            } else if ($result->isSuccess()) {
+                $success_count++;
             }
         }
 
-        return true;
+        return $success_count;
     }
 
     private function deleteSubscription($endpoint) {
