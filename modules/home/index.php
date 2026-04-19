@@ -1,6 +1,6 @@
 <?php
 // modules/home/index.php
-// PRODUCTION READY v4.4 - Dynamic Live Telemetry, Clean Hub & Cinematic UX
+// PRODUCTION READY v4.5 - Dynamic Live Telemetry, Clean Hub & Active Push Prompts
 
 // 1. Fetch Banners (Active Slides)
 $stmt = $pdo->query("SELECT * FROM banners ORDER BY display_order ASC, id DESC LIMIT 5");
@@ -67,6 +67,16 @@ $display_orders = max($total_orders_count, 8500);
 
 // Generate an initial random seed for the live online user counter (10 to 1000)
 $live_online = rand(120, 850); 
+
+// 10. Check Push Subscription Status (Failsafe for Admin Errors)
+$is_subscribed = false;
+if (is_logged_in()) {
+    try {
+        $sub_check = $pdo->prepare("SELECT id FROM push_subscriptions WHERE user_id = ?");
+        $sub_check->execute([$_SESSION['user_id']]);
+        $is_subscribed = $sub_check->rowCount() > 0;
+    } catch (Exception $e) {} // Ignore if table doesn't exist yet
+}
 ?>
 
 <style>
@@ -142,6 +152,42 @@ $live_online = rand(120, 850);
             <span class="w-2 h-2 rounded-full bg-green-500 animate-pulse shadow-[0_0_8px_#22c55e]"></span> Network Stable
         </div>
     </div>
+
+    <!-- PROACTIVE PUSH SUBSCRIPTION BANNER -->
+    <?php if(is_logged_in() && !$is_subscribed): ?>
+    <div class="mb-8 bg-red-900/20 border border-red-500/50 p-5 md:p-6 rounded-2xl shadow-[0_0_20px_rgba(239,68,68,0.2)] flex flex-col sm:flex-row items-center justify-between gap-4 relative overflow-hidden group">
+        <div class="absolute -right-10 -top-10 w-32 h-32 bg-red-500/10 rounded-full blur-3xl pointer-events-none group-hover:bg-red-500/20 transition-colors"></div>
+        <div class="flex items-center gap-4 relative z-10 w-full sm:w-auto">
+            <div class="w-12 h-12 bg-red-500/20 rounded-full flex items-center justify-center text-red-500 border border-red-500/30 shrink-0 shadow-inner">
+                <i class="fas fa-satellite-dish text-xl animate-pulse"></i>
+            </div>
+            <div>
+                <h3 class="font-black text-white text-base md:text-lg tracking-tight">Comms Uplink Disconnected</h3>
+                <p class="text-xs text-slate-400 leading-snug">Your device is not receiving Matrix Push Alerts. Enable them to receive instant delivery notifications.</p>
+            </div>
+        </div>
+        <button onclick="initializeManualUplink(this)" class="w-full sm:w-auto shrink-0 bg-red-600 hover:bg-red-500 text-white font-bold px-6 py-3 rounded-xl shadow-[0_0_15px_rgba(239,68,68,0.4)] transition transform active:scale-95 text-xs uppercase tracking-widest relative z-10 flex items-center justify-center gap-2">
+            <i class="fas fa-plug"></i> Establish Uplink
+        </button>
+    </div>
+    <script>
+        function initializeManualUplink(btn) {
+            btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Securing...';
+            if (typeof window.registerServiceWorker === 'function') {
+                window.registerServiceWorker(true).then(() => {
+                    btn.closest('.bg-red-900\\/20').remove();
+                    alert("Uplink Established. You will now receive secure transmissions.");
+                }).catch(err => {
+                    btn.innerHTML = '<i class="fas fa-exclamation-triangle"></i> Failed';
+                    alert("Connection failed. Please click the padlock icon near your URL bar and allow Notifications, then try again.");
+                });
+            } else {
+                alert("Matrix core script missing. Please refresh the page.");
+                btn.innerHTML = '<i class="fas fa-plug"></i> Establish Uplink';
+            }
+        }
+    </script>
+    <?php endif; ?>
 
     <!-- SECTION 1: Cinematic Poster Banner Slider -->
     <?php if(!empty($banners)): ?>
@@ -335,7 +381,7 @@ $live_online = rand(120, 850);
                 <div class="absolute -top-10 -right-10 w-32 h-32 bg-[#00f0ff]/20 rounded-full blur-3xl group-hover:bg-[#00f0ff]/30 transition-colors duration-500 z-0"></div>
                 
                 <div class="w-20 h-20 rounded-2xl bg-slate-950 flex items-center justify-center text-[#00f0ff] text-4xl border border-[#00f0ff]/40 shadow-[inset_0_0_15px_rgba(0,240,255,0.2),0_0_20px_rgba(0,240,255,0.2)] group-hover:scale-110 transition-transform duration-500 relative z-10">
-                    <i class="fas fa-shield-alt drop-shadow-[0_0_15px_rgba(0,240,255,0.8)]"></i>
+                    <i class="fas fa-shield-check drop-shadow-[0_0_15px_rgba(0,240,255,0.8)]"></i>
                 </div>
                 
                 <div class="relative z-10 w-full">
