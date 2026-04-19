@@ -1,6 +1,18 @@
 <?php
 // api/push_subscribe.php
-// PRODUCTION v2.1 - Silent fail for guests to prevent JS errors during local push
+// PRODUCTION v2.2 - CORS Enabled for API Subdomain
+
+// ⚡️ CORS SECURITY HEADERS (Cross-Origin Matrix Authorization)
+header("Access-Control-Allow-Origin: https://digitalmarketplacemm.com");
+header("Access-Control-Allow-Methods: POST, OPTIONS");
+header("Access-Control-Allow-Headers: Content-Type");
+header("Access-Control-Allow-Credentials: true");
+
+// Handle Browser Preflight OPTIONS request instantly
+if ($_SERVER['REQUEST_METHOD'] === 'OPTIONS') {
+    http_response_code(200);
+    exit;
+}
 
 require_once '../includes/config.php';
 require_once '../includes/functions.php';
@@ -12,10 +24,8 @@ if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
     exit;
 }
 
-// If user is not logged in, we still allow them to accept push notifications
-// so the frontend can trigger the local Welcome message, but we do NOT save it to the DB yet.
 if (!is_logged_in()) {
-    echo json_encode(['status' => 'guest_skipped', 'message' => 'Subscription successful locally, waiting for authentication to sync.']);
+    echo json_encode(['status' => 'guest_skipped', 'message' => 'Subscription successful locally.']);
     exit;
 }
 
