@@ -52,8 +52,6 @@ $curr_symbol = $curr_currency == 'USD' ? '$' : 'Ks';
     <meta property="og:description" content="Instant delivery for Game Keys, Software, and Premium Accounts in Myanmar.">
     <meta property="og:image" content="<?php echo BASE_URL; ?>assets/images/og-image.jpg">
 
-    <link rel="icon" type="image/x-icon" href="assets/images/favicon.ico">
-
     <title>DigitalMarketplaceMM | Premium Digital Store</title>
     
     <!-- CSS Dependencies -->
@@ -133,8 +131,15 @@ $curr_symbol = $curr_currency == 'USD' ? '$' : 'Ks';
                 </div>
 
                 <!-- 3. Right Toolbar (Desktop & Mobile Mixed) -->
-                <div class="flex items-center gap-2 lg:gap-5 relative z-10">
+                <div class="flex items-center gap-3 lg:gap-5 relative z-10">
                     
+                    <!-- NEW: Smart Push Uplink Button -->
+                    <div class="enable-push-wrapper hidden sm:block">
+                        <button class="enable-push-btn flex items-center gap-2 bg-[#00f0ff]/10 border border-[#00f0ff]/30 hover:bg-[#00f0ff]/20 text-[#00f0ff] px-3 py-2 rounded-lg text-[10px] font-black uppercase tracking-widest transition-all shadow-[0_0_10px_rgba(0,240,255,0.1)]">
+                            <i class="fas fa-satellite-dish animate-pulse"></i> Connect
+                        </button>
+                    </div>
+
                     <!-- Desktop Main Navigation Links -->
                     <div class="hidden lg:flex items-center gap-4 border-r border-slate-700 pr-5 mr-1">
                         <a href="index.php?module=shop&page=search" class="text-sm font-bold uppercase tracking-wider <?php echo isActive('shop', 'search'); ?>">Store</a>
@@ -143,43 +148,45 @@ $curr_symbol = $curr_currency == 'USD' ? '$' : 'Ks';
                         </a>
                     </div>
 
-                    <!-- Custom Localization Dropdown (Lang + Currency) -->
+                    <!-- MATRIX LOCALIZATION DROPDOWN (Upgraded UI) -->
                     <div class="relative group">
-                        <button class="flex items-center gap-1.5 bg-slate-800/80 hover:bg-slate-700 border border-slate-700 hover:border-[#00f0ff]/50 rounded-xl px-2.5 py-1.5 lg:px-3 lg:py-2 transition shadow-sm focus:outline-none">
-                            <span class="text-sm"><?php echo $lang_emoji; ?></span>
-                            <span class="text-xs font-bold text-white hidden sm:inline"><?php echo $lang_text; ?></span>
-                            <div class="h-3 w-px bg-slate-600 mx-0.5"></div>
-                            <span class="text-xs font-bold text-[#00f0ff]"><?php echo $curr_symbol; ?></span>
+                        <button class="flex items-center gap-2 bg-slate-900/80 border border-slate-700 hover:border-[#00f0ff]/50 rounded-xl px-2.5 py-1.5 lg:px-3 lg:py-2 transition-all duration-300 shadow-[inset_0_0_10px_rgba(0,0,0,0.3)] group-hover:shadow-[0_0_15px_rgba(0,240,255,0.2)] focus:outline-none">
+                            <i class="fas fa-globe text-slate-400 group-hover:text-[#00f0ff] transition-colors"></i>
+                            <span class="text-xs font-bold text-white hidden sm:inline"><?php echo $lang_text; ?> <span class="text-slate-600 mx-1">|</span> <span class="text-[#00f0ff]"><?php echo $curr_symbol; ?></span></span>
                         </button>
                         
-                        <!-- Local Dropdown Menu -->
-                        <div class="absolute right-0 top-full mt-2 w-48 bg-slate-800/95 backdrop-blur-xl rounded-xl shadow-[0_10px_40px_rgba(0,0,0,0.5)] border border-slate-700 opacity-0 invisible group-hover:opacity-100 group-hover:visible dropdown-menu z-50 overflow-hidden">
+                        <!-- Dropdown Menu -->
+                        <div class="absolute right-0 top-full mt-2 w-56 bg-slate-900/95 backdrop-blur-xl rounded-xl shadow-[0_20px_50px_rgba(0,0,0,0.7)] border border-slate-700 opacity-0 invisible group-hover:opacity-100 group-hover:visible dropdown-menu z-50 overflow-hidden">
                             
-                            <div class="px-4 py-2 bg-slate-900/50 border-b border-slate-700 text-[10px] font-black text-slate-400 uppercase tracking-widest">
-                                Translation
+                            <div class="absolute -right-10 -top-10 w-32 h-32 bg-[#00f0ff]/10 rounded-full blur-3xl pointer-events-none"></div>
+
+                            <div class="px-4 py-2.5 bg-slate-800/50 border-b border-slate-700/50 flex items-center gap-2">
+                                <i class="fas fa-language text-[#00f0ff] text-xs"></i>
+                                <span class="text-[10px] font-black text-slate-300 uppercase tracking-widest">Translation Protocol</span>
                             </div>
-                            <div class="p-1">
-                                <button onclick="changeLanguage('en')" class="w-full text-left px-3 py-2 text-sm text-slate-300 hover:text-white hover:bg-slate-700 rounded-lg flex items-center justify-between transition">
-                                    <span class="flex items-center gap-2">🇺🇸 English</span>
-                                    <?php if($curr_lang=='en') echo '<i class="fas fa-check text-green-400 text-xs"></i>'; ?>
+                            <div class="p-2 space-y-1 relative z-10">
+                                <button onclick="changeLanguage('en')" class="w-full text-left px-3 py-2 text-sm text-slate-300 hover:text-white hover:bg-slate-800 rounded-lg flex items-center justify-between transition group/lang">
+                                    <span class="flex items-center gap-2"><span class="text-lg">🇺🇸</span> English</span>
+                                    <?php if($curr_lang=='en') echo '<i class="fas fa-check text-green-400 text-xs shadow-[0_0_10px_#4ade80]"></i>'; ?>
                                 </button>
-                                <button onclick="changeLanguage('my')" class="w-full text-left px-3 py-2 text-sm text-slate-300 hover:text-white hover:bg-slate-700 rounded-lg flex items-center justify-between transition">
-                                    <span class="flex items-center gap-2">🇲🇲 Myanmar</span>
-                                    <?php if($curr_lang=='my') echo '<i class="fas fa-check text-green-400 text-xs"></i>'; ?>
+                                <button onclick="changeLanguage('my')" class="w-full text-left px-3 py-2 text-sm text-slate-300 hover:text-white hover:bg-slate-800 rounded-lg flex items-center justify-between transition group/lang">
+                                    <span class="flex items-center gap-2"><span class="text-lg">🇲🇲</span> Myanmar</span>
+                                    <?php if($curr_lang=='my') echo '<i class="fas fa-check text-green-400 text-xs shadow-[0_0_10px_#4ade80]"></i>'; ?>
                                 </button>
                             </div>
                             
-                            <div class="px-4 py-2 bg-slate-900/50 border-y border-slate-700 text-[10px] font-black text-slate-400 uppercase tracking-widest">
-                                Currency
+                            <div class="px-4 py-2.5 bg-slate-800/50 border-y border-slate-700/50 flex items-center gap-2">
+                                <i class="fas fa-coins text-yellow-400 text-xs"></i>
+                                <span class="text-[10px] font-black text-slate-300 uppercase tracking-widest">Currency Matrix</span>
                             </div>
-                            <div class="p-1">
-                                <a href="?set_curr=MMK" class="w-full text-left px-3 py-2 text-sm text-slate-300 hover:text-white hover:bg-slate-700 rounded-lg flex items-center justify-between transition">
-                                    <span class="flex items-center gap-2"><i class="fas fa-coins text-yellow-500 w-4 text-center"></i> MMK (Kyat)</span>
-                                    <?php if($curr_currency=='MMK') echo '<i class="fas fa-check text-green-400 text-xs"></i>'; ?>
+                            <div class="p-2 space-y-1 relative z-10">
+                                <a href="?set_curr=MMK" class="w-full text-left px-3 py-2 text-sm text-slate-300 hover:text-white hover:bg-slate-800 rounded-lg flex items-center justify-between transition group/curr">
+                                    <span class="font-bold tracking-wide">MMK <span class="text-slate-500 font-normal">(Kyat)</span></span>
+                                    <?php if($curr_currency=='MMK') echo '<i class="fas fa-check text-green-400 text-xs shadow-[0_0_10px_#4ade80]"></i>'; ?>
                                 </a>
-                                <a href="?set_curr=USD" class="w-full text-left px-3 py-2 text-sm text-slate-300 hover:text-white hover:bg-slate-700 rounded-lg flex items-center justify-between transition">
-                                    <span class="flex items-center gap-2"><i class="fas fa-dollar-sign text-green-500 w-4 text-center"></i> USD ($)</span>
-                                    <?php if($curr_currency=='USD') echo '<i class="fas fa-check text-green-400 text-xs"></i>'; ?>
+                                <a href="?set_curr=USD" class="w-full text-left px-3 py-2 text-sm text-slate-300 hover:text-white hover:bg-slate-800 rounded-lg flex items-center justify-between transition group/curr">
+                                    <span class="font-bold tracking-wide">USD <span class="text-slate-500 font-normal">($)</span></span>
+                                    <?php if($curr_currency=='USD') echo '<i class="fas fa-check text-green-400 text-xs shadow-[0_0_10px_#4ade80]"></i>'; ?>
                                 </a>
                             </div>
                         </div>
@@ -189,7 +196,7 @@ $curr_symbol = $curr_currency == 'USD' ? '$' : 'Ks';
                     <?php if(isset($_SESSION['user_id'])): ?>
                         
                         <!-- Notifications -->
-                        <div class="relative cursor-pointer text-slate-400 hover:text-[#00f0ff] transition group">
+                        <div class="relative cursor-pointer text-slate-400 hover:text-[#00f0ff] transition group hidden sm:block">
                             <div class="w-9 h-9 lg:w-10 lg:h-10 rounded-xl hover:bg-slate-800 flex items-center justify-center transition border border-transparent hover:border-slate-700">
                                 <i class="far fa-bell text-lg"></i>
                             </div>
@@ -241,7 +248,9 @@ $curr_symbol = $curr_currency == 'USD' ? '$' : 'Ks';
                                     <a href="index.php?module=user&page=wishlist" class="block px-3 py-2 rounded-lg text-sm text-slate-300 hover:bg-slate-700 hover:text-white transition flex items-center gap-3 group/link">
                                         <i class="fas fa-heart w-5 text-center text-slate-500 group-hover/link:text-rose-400 transition-colors"></i> Wishlist
                                     </a>
-                                    
+                                    <a href="index.php?module=user&page=wallet" class="block px-3 py-2 rounded-lg text-sm text-slate-300 hover:bg-slate-700 hover:text-white transition flex items-center gap-3 group/link">
+                                        <i class="fas fa-wallet w-5 text-center text-slate-500 group-hover/link:text-purple-400 transition-colors"></i> Wallet
+                                    </a>
                                 </div>
 
                                 <div class="border-t border-slate-700 p-2 bg-slate-900/30">
@@ -267,32 +276,32 @@ $curr_symbol = $curr_currency == 'USD' ? '$' : 'Ks';
     <!-- FLOATING APP BOTTOM NAV (MOBILE ONLY)      -->
     <!-- ========================================== -->
     <div class="fixed bottom-4 left-4 right-4 z-50 lg:hidden pointer-events-none">
-        <div class="glass-pill rounded-full px-6 py-3 flex justify-between items-center shadow-[0_15px_40px_rgba(0,0,0,0.8)] pointer-events-auto relative">
+        <div class="glass-pill rounded-2xl px-6 py-3 flex justify-between items-center shadow-[0_15px_40px_rgba(0,0,0,0.8)] pointer-events-auto relative">
             
-            <a href="index.php" class="flex flex-col items-center gap-1 <?php echo isActive('home'); ?>">
+            <a href="index.php" class="flex flex-col items-center gap-1.5 <?php echo isActive('home'); ?>">
                 <i class="fas fa-home text-lg"></i>
                 <span class="text-[8px] font-black uppercase tracking-widest">Home</span>
             </a>
 
-            <button onclick="document.getElementById('search-modal').classList.remove('hidden')" class="flex flex-col items-center gap-1 text-slate-400 hover:text-[#00f0ff] transition">
+            <button onclick="document.getElementById('search-modal').classList.remove('hidden')" class="flex flex-col items-center gap-1.5 text-slate-400 hover:text-[#00f0ff] transition">
                 <i class="fas fa-search text-lg"></i>
                 <span class="text-[8px] font-black uppercase tracking-widest">Search</span>
             </button>
 
             <!-- Center Action Button -->
-            <div class="relative -top-5">
+            <div class="relative -top-6">
                 <a href="index.php?module=shop&page=category" class="w-14 h-14 bg-gradient-to-br from-blue-600 to-[#00f0ff] text-slate-900 rounded-full flex items-center justify-center shadow-[0_0_20px_rgba(0,240,255,0.4)] border-4 border-slate-900 transform transition active:scale-95">
                     <i class="fas fa-layer-group text-xl"></i>
                 </a>
             </div>
 
-            <a href="index.php?module=user&page=orders" class="flex flex-col items-center gap-1 <?php echo isActive('user', 'orders'); ?>">
-                <i class="fas fa-comments text-lg"></i>
-                <span class="text-[8px] font-black uppercase tracking-widest">Chat</span>
+            <a href="index.php?module=user&page=orders" class="flex flex-col items-center gap-1.5 <?php echo isActive('user', 'orders'); ?>">
+                <i class="fas fa-box-open text-lg"></i>
+                <span class="text-[8px] font-black uppercase tracking-widest">Orders</span>
             </a>
 
             <!-- Toggle Mobile Menu Overlay -->
-            <button onclick="document.getElementById('mobile-menu').classList.toggle('translate-y-full'); document.getElementById('mobile-menu').classList.toggle('opacity-0');" class="flex flex-col items-center gap-1 text-slate-400 hover:text-[#00f0ff] transition">
+            <button onclick="document.getElementById('mobile-menu').classList.toggle('translate-y-full'); document.getElementById('mobile-menu').classList.toggle('opacity-0');" class="flex flex-col items-center gap-1.5 text-slate-400 hover:text-[#00f0ff] transition">
                 <i class="fas fa-bars text-lg"></i>
                 <span class="text-[8px] font-black uppercase tracking-widest">Menu</span>
             </button>
@@ -346,6 +355,11 @@ $curr_symbol = $curr_currency == 'USD' ? '$' : 'Ks';
                 </div>
             <?php else: ?>
                 <div class="space-y-3 mt-4">
+                    <div class="enable-push-wrapper">
+                        <button class="enable-push-btn block w-full text-center p-3 bg-slate-800 border border-slate-600 text-[#00f0ff] font-black uppercase tracking-widest rounded-xl shadow-lg">
+                            <i class="fas fa-satellite-dish mr-1"></i> Enable Push Alerts
+                        </button>
+                    </div>
                     <a href="index.php?module=auth&page=login" class="block w-full text-center p-3 bg-slate-800 border border-slate-600 text-white font-bold rounded-xl shadow-lg">Initiate Login</a>
                     <a href="index.php?module=auth&page=register" class="block w-full text-center p-3 bg-gradient-to-r from-blue-600 to-[#00f0ff] text-slate-900 font-black rounded-xl shadow-[0_0_15px_rgba(0,240,255,0.3)]">Deploy New Account</a>
                 </div>
