@@ -1,5 +1,5 @@
 // assets/js/app.js
-// PRODUCTION v3.2 - Strict Absolute Root SW Scope & Pathing
+// PRODUCTION v3.3 - Dynamic Alert Injection & Matrix Toast UI
 
 /**
  * --------------------------------------------------------------------------
@@ -91,10 +91,39 @@ window.registerServiceWorker = async function(triggerWelcome = false) {
 document.addEventListener('DOMContentLoaded', () => {
 
     /**
-     * 1. Notification Polling System
+     * 1. Notification Polling System & Dynamic Alert Toast
      */
     const bellIcon = document.querySelector('.fa-bell');
+    let previousNotifCount = 0;
     
+    // Dynamic Toast Injector
+    function showDynamicToast(msg, link) {
+        const toast = document.createElement('a');
+        toast.href = link ? BASE_URL + link : '#';
+        toast.className = 'fixed bottom-20 right-4 md:bottom-6 md:right-6 bg-slate-900/90 backdrop-blur-xl border border-[#00f0ff]/40 text-white p-4 rounded-2xl shadow-[0_10px_40px_rgba(0,240,255,0.25)] z-[100] flex items-center gap-4 transform transition-all duration-500 translate-y-20 opacity-0 group hover:border-[#00f0ff] hover:shadow-[0_10px_50px_rgba(0,240,255,0.4)] max-w-sm';
+        toast.innerHTML = `
+            <div class="w-12 h-12 bg-[#00f0ff]/10 rounded-xl flex items-center justify-center border border-[#00f0ff]/30 text-[#00f0ff] shrink-0 group-hover:scale-110 transition-transform">
+                <i class="fas fa-satellite-dish animate-pulse text-lg"></i>
+            </div>
+            <div class="flex-1">
+                <h4 class="text-[10px] font-black uppercase tracking-widest text-[#00f0ff] mb-0.5 flex items-center gap-2">Matrix Alert <span class="w-1.5 h-1.5 rounded-full bg-[#00f0ff] animate-ping"></span></h4>
+                <p class="text-sm font-medium leading-snug text-slate-200">${msg}</p>
+            </div>
+        `;
+        document.body.appendChild(toast);
+        
+        // Animate in
+        requestAnimationFrame(() => {
+            toast.classList.remove('translate-y-20', 'opacity-0');
+        });
+        
+        // Auto remove after 6 seconds
+        setTimeout(() => {
+            toast.classList.add('translate-y-20', 'opacity-0');
+            setTimeout(() => toast.remove(), 500);
+        }, 6000);
+    }
+
     if (bellIcon) {
         const parent = bellIcon.closest('.relative');
         const badge = parent ? parent.querySelector('span') : null;
@@ -109,10 +138,20 @@ document.addEventListener('DOMContentLoaded', () => {
                 .then(data => {
                     if (!data || typeof data !== 'object') return;
 
+                    // Dynamic Alert Trigger (If count increased, show toast)
+                    if (data.count > previousNotifCount && previousNotifCount !== 0) {
+                        const latest = data.notifications && data.notifications.length > 0 ? data.notifications[0] : null;
+                        const msg = latest ? latest.text : 'A new transmission has been decrypted.';
+                        showDynamicToast(msg, latest?.link);
+                    }
+                    previousNotifCount = data.count;
+
                     if (data.count > 0) {
                         if (badge) badge.classList.remove('hidden');
+                        if (bellIcon) bellIcon.classList.add('text-[#00f0ff]', 'animate-pulse');
                     } else {
                         if (badge) badge.classList.add('hidden');
+                        if (bellIcon) bellIcon.classList.remove('text-[#00f0ff]', 'animate-pulse');
                     }
 
                     if (dropdown) {
@@ -120,7 +159,7 @@ document.addEventListener('DOMContentLoaded', () => {
                         if (data.notifications && Array.isArray(data.notifications) && data.notifications.length > 0) {
                              contentHtml = data.notifications.map(n => `
                                 <a href="${BASE_URL}${n.link}" class="block px-4 py-3 text-xs text-gray-300 hover:bg-gray-700 hover:text-white transition border-b border-gray-700 last:border-0 flex items-start gap-2">
-                                    <i class="fas fa-circle text-[6px] text-blue-500 mt-1.5 shrink-0"></i>
+                                    <i class="fas fa-circle text-[6px] text-[#00f0ff] mt-1.5 shrink-0 shadow-[0_0_8px_#00f0ff]"></i>
                                     <span>${n.text}</span>
                                 </a>
                             `).join('');
@@ -137,7 +176,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 .catch(err => {});
         }
 
-        setInterval(checkNotifications, 30000);
+        setInterval(checkNotifications, 15000); // Polling faster at 15s to make it feel responsive
         checkNotifications(); 
     }
 
