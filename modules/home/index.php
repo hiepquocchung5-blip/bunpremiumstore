@@ -1,6 +1,6 @@
 <?php
 // modules/home/index.php
-// PRODUCTION READY v5.0 - Dynamic Live Telemetry, Gacha Nodes & Cinematic UX
+// PRODUCTION READY v4.4 - Dynamic Live Telemetry, Clean Hub & Cinematic UX
 
 // 1. Fetch Banners (Active Slides)
 $stmt = $pdo->query("SELECT * FROM banners ORDER BY display_order ASC, id DESC LIMIT 5");
@@ -9,10 +9,6 @@ $banners = $stmt->fetchAll();
 // 2. Fetch Categories (Strictly using image_url)
 $stmt = $pdo->query("SELECT id, name, image_url, description, type FROM categories ORDER BY id ASC");
 $categories = $stmt->fetchAll();
-
-// 2.5 Fetch Active Blind Boxes (Gacha Nodes)
-$stmt = $pdo->query("SELECT * FROM blindboxes WHERE is_active = 1 ORDER BY id DESC LIMIT 4");
-$blindboxes = $stmt->fetchAll();
 
 // 3. Fetch "Hot Deals" (Sale Items)
 $stmt = $pdo->query("
@@ -284,46 +280,6 @@ $live_online = rand(120, 850);
         </div>
     </div>
 
-    <!-- SECTION 2.5: Blind Boxes / Gacha Nodes -->
-    <?php if(!empty($blindboxes)): ?>
-    <div class="mb-16 border-t border-slate-800 pt-10 relative">
-        <div class="absolute right-0 top-10 w-64 h-64 bg-purple-600/10 rounded-full blur-3xl pointer-events-none"></div>
-        <div class="flex items-center gap-3 mb-6 relative z-10">
-            <span class="relative flex h-5 w-5">
-              <span class="animate-ping absolute inline-flex h-full w-full rounded-full bg-purple-400 opacity-75"></span>
-              <span class="relative inline-flex rounded-full h-5 w-5 bg-purple-500 shadow-[0_0_15px_rgba(168,85,247,0.8)]"></span>
-            </span>
-            <h2 class="text-2xl md:text-3xl font-black text-white tracking-tight">Quantum Gacha Nodes</h2>
-            <span class="bg-blue-500/10 border border-blue-500/30 text-blue-400 text-[9px] font-bold px-2 py-0.5 rounded-md uppercase tracking-widest hidden sm:inline-block">Public Access</span>
-        </div>
-
-        <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6 relative z-10">
-            <?php foreach($blindboxes as $box): ?>
-                <div class="bg-slate-900/80 backdrop-blur-xl border border-purple-500/30 rounded-3xl p-5 flex flex-col items-center text-center shadow-[0_10px_30px_rgba(168,85,247,0.1)] hover:shadow-[0_10px_40px_rgba(168,85,247,0.3)] hover:border-purple-400 transition-all duration-300 group">
-                    <div class="w-32 h-32 mb-4 relative">
-                        <div class="absolute inset-0 bg-purple-500/20 rounded-full blur-xl group-hover:bg-purple-500/40 transition"></div>
-                        <?php if(!empty($box['image_path'])): ?>
-                            <img src="<?php echo BASE_URL . $box['image_path']; ?>" class="w-full h-full object-contain relative z-10 group-hover:scale-110 transition duration-500 drop-shadow-[0_0_15px_rgba(168,85,247,0.5)]">
-                        <?php else: ?>
-                            <i class="fas fa-box-open text-6xl text-purple-400 relative z-10 flex items-center justify-center h-full group-hover:scale-110 transition duration-500 drop-shadow-[0_0_15px_rgba(168,85,247,0.5)]"></i>
-                        <?php endif; ?>
-                    </div>
-                    
-                    <h3 class="text-lg font-black text-white mb-1 group-hover:text-purple-400 transition"><?php echo htmlspecialchars($box['title']); ?></h3>
-                    <p class="text-[10px] text-slate-400 font-bold uppercase tracking-widest mb-4">Mystery Drop Array</p>
-                    
-                    <div class="mt-auto w-full">
-                        <p class="text-xs text-purple-300 font-mono font-bold mb-3"><?php echo format_price($box['price']); ?></p>
-                        <a href="index.php?module=shop&page=blindbox&hash=<?php echo $box['box_hash']; ?>" class="block w-full bg-gradient-to-r from-purple-600 to-fuchsia-600 hover:from-purple-500 hover:to-fuchsia-500 text-white font-black py-2.5 rounded-xl text-xs uppercase tracking-widest shadow-[0_0_15px_rgba(168,85,247,0.4)] transition transform active:scale-95 flex items-center justify-center gap-2">
-                            <i class="fas fa-key"></i> Decrypt Node
-                        </a>
-                    </div>
-                </div>
-            <?php endforeach; ?>
-        </div>
-    </div>
-    <?php endif; ?>
-
     <!-- SECTION 3: Hot Deals (Flash Sales) -->
     <?php if(!empty($flash_sales)): ?>
     <div class="mb-16">
@@ -358,7 +314,8 @@ $live_online = rand(120, 850);
         <div class="grid grid-cols-1 md:grid-cols-3 gap-6 md:gap-8 relative z-10">
             <!-- 1. Instant Delivery (Focus Node) -->
             <div class="bg-slate-900/90 backdrop-blur-xl border border-green-500/40 p-6 md:p-8 rounded-3xl flex flex-col items-center text-center gap-4 relative overflow-hidden group shadow-[0_10px_30px_rgba(34,197,94,0.15)] hover:shadow-[0_15px_40px_rgba(34,197,94,0.3)] hover:border-green-400 transition-all duration-500 transform hover:-translate-y-1.5">
-                <div class="absolute inset-0 bg-gradient-to-b from-green-500/10 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-500 z-0"></div>
+                <!-- Inner Dotted Grid on Hover -->
+                <div class="absolute inset-0 bg-[url('data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMjAiIGhlaWdodD0iMjAiIHhtbG5zPSJodHRwOi8vd3d3LnczLm9yZy8yMDAwL3N2ZyI+PGNpcmNsZSBjeD0iMiIgY3k9IjIiIHI9IjEiIGZpbGw9InJnYmEoMzQsIDE5NywgOTQsIDAuMikiLz48L3N2Zz4=')] opacity-0 group-hover:opacity-100 transition-opacity duration-500 z-0"></div>
                 <div class="absolute -top-10 -right-10 w-32 h-32 bg-green-500/20 rounded-full blur-3xl group-hover:bg-green-500/40 transition-colors duration-500 z-0"></div>
                 
                 <div class="w-20 h-20 rounded-2xl bg-slate-950 flex items-center justify-center text-green-400 text-4xl border border-green-500/50 shadow-[inset_0_0_20px_rgba(34,197,94,0.2),0_0_25px_rgba(34,197,94,0.3)] group-hover:scale-110 transition-transform duration-500 relative z-10">
@@ -367,28 +324,30 @@ $live_online = rand(120, 850);
                 
                 <div class="relative z-10 w-full">
                     <div class="text-sm font-black text-white tracking-widest uppercase mb-2 group-hover:text-green-400 transition-colors">Instant Delivery</div>
-                    <div class="text-[10px] md:text-xs text-slate-400 font-medium leading-relaxed bg-slate-950/60 px-4 py-2.5 rounded-xl border border-slate-800 shadow-inner">24/7 Automated Matrix Dispenser. Zero Latency.</div>
+                    <div class="text-[10px] md:text-xs text-slate-400 font-medium leading-relaxed bg-slate-950/60 px-4 py-2.5 rounded-xl border border-slate-800 shadow-inner">24/7 Automated Matrix Dispenser.<br>Zero Latency.</div>
                 </div>
             </div>
 
             <!-- 2. Official Warranty -->
-            <div class="bg-slate-900/90 backdrop-blur-xl border border-purple-500/30 p-6 md:p-8 rounded-3xl flex flex-col items-center text-center gap-4 relative overflow-hidden group shadow-[0_10px_30px_rgba(168,85,247,0.1)] hover:shadow-[0_15px_40px_rgba(168,85,247,0.2)] hover:border-purple-400 transition-all duration-500 transform hover:-translate-y-1.5">
-                <div class="absolute inset-0 bg-gradient-to-b from-purple-500/10 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-500 z-0"></div>
-                <div class="absolute -top-10 -right-10 w-32 h-32 bg-purple-500/20 rounded-full blur-3xl group-hover:bg-purple-500/30 transition-colors duration-500 z-0"></div>
+            <div class="bg-slate-900/90 backdrop-blur-xl border border-[#00f0ff]/30 p-6 md:p-8 rounded-3xl flex flex-col items-center text-center gap-4 relative overflow-hidden group shadow-[0_10px_30px_rgba(0,240,255,0.1)] hover:shadow-[0_15px_40px_rgba(0,240,255,0.2)] hover:border-[#00f0ff] transition-all duration-500 transform hover:-translate-y-1.5">
+                <!-- Inner Dotted Grid on Hover -->
+                <div class="absolute inset-0 bg-[url('data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMjAiIGhlaWdodD0iMjAiIHhtbG5zPSJodHRwOi8vd3d3LnczLm9yZy8yMDAwL3N2ZyI+PGNpcmNsZSBjeD0iMiIgY3k9IjIiIHI9IjEiIGZpbGw9InJnYmEoMCwgMjQwLCAyNTUsIDAuMikiLz48L3N2Zz4=')] opacity-0 group-hover:opacity-100 transition-opacity duration-500 z-0"></div>
+                <div class="absolute -top-10 -right-10 w-32 h-32 bg-[#00f0ff]/20 rounded-full blur-3xl group-hover:bg-[#00f0ff]/30 transition-colors duration-500 z-0"></div>
                 
-                <div class="w-20 h-20 rounded-2xl bg-slate-950 flex items-center justify-center text-purple-400 text-4xl border border-purple-500/40 shadow-[inset_0_0_15px_rgba(168,85,247,0.2),0_0_20px_rgba(168,85,247,0.2)] group-hover:scale-110 transition-transform duration-500 relative z-10">
-                    <i class="fas fa-shield-check drop-shadow-[0_0_15px_rgba(168,85,247,0.8)]"></i>
+                <div class="w-20 h-20 rounded-2xl bg-slate-950 flex items-center justify-center text-[#00f0ff] text-4xl border border-[#00f0ff]/40 shadow-[inset_0_0_15px_rgba(0,240,255,0.2),0_0_20px_rgba(0,240,255,0.2)] group-hover:scale-110 transition-transform duration-500 relative z-10">
+                    <i class="fas fa-shield-check drop-shadow-[0_0_15px_rgba(0,240,255,0.8)]"></i>
                 </div>
                 
                 <div class="relative z-10 w-full">
-                    <div class="text-sm font-black text-white tracking-widest uppercase mb-2 group-hover:text-purple-400 transition-colors">Official Warranty</div>
-                    <div class="text-[10px] md:text-xs text-slate-400 font-medium leading-relaxed bg-slate-950/60 px-4 py-2.5 rounded-xl border border-slate-800 shadow-inner">Secure Encrypted Protocol. 100% Guaranteed.</div>
+                    <div class="text-sm font-black text-white tracking-widest uppercase mb-2 group-hover:text-[#00f0ff] transition-colors">Official Warranty</div>
+                    <div class="text-[10px] md:text-xs text-slate-400 font-medium leading-relaxed bg-slate-950/60 px-4 py-2.5 rounded-xl border border-slate-800 shadow-inner">Secure Encrypted Protocol.<br>100% Guaranteed.</div>
                 </div>
             </div>
 
             <!-- 3. Local Payment -->
             <div class="bg-slate-900/90 backdrop-blur-xl border border-yellow-500/30 p-6 md:p-8 rounded-3xl flex flex-col items-center text-center gap-4 relative overflow-hidden group shadow-[0_10px_30px_rgba(234,179,8,0.1)] hover:shadow-[0_15px_40px_rgba(234,179,8,0.2)] hover:border-yellow-400 transition-all duration-500 transform hover:-translate-y-1.5">
-                <div class="absolute inset-0 bg-gradient-to-b from-yellow-500/10 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-500 z-0"></div>
+                <!-- Inner Dotted Grid on Hover -->
+                <div class="absolute inset-0 bg-[url('data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMjAiIGhlaWdodD0iMjAiIHhtbG5zPSJodHRwOi8vd3d3LnczLm9yZy8yMDAwL3N2ZyI+PGNpcmNsZSBjeD0iMiIgY3k9IjIiIHI9IjEiIGZpbGw9InJnYmEoMjM0LCAxNzksIDgsIDAuMikiLz48L3N2Zz4=')] opacity-0 group-hover:opacity-100 transition-opacity duration-500 z-0"></div>
                 <div class="absolute -top-10 -right-10 w-32 h-32 bg-yellow-500/20 rounded-full blur-3xl group-hover:bg-yellow-500/30 transition-colors duration-500 z-0"></div>
                 
                 <div class="w-20 h-20 rounded-2xl bg-slate-950 flex items-center justify-center text-yellow-400 text-4xl border border-yellow-500/40 shadow-[inset_0_0_15px_rgba(234,179,8,0.2),0_0_20px_rgba(234,179,8,0.2)] group-hover:scale-110 transition-transform duration-500 relative z-10">
@@ -397,7 +356,7 @@ $live_online = rand(120, 850);
                 
                 <div class="relative z-10 w-full">
                     <div class="text-sm font-black text-white tracking-widest uppercase mb-2 group-hover:text-yellow-400 transition-colors">Local Payment</div>
-                    <div class="text-[10px] md:text-xs text-slate-400 font-medium leading-relaxed bg-slate-950/60 px-4 py-2.5 rounded-xl border border-slate-800 shadow-inner">KPay & Wave Pay Ecosystems Linked.</div>
+                    <div class="text-[10px] md:text-xs text-slate-400 font-medium leading-relaxed bg-slate-950/60 px-4 py-2.5 rounded-xl border border-slate-800 shadow-inner">KPay & Wave Pay Ecosystems<br>Fully Linked.</div>
                 </div>
             </div>
         </div>

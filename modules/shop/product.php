@@ -439,7 +439,7 @@ $has_cat_image = !empty($product['cat_image']);
                         <span>Fast Delivery</span>
                     </div>
                     <div class="bg-slate-800/50 py-2.5 rounded-lg border border-slate-700 flex flex-col items-center gap-1">
-                        <i class="fas fa-shield-check text-green-400 text-sm"></i>
+                        <i class="fas fa-shield-alt text-green-400 text-sm"></i>
                         <span>Secure Node</span>
                     </div>
                 </div>
