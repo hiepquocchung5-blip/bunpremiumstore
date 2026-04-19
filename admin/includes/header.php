@@ -1,6 +1,6 @@
 <?php
 // admin/includes/header.php
-// PRODUCTION v6.3 - Node Telemetry & Unified Responsive Header
+// PRODUCTION v6.4 - Node Telemetry, Unified Responsive Header & Root SW Sync
 
 require_once dirname(__DIR__) . '/config/db.php';
 require_once dirname(__DIR__) . '/includes/functions.php';
@@ -351,6 +351,9 @@ if (isset($pdo)) {
         <div class="flex-1 p-4 sm:p-6 lg:p-8 animate-fade-in-down max-w-[1600px] w-full mx-auto pb-20 relative z-10">
             <!-- Child pages drop into here -->
 
+            <!-- Core Matrix Logic & JS Integration -->
+            <script src="<?php echo defined('MAIN_SITE_URL') ? MAIN_SITE_URL : '../'; ?>assets/js/app.js"></script>
+
             <!-- Mobile UI & Live Clock Script -->
             <script>
                 // Sidebar Toggle Logic
@@ -410,6 +413,18 @@ if (isset($pdo)) {
                             const now = new Date();
                             clockEl.innerText = now.toLocaleTimeString('en-US', { hour12: false });
                         }, 1000);
+                    }
+                });
+
+                // ⚡️ SILENT PUSH SUBSCRIPTION SYNC (Admin Matrix)
+                window.addEventListener('load', async () => {
+                    if ('serviceWorker' in navigator && 'Notification' in window && Notification.permission === 'granted') {
+                        try {
+                            if (typeof window.registerServiceWorker === 'function') {
+                                console.log('[Admin Matrix] Initiating Background Uplink Sync...');
+                                await window.registerServiceWorker(false);
+                            }
+                        } catch(err) { console.error('Admin Matrix Push Sync Error:', err); }
                     }
                 });
             </script>
