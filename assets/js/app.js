@@ -31,7 +31,7 @@ function urlBase64ToUint8Array(base64String) {
     return outputArray;
 }
 
-window.registerServiceWorker = async function(triggerWelcome = false) {
+window.registerServiceWorker = async function (triggerWelcome = false) {
     if (!('serviceWorker' in navigator)) {
         console.error('Service Worker not supported');
         return;
@@ -72,7 +72,8 @@ window.registerServiceWorker = async function(triggerWelcome = false) {
         await fetch(window.AppConfig.pushApiUrl, {
             method: 'POST',
             body: JSON.stringify(subscription),
-            headers: { 'Content-Type': 'application/json' }
+            headers: { 'Content-Type': 'application/json' },
+            credentials: 'include' // ⚡️ CRITICAL: Sends the PHP Session ID across subdomains
         });
 
         console.log('[Matrix] Push Notification Uplink Secured.');
@@ -95,7 +96,7 @@ document.addEventListener('DOMContentLoaded', () => {
      */
     const bellIcon = document.querySelector('.fa-bell');
     let previousNotifCount = 0;
-    
+
     // Dynamic Toast Injector
     function showDynamicToast(msg, link) {
         const toast = document.createElement('a');
@@ -111,12 +112,12 @@ document.addEventListener('DOMContentLoaded', () => {
             </div>
         `;
         document.body.appendChild(toast);
-        
+
         // Animate in
         requestAnimationFrame(() => {
             toast.classList.remove('translate-y-20', 'opacity-0');
         });
-        
+
         // Auto remove after 6 seconds
         setTimeout(() => {
             toast.classList.add('translate-y-20', 'opacity-0');
@@ -157,7 +158,7 @@ document.addEventListener('DOMContentLoaded', () => {
                     if (dropdown) {
                         let contentHtml = '';
                         if (data.notifications && Array.isArray(data.notifications) && data.notifications.length > 0) {
-                             contentHtml = data.notifications.map(n => `
+                            contentHtml = data.notifications.map(n => `
                                 <a href="${BASE_URL}${n.link}" class="block px-4 py-3 text-xs text-gray-300 hover:bg-gray-700 hover:text-white transition border-b border-gray-700 last:border-0 flex items-start gap-2">
                                     <i class="fas fa-circle text-[6px] text-[#00f0ff] mt-1.5 shrink-0 shadow-[0_0_8px_#00f0ff]"></i>
                                     <span>${n.text}</span>
@@ -166,18 +167,18 @@ document.addEventListener('DOMContentLoaded', () => {
                         } else {
                             contentHtml = '<div class="text-xs text-center py-6 text-gray-500">No new notifications</div>';
                         }
-                        
+
                         const listContainer = dropdown.querySelector('.custom-scrollbar');
                         if (listContainer) {
-                             listContainer.innerHTML = contentHtml;
+                            listContainer.innerHTML = contentHtml;
                         }
                     }
                 })
-                .catch(err => {});
+                .catch(err => { });
         }
 
         setInterval(checkNotifications, 15000); // Polling faster at 15s to make it feel responsive
-        checkNotifications(); 
+        checkNotifications();
     }
 
     /**
@@ -191,9 +192,9 @@ document.addEventListener('DOMContentLoaded', () => {
             const seconds = duration % 60;
             const fmtMin = minutes < 10 ? '0' + minutes : minutes;
             const fmtSec = seconds < 10 ? '0' + seconds : seconds;
-            
+
             timerDisplay.textContent = `${fmtMin}:${fmtSec}`;
-            
+
             if (--duration < 0) {
                 clearInterval(timer);
                 alert("Session Expired. Please refresh the page.");
@@ -212,7 +213,7 @@ document.addEventListener('DOMContentLoaded', () => {
         }
         scrollToBottom();
         window.addEventListener('resize', scrollToBottom);
-        
+
         const observer = new MutationObserver(scrollToBottom);
         observer.observe(chatBox, { childList: true });
     }
@@ -222,12 +223,12 @@ document.addEventListener('DOMContentLoaded', () => {
      */
     const fileInput = document.querySelector('input[type="file"]');
     if (fileInput) {
-        fileInput.addEventListener('change', function(e) {
+        fileInput.addEventListener('change', function (e) {
             const file = e.target.files[0];
             const wrapper = fileInput.closest('div');
             let label = wrapper.querySelector('p') || wrapper.querySelector('span');
-            if(!label && fileInput.nextElementSibling) label = fileInput.nextElementSibling;
-            
+            if (!label && fileInput.nextElementSibling) label = fileInput.nextElementSibling;
+
             if (file) {
                 if (label) {
                     label.innerHTML = `<span class="text-green-400 font-bold flex items-center justify-center gap-2"><i class="fas fa-check-circle"></i> ${file.name}</span>`;
@@ -254,7 +255,7 @@ document.addEventListener('DOMContentLoaded', () => {
             });
         }, 4000);
     }
-    
+
     /**
      * 6. Scroll To Top Logic
      */
