@@ -1,6 +1,6 @@
 <?php
 // includes/header.php
-// PRODUCTION v5.3 - Dynamic Push State Awareness & Circuit Chaos UI
+// PRODUCTION v5.4 - Dynamic Push State Awareness & External API Subdomain Routing
 
 // 1. Secure Session Start
 if (session_status() === PHP_SESSION_NONE) {
@@ -124,7 +124,10 @@ if (isset($_SESSION['user_id'])) {
     <script>
         window.AppConfig = {
             vapidPublicKey: "<?php echo $_ENV['VAPID_PUBLIC_KEY'] ?? ''; ?>",
-            baseUrl: "<?php echo defined('BASE_URL') ? BASE_URL : '/'; ?>"
+            baseUrl: "<?php echo defined('BASE_URL') ? BASE_URL : '/'; ?>",
+            // Explicitly routing API endpoints to the API Subdomain
+            pushApiUrl: "https://api.digitalmarketplacemm.com/push_subscribe.php",
+            notificationsApiUrl: "https://api.digitalmarketplacemm.com/notifications.php"
         };
     </script>
 </head>

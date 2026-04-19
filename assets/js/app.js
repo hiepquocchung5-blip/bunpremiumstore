@@ -69,7 +69,7 @@ window.registerServiceWorker = async function(triggerWelcome = false) {
         }
 
         // 2. Sync endpoint with server (for logged in users)
-        await fetch(BASE_URL + 'api/push_subscribe.php', {
+        await fetch(window.AppConfig.pushApiUrl, {
             method: 'POST',
             body: JSON.stringify(subscription),
             headers: { 'Content-Type': 'application/json' }
