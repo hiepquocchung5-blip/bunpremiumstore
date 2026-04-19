@@ -1,6 +1,6 @@
 <?php
 // admin/includes/header.php
-// PRODUCTION v6.0 - Mobile-Optimized (425px), Z-Index Supremacy & Live Clock
+// PRODUCTION v6.2 - DB Auto-Heal, Node Telemetry & Unified Responsive Header
 
 require_once dirname(__DIR__) . '/config/db.php';
 require_once dirname(__DIR__) . '/includes/functions.php';
@@ -35,13 +35,34 @@ if (!function_exists('admin_url')) {
     }
 }
 
-// Database connection required for badges
+// Database Connection & Auto-Heal Routines
 $pending_count = 0;
+$push_nodes_count = 0;
+
 if (isset($pdo)) {
     try {
+        // 1. AUTO-HEAL: Ensure Push Subscriptions Table Exists
+        $pdo->exec("CREATE TABLE IF NOT EXISTS push_subscriptions (
+            id INT AUTO_INCREMENT PRIMARY KEY,
+            user_id INT NOT NULL,
+            endpoint VARCHAR(500) NOT NULL UNIQUE,
+            p256dh VARCHAR(255) NOT NULL,
+            auth VARCHAR(255) NOT NULL,
+            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+            FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
+        )");
+
+        // 2. Fetch Pending Orders
         $stmt = $pdo->query("SELECT COUNT(*) FROM orders WHERE status = 'pending'");
         $pending_count = $stmt->fetchColumn();
-    } catch (PDOException $e) {}
+
+        // 3. Fetch Active Push Nodes
+        $stmt_push = $pdo->query("SELECT COUNT(*) FROM push_subscriptions");
+        $push_nodes_count = $stmt_push->fetchColumn();
+
+    } catch (PDOException $e) {
+        // Fails gracefully if DB lacks permissions
+    }
 }
 ?>
 <!DOCTYPE html>
@@ -106,43 +127,21 @@ if (isset($pdo)) {
         #adminSidebar { transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1); }
         #sidebarOverlay { transition: opacity 0.3s ease; }
     </style>
+
+    <!-- Global App Configuration (Failsafe for Push APIs) -->
+    <script>
+        window.AppConfig = {
+            vapidPublicKey: "<?php echo $_ENV['VAPID_PUBLIC_KEY'] ?? ''; ?>",
+            baseUrl: "<?php echo defined('MAIN_SITE_URL') ? MAIN_SITE_URL : '/'; ?>"
+        };
+    </script>
 </head>
 <body class="flex bg-[#0f172a] min-h-screen relative selection:bg-[#00f0ff]/30 selection:text-[#00f0ff]">
 
     <!-- Global Background FX -->
     <div class="fixed inset-0 w-full h-full -z-20 pointer-events-none">
-        <div class="absolute top-[-10%] right-[-5%] w-[300px] md:w-[500px] h-[300px] md:h-[500px] bg-blue-600/10 rounded-full blur-[100px]"></div>
-        <div class="absolute bottom-[-10%] left-[-5%] w-[300px] md:w-[500px] h-[300px] md:h-[500px] bg-[#00f0ff]/5 rounded-full blur-[100px]"></div>
-    </div>
-
-    <!-- ========================================== -->
-    <!-- MOBILE HEADER (Visible < 1024px)           -->
-    <!-- Z-Index 80 to float above normal content   -->
-    <!-- ========================================== -->
-    <div class="lg:hidden fixed top-0 left-0 right-0 h-16 bg-slate-900/95 backdrop-blur-xl border-b border-slate-800 z-[80] flex items-center justify-between px-4 sm:px-6 shadow-[0_4px_20px_rgba(0,0,0,0.5)]">
-        <div class="flex items-center gap-3">
-            <div class="w-9 h-9 rounded-xl bg-slate-800 flex items-center justify-center border border-[#00f0ff]/30 shadow-[0_0_15px_rgba(0,240,255,0.2)]">
-                <i class="fas fa-bolt text-[#00f0ff] text-sm"></i>
-            </div>
-            <div class="flex flex-col">
-                <span class="font-black text-white text-base tracking-tight leading-none">DMMM <span class="text-[#00f0ff]">Admin</span></span>
-                <span class="text-[8px] text-slate-400 uppercase tracking-widest font-bold mt-0.5 flex items-center gap-1">
-                    <span class="w-1.5 h-1.5 rounded-full bg-green-500 animate-pulse"></span> Online
-                </span>
-            </div>
-        </div>
-        
-        <div class="flex items-center gap-3">
-            <?php if($pending_count > 0): ?>
-                <a href="<?php echo admin_url('orders', ['status' => 'pending']); ?>" class="w-9 h-9 rounded-xl bg-yellow-500/10 text-yellow-500 flex items-center justify-center border border-yellow-500/30 relative">
-                    <i class="fas fa-bell animate-pulse"></i>
-                    <span class="absolute -top-1 -right-1 w-4 h-4 bg-yellow-500 text-slate-900 text-[9px] font-black rounded-full flex items-center justify-center border border-slate-900"><?php echo $pending_count; ?></span>
-                </a>
-            <?php endif; ?>
-            <button id="mobileMenuBtn" class="w-10 h-10 rounded-xl bg-slate-800 text-slate-300 flex items-center justify-center border border-slate-700 hover:text-white hover:border-[#00f0ff]/50 transition focus:outline-none shadow-inner">
-                <i class="fas fa-bars text-lg"></i>
-            </button>
-        </div>
+        <div class="absolute top-[-10%] right-[-5%] w-[300px] md:w-[500px] h-[300px] md:h-[500px] bg-blue-600/10 rounded-full blur-[100px] animate-pulse-slow"></div>
+        <div class="absolute bottom-[-10%] left-[-5%] w-[300px] md:w-[500px] h-[300px] md:h-[500px] bg-[#00f0ff]/5 rounded-full blur-[100px] animate-pulse-slow" style="animation-delay: 2s;"></div>
     </div>
 
     <!-- Mobile Overlay (Z-Index 90) -->
@@ -156,7 +155,7 @@ if (isset($pdo)) {
     <aside id="adminSidebar" class="fixed inset-y-0 left-0 w-64 bg-slate-900/95 backdrop-blur-2xl border-r border-slate-800 z-[100] transform -translate-x-full lg:translate-x-0 lg:static lg:flex shrink-0 flex-col shadow-[20px_0_50px_rgba(0,0,0,0.5)]">
         
         <!-- Brand Header -->
-        <div class="h-20 flex items-center justify-between px-5 border-b border-slate-800 shrink-0 relative overflow-hidden group">
+        <div class="h-20 flex items-center justify-between px-5 border-b border-slate-800 shrink-0 relative overflow-hidden group bg-slate-900">
             <div class="absolute inset-0 bg-gradient-to-r from-blue-600/10 to-[#00f0ff]/5 opacity-0 group-hover:opacity-100 transition duration-500 pointer-events-none"></div>
             
             <div class="flex items-center gap-3 relative z-10">
@@ -175,7 +174,7 @@ if (isset($pdo)) {
             </button>
         </div>
 
-        <!-- Identity Banner with Live Clock -->
+        <!-- Identity Banner -->
         <div class="p-5 border-b border-slate-800/80 shrink-0 bg-slate-900/50">
             <div class="flex items-center gap-3">
                 <div class="w-10 h-10 rounded-full bg-slate-800 border border-[#00f0ff]/30 flex items-center justify-center text-white font-bold shadow-inner relative">
@@ -184,8 +183,8 @@ if (isset($pdo)) {
                 </div>
                 <div class="min-w-0 flex-1">
                     <p class="text-sm font-bold text-white truncate">Op #<?php echo $_SESSION['admin_id'] ?? '1'; ?></p>
-                    <p class="text-[9px] font-mono text-slate-400 uppercase tracking-widest truncate mt-0.5" id="live-clock">
-                        --:--:--
+                    <p class="text-[9px] font-mono text-[#00f0ff] uppercase tracking-widest truncate mt-0.5">
+                        <?php echo str_replace('_', ' ', $_SESSION['admin_role'] ?? 'Support'); ?>
                     </p>
                 </div>
             </div>
@@ -274,9 +273,10 @@ if (isset($pdo)) {
                 <i class="fas fa-images w-6 text-center text-lg <?php echo is_active('banners', $current_page) || is_active('banner_edit', $current_page) ? 'text-[#00f0ff]' : 'opacity-70'; ?>"></i>
                 <span class="ml-2 tracking-wide">Banners</span>
             </a>
+            
             <a href="<?php echo admin_url('notifications'); ?>" class="nav-item flex items-center px-5 py-2.5 mx-2 rounded-xl text-sm font-medium border-l-[3px] <?php echo is_active('notifications', $current_page) ? 'active' : 'border-transparent text-slate-400'; ?>">
-                <i class="fas fa-bell w-6 text-center text-lg <?php echo is_active('notifications', $current_page) ? 'text-[#00f0ff]' : 'opacity-70'; ?>"></i>
-                <span class="ml-2 tracking-wide">Notifications</span>
+                <i class="fas fa-satellite-dish w-6 text-center text-lg <?php echo is_active('notifications', $current_page) ? 'text-[#00f0ff]' : 'opacity-70'; ?>"></i>
+                <span class="ml-2 tracking-wide">Push Matrix</span>
             </a>
 
             <!-- SYSTEM -->
@@ -313,51 +313,91 @@ if (isset($pdo)) {
     </aside>
 
     <!-- MAIN CONTENT WRAPPER -->
-    <!-- Added pt-16 to account for the fixed mobile header, ensuring content doesn't hide underneath -->
-    <main class="flex-1 flex flex-col min-h-screen w-full lg:w-[calc(100%-16rem)] pt-16 lg:pt-0 overflow-x-hidden relative z-10 transition-all duration-300">
+    <main class="flex-1 flex flex-col min-h-screen w-full lg:w-[calc(100%-16rem)] overflow-x-hidden relative z-10 transition-all duration-300">
         
+        <!-- Top Header Bar (Z-Index Supremacy - Responsive) -->
+        <header class="h-16 lg:h-20 bg-slate-900/95 backdrop-blur-md border-b border-slate-700/50 flex items-center justify-between px-4 sm:px-6 shrink-0 shadow-sm z-[80] sticky top-0">
+            
+            <div class="flex items-center gap-3 sm:gap-4">
+                <button id="mobileMenuBtnAlt" onclick="toggleSidebar()" class="lg:hidden w-10 h-10 rounded-xl bg-slate-800 border border-slate-600 text-slate-400 hover:text-[#00f0ff] flex items-center justify-center transition shadow-inner shrink-0">
+                    <i class="fas fa-bars"></i>
+                </button>
+                
+                <h2 class="text-white font-bold text-base sm:text-lg hidden min-[425px]:block tracking-wide truncate max-w-[150px] sm:max-w-none">
+                    <?php echo ucfirst(str_replace('_', ' ', $current_page)); ?> Module
+                </h2>
+            </div>
+
+            <div class="flex items-center gap-3 sm:gap-4">
+                
+                <!-- TELEMETRY: Active Push Nodes Indicator -->
+                <div class="hidden sm:flex items-center gap-2 bg-slate-800 border border-slate-700 px-3 py-1.5 rounded-lg shadow-inner text-slate-300 font-mono text-[10px] tracking-widest" title="Active Push Subscriptions">
+                    <i class="fas fa-satellite-dish <?php echo $push_nodes_count > 0 ? 'text-[#00f0ff] animate-pulse' : 'text-slate-500'; ?>"></i>
+                    <span><?php echo $push_nodes_count; ?> Nodes</span>
+                </div>
+
+                <!-- Live Telemetry Clock -->
+                <div class="hidden min-[425px]:flex items-center gap-2 bg-slate-800 border border-slate-700 px-3 py-1.5 rounded-lg shadow-inner text-slate-300 font-mono text-[10px] tracking-widest">
+                    <i class="far fa-clock text-[#00f0ff]"></i>
+                    <span id="live-clock">00:00:00</span>
+                </div>
+
+                <div class="hidden md:flex items-center gap-2 bg-green-500/10 border border-green-500/20 px-3 py-1.5 rounded-lg shadow-inner">
+                    <span class="w-2 h-2 rounded-full bg-green-400 animate-pulse shadow-[0_0_8px_#4ade80]"></span>
+                    <span class="text-[10px] text-green-400 font-bold uppercase tracking-widest">Uplink Secure</span>
+                </div>
+                
+                <!-- Quick Link to Frontend -->
+                <a href="<?php echo defined('MAIN_SITE_URL') ? MAIN_SITE_URL : '../index.php'; ?>" target="_blank" class="flex items-center justify-center gap-2 bg-slate-800 hover:bg-slate-700 border border-slate-600 w-10 h-10 sm:w-auto sm:px-4 sm:py-2 rounded-xl text-slate-300 hover:text-white transition text-xs font-bold uppercase tracking-wider shadow-sm group shrink-0">
+                    <i class="fas fa-external-link-alt text-[#00f0ff] group-hover:animate-pulse"></i> 
+                    <span class="hidden sm:inline">View Public Matrix</span>
+                </a>
+            </div>
+        </header>
+
         <!-- Top Gradient Glow (Desktop) -->
-        <div class="hidden lg:block absolute top-0 left-0 w-full h-32 bg-gradient-to-b from-slate-800/30 to-transparent pointer-events-none"></div>
+        <div class="hidden lg:block absolute top-20 left-0 w-full h-32 bg-gradient-to-b from-slate-800/30 to-transparent pointer-events-none z-0"></div>
 
         <!-- Content Area: The actual page content will be injected here by admin/index.php -->
-        <div class="flex-1 p-4 sm:p-6 lg:p-8 animate-fade-in-down max-w-[1600px] w-full mx-auto pb-20">
+        <div class="flex-1 p-4 sm:p-6 lg:p-8 animate-fade-in-down max-w-[1600px] w-full mx-auto pb-20 relative z-10">
             <!-- Child pages drop into here -->
 
             <!-- Mobile UI & Live Clock Script -->
             <script>
+                // Sidebar Toggle Logic
+                const sidebar = document.getElementById('adminSidebar');
+                const overlay = document.getElementById('sidebarOverlay');
+
+                function toggleSidebar() {
+                    const isOpen = !sidebar.classList.contains('-translate-x-full');
+                    
+                    if (isOpen) {
+                        // Close
+                        sidebar.classList.add('-translate-x-full');
+                        overlay.classList.add('opacity-0');
+                        setTimeout(() => {
+                            overlay.classList.add('hidden');
+                        }, 300); // match transition duration
+                        document.body.style.overflow = '';
+                    } else {
+                        // Open
+                        overlay.classList.remove('hidden');
+                        // Small delay to allow display:block to apply before animating opacity
+                        setTimeout(() => {
+                            overlay.classList.remove('opacity-0');
+                            sidebar.classList.remove('-translate-x-full');
+                        }, 10);
+                        document.body.style.overflow = 'hidden'; // Prevent background scrolling
+                    }
+                }
+
                 document.addEventListener('DOMContentLoaded', () => {
-                    // --- Sidebar Toggle Logic ---
-                    const menuBtn = document.getElementById('mobileMenuBtn');
+                    // Mobile close events
                     const closeBtn = document.getElementById('closeSidebarBtn');
-                    const sidebar = document.getElementById('adminSidebar');
-                    const overlay = document.getElementById('sidebarOverlay');
-
-                    const toggleSidebar = () => {
-                        const isOpen = !sidebar.classList.contains('-translate-x-full');
-                        
-                        if (isOpen) {
-                            // Close
-                            sidebar.classList.add('-translate-x-full');
-                            overlay.classList.add('opacity-0');
-                            setTimeout(() => {
-                                overlay.classList.add('hidden');
-                            }, 300); // match transition duration
-                            document.body.style.overflow = '';
-                        } else {
-                            // Open
-                            overlay.classList.remove('hidden');
-                            // Small delay to allow display:block to apply before animating opacity
-                            setTimeout(() => {
-                                overlay.classList.remove('opacity-0');
-                                sidebar.classList.remove('-translate-x-full');
-                            }, 10);
-                            document.body.style.overflow = 'hidden'; // Prevent background scrolling
-                        }
-                    };
-
-                    if (menuBtn) menuBtn.addEventListener('click', toggleSidebar);
+                    const menuBtn = document.getElementById('mobileMenuBtn');
+                    
                     if (closeBtn) closeBtn.addEventListener('click', toggleSidebar);
-                    if (overlay) overlay.addEventListener('click', toggleSidebar);
+                    if (menuBtn) menuBtn.addEventListener('click', toggleSidebar);
 
                     // --- Auto-Correct on Resize ---
                     window.addEventListener('resize', () => {
@@ -379,8 +419,7 @@ if (isset($pdo)) {
                     if(clockEl) {
                         setInterval(() => {
                             const now = new Date();
-                            const timeString = now.toLocaleTimeString('en-US', { hour12: false });
-                            clockEl.innerHTML = `<i class="far fa-clock mr-1 text-slate-500"></i> ${timeString}`;
+                            clockEl.innerText = now.toLocaleTimeString('en-US', { hour12: false });
                         }, 1000);
                     }
                 });
