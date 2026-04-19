@@ -449,7 +449,7 @@ if (isset($pdo)) {
             <div class="absolute top-20 -left-40 w-96 h-96 bg-[#00f0ff]/10 rounded-full blur-3xl opacity-30"></div>
         </div>
 
-    <script>
+ <script>
         // Keyboard shortcuts for search modal
         document.addEventListener('keydown', (e) => {
             if ((e.ctrlKey || e.metaKey) && e.key === 'k') {
@@ -483,7 +483,7 @@ if (isset($pdo)) {
                         }).catch(err => {
                             console.error('Manual Uplink Error:', err);
                             if (icon) icon.className = "fas fa-bell-slash text-red-500";
-                            alert("Uplink failed. Ensure notifications are allowed in site settings.");
+                            alert("Uplink failed. Ensure notifications are allowed in site settings and cache is cleared.");
                         });
                     } else {
                         console.error('Matrix App.js not loaded.');

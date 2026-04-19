@@ -1,12 +1,12 @@
 // assets/js/app.js
-// PRODUCTION v3.1 - Fixed SW Root Scope & Instant Local Welcome Push
+// PRODUCTION v3.2 - Strict Absolute Root SW Scope & Pathing
 
 /**
  * --------------------------------------------------------------------------
  * CONFIGURATION
  * --------------------------------------------------------------------------
  */
-// Public VAPID Key & Base URL for Web Push (Injected from server .env)
+// Public VAPID Key for Web Push (Injected from server .env)
 const PUBLIC_VAPID_KEY = window.AppConfig?.vapidPublicKey || '';
 const BASE_URL = window.AppConfig?.baseUrl || '/';
 
@@ -43,9 +43,9 @@ window.registerServiceWorker = async function(triggerWelcome = false) {
     }
 
     try {
-        // Registering the SW at the ROOT domain scope, not in /assets/
-        const swUrl = BASE_URL + 'sw.js';
-        const register = await navigator.serviceWorker.register(swUrl, { scope: BASE_URL });
+        // FORCE ABSOLUTE ROOT PATH: Prevents 404 errors by ensuring it never looks in /assets/
+        const swUrl = '/sw.js';
+        const register = await navigator.serviceWorker.register(swUrl, { scope: '/' });
         await navigator.serviceWorker.ready;
 
         const subscription = await register.pushManager.subscribe({
@@ -57,10 +57,10 @@ window.registerServiceWorker = async function(triggerWelcome = false) {
         if (triggerWelcome && Notification.permission === 'granted') {
             register.showNotification('System Uplink Active ⚡️', {
                 body: 'Welcome to DigitalMarketplaceMM! Proceed to the authorization portal to access premium digital assets.',
-                icon: BASE_URL + 'assets/images/logo.png',
-                badge: BASE_URL + 'assets/images/logo.png',
+                icon: '/assets/images/logo.png',
+                badge: '/assets/images/logo.png',
                 vibrate: [100, 50, 100, 50, 200],
-                data: { url: BASE_URL + 'index.php?module=auth&page=login' },
+                data: { url: '/index.php?module=auth&page=login' },
                 actions: [
                     { action: 'open', title: 'Initialize Login' },
                     { action: 'close', title: 'Abort' }
