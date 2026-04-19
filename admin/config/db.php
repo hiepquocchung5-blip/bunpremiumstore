@@ -16,9 +16,9 @@ try {
 }
 
 // Admin Base URL (Subdomain)
-define('BASE_URL', $_ENV['APP_URL'] ?? 'http://digitalmarketplacemm.com/');
-define('ADMIN_URL', 'http://bunsadminconfig.digitalmarketplacemm.com/');
-define('MAIN_SITE_URL', 'http://digitalmarketplacemm.com/'); // Point to where uploads folder lives
+define('BASE_URL', $_ENV['APP_URL'] ?? 'https://digitalmarketplacemm.com/');
+define('ADMIN_URL', 'https://bunsadminconfig.digitalmarketplacemm.com/');
+define('MAIN_SITE_URL', 'https://digitalmarketplacemm.com/'); // Point to where uploads folder lives
 
 // Start Session
 if (session_status() === PHP_SESSION_NONE) {
