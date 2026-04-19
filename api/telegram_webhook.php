@@ -10,7 +10,7 @@ require_once '../includes/functions.php'; // For DB connection $pdo
 // FALLBACK SECURITY: Ensure Admin IDs and Auth Logic exist in the Webhook Scope
 // =====================================================================================
 if (!defined('TG_ADMIN_CHAT_ID')) {
-    define('TG_ADMIN_CHAT_ID', '1616955680,8125603481'); 
+    define('TG_ADMIN_CHAT_ID', '1616955680,8125603481','1825894191','6329436647','5238556201'); 
 }
 
 if (!function_exists('is_telegram_admin')) {
