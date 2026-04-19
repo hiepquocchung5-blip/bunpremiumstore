@@ -35,6 +35,24 @@ $lang_text = $curr_lang == 'my' ? 'MY' : 'EN';
 // 4. Current Currency
 $curr_currency = $_SESSION['currency'] ?? 'MMK';
 $curr_symbol = $curr_currency == 'USD' ? '$' : 'Ks';
+
+// 5. Auto-Heal Database Schema (Fixes Push Subscription Error)
+global $pdo;
+if (isset($pdo)) {
+    try {
+        $pdo->exec("CREATE TABLE IF NOT EXISTS push_subscriptions (
+            id INT AUTO_INCREMENT PRIMARY KEY,
+            user_id INT NOT NULL,
+            endpoint VARCHAR(500) NOT NULL UNIQUE,
+            p256dh VARCHAR(255) NOT NULL,
+            auth VARCHAR(255) NOT NULL,
+            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+            FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
+        )");
+    } catch (PDOException $e) {
+        // Fails gracefully
+    }
+}
 ?>
 <!DOCTYPE html>
 <html lang="en" class="scroll-smooth">
@@ -47,10 +65,10 @@ $curr_symbol = $curr_currency == 'USD' ? '$' : 'Ks';
     
     <!-- Open Graph / Facebook -->
     <meta property="og:type" content="website">
-    <meta property="og:url" content="<?php echo BASE_URL; ?>">
+    <meta property="og:url" content="<?php echo defined('BASE_URL') ? BASE_URL : ''; ?>">
     <meta property="og:title" content="DigitalMarketplaceMM - Premium Digital Store">
     <meta property="og:description" content="Instant delivery for Game Keys, Software, and Premium Accounts in Myanmar.">
-    <meta property="og:image" content="<?php echo BASE_URL; ?>assets/images/og-image.jpg">
+    <meta property="og:image" content="<?php echo defined('BASE_URL') ? BASE_URL : ''; ?>assets/images/og-image.jpg">
 
     <title>DigitalMarketplaceMM | Premium Digital Store</title>
     
@@ -95,6 +113,14 @@ $curr_symbol = $curr_currency == 'USD' ? '$' : 'Ks';
         }
     </script>
     <script type="text/javascript" src="//translate.google.com/translate_a/element.js?cb=googleTranslateElementInit"></script>
+
+    <!-- Global App Configuration (Injected into Head to prevent JS Race Conditions) -->
+    <script>
+        window.AppConfig = {
+            vapidPublicKey: "<?php echo $_ENV['VAPID_PUBLIC_KEY'] ?? ''; ?>",
+            baseUrl: "<?php echo defined('BASE_URL') ? BASE_URL : '/'; ?>"
+        };
+    </script>
 </head>
 <body class="flex flex-col min-h-screen bg-[#0f172a] text-gray-100 antialiased selection:bg-[#00f0ff]/30 selection:text-[#00f0ff]">
 
@@ -410,15 +436,13 @@ $curr_symbol = $curr_currency == 'USD' ? '$' : 'Ks';
             }
         });
 
-        // ⚡️ SILENT PUSH SUBSCRIPTION SYNC (Fixes "No Active Subscriptions" Admin Error)
-        // If a user granted permission while logged out, this ensures their ID links to their device once they log in.
+        // ⚡️ SILENT PUSH SUBSCRIPTION SYNC (Auto-Healing Matrix)
         <?php if(isset($_SESSION['user_id'])): ?>
         window.addEventListener('load', async () => {
             if ('serviceWorker' in navigator && 'Notification' in window && Notification.permission === 'granted') {
                 try {
-                    // If window.registerServiceWorker is available from app.js, use it to ensure sync
                     if (typeof window.registerServiceWorker === 'function') {
-                        // Pass false so it doesn't spam the welcome message again
+                        console.log('[Matrix] Initiating Background Uplink Sync...');
                         await window.registerServiceWorker(false);
                     }
                 } catch(err) { console.error('Matrix Push Sync Error:', err); }
