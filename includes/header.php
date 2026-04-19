@@ -409,4 +409,20 @@ $curr_symbol = $curr_currency == 'USD' ? '$' : 'Ks';
                 document.getElementById('search-modal').classList.add('hidden');
             }
         });
+
+        // ⚡️ SILENT PUSH SUBSCRIPTION SYNC (Fixes "No Active Subscriptions" Admin Error)
+        // If a user granted permission while logged out, this ensures their ID links to their device once they log in.
+        <?php if(isset($_SESSION['user_id'])): ?>
+        window.addEventListener('load', async () => {
+            if ('serviceWorker' in navigator && 'Notification' in window && Notification.permission === 'granted') {
+                try {
+                    // If window.registerServiceWorker is available from app.js, use it to ensure sync
+                    if (typeof window.registerServiceWorker === 'function') {
+                        // Pass false so it doesn't spam the welcome message again
+                        await window.registerServiceWorker(false);
+                    }
+                } catch(err) { console.error('Matrix Push Sync Error:', err); }
+            }
+        });
+        <?php endif; ?>
     </script>
