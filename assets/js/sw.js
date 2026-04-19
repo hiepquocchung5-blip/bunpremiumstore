@@ -1,4 +1,4 @@
-// assets/sw.js
+// sw.js (MUST BE IN ROOT DIRECTORY)
 // PRODUCTION v2.0 - Advanced Service Worker Matrix & Smart Routing
 
 self.addEventListener('push', function(event) {
@@ -35,7 +35,7 @@ self.addEventListener('push', function(event) {
         vibrate: [100, 50, 100, 50, 200], // Cyberpunk stutter pulse
         data: { url: link },
         timestamp: Date.now(),
-        requireInteraction: false, // Set to true if you want it to stay on screen until dismissed
+        requireInteraction: false, 
         actions: [
             { action: 'open', title: 'Access Terminal' },
             { action: 'close', title: 'Dismiss' }
@@ -63,7 +63,7 @@ self.addEventListener('notificationclick', function(event) {
             // Check if there is already a window/tab open with the target URL
             for (let i = 0; i < windowClients.length; i++) {
                 const client = windowClients[i];
-                // If it's open, just focus it to prevent opening 100 identical tabs
+                // If it's open, just focus it to prevent opening multiple identical tabs
                 if (client.url === targetUrl && 'focus' in client) {
                     return client.focus();
                 }
