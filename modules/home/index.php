@@ -381,7 +381,7 @@ if (is_logged_in()) {
                 <div class="absolute -top-10 -right-10 w-32 h-32 bg-[#00f0ff]/20 rounded-full blur-3xl group-hover:bg-[#00f0ff]/30 transition-colors duration-500 z-0"></div>
                 
                 <div class="w-20 h-20 rounded-2xl bg-slate-950 flex items-center justify-center text-[#00f0ff] text-4xl border border-[#00f0ff]/40 shadow-[inset_0_0_15px_rgba(0,240,255,0.2),0_0_20px_rgba(0,240,255,0.2)] group-hover:scale-110 transition-transform duration-500 relative z-10">
-                    <i class="fas fa-shield-check drop-shadow-[0_0_15px_rgba(0,240,255,0.8)]"></i>
+                    <i class="fas fa-alt-check drop-shadow-[0_0_15px_rgba(0,240,255,0.8)]"></i>
                 </div>
                 
                 <div class="relative z-10 w-full">

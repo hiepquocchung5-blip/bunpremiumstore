@@ -1,6 +1,6 @@
 <?php
 // includes/header.php
-// PRODUCTION v5.2 - Unified Bell UI, Smart Uplink Prompts & Clean Matrix
+// PRODUCTION v5.3 - DB-Strict Notification Sync & Matrix Override
 
 // 1. Secure Session Start
 if (session_status() === PHP_SESSION_NONE) {
@@ -30,12 +30,24 @@ if(isset($_COOKIE['googtrans'])) {
         $curr_lang = 'my';
     }
 }
-$lang_emoji = $curr_lang == 'my' ? '🇲🇲' : '🇺🇸';
 $lang_text = $curr_lang == 'my' ? 'MY' : 'EN';
 
 // 4. Current Currency
 $curr_currency = $_SESSION['currency'] ?? 'MMK';
 $curr_symbol = $curr_currency == 'USD' ? '$' : 'Ks';
+
+// 5. STRICT DATABASE SYNC: Check if user is actively receiving Push Alerts
+$is_push_subscribed = false;
+if (isset($_SESSION['user_id'])) {
+    global $pdo;
+    if (isset($pdo)) {
+        try {
+            $sub_check = $pdo->prepare("SELECT id FROM push_subscriptions WHERE user_id = ?");
+            $sub_check->execute([$_SESSION['user_id']]);
+            $is_push_subscribed = $sub_check->rowCount() > 0;
+        } catch (Exception $e) {} // Fails gracefully
+    }
+}
 ?>
 <!DOCTYPE html>
 <html lang="en" class="scroll-smooth">
@@ -43,7 +55,6 @@ $curr_symbol = $curr_currency == 'USD' ? '$' : 'Ks';
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <meta name="description" content="DigitalMarketplaceMM - The #1 Premium Digital Store in Myanmar. Buy Game Keys, Software, and Subscriptions instantly via KBZPay/Wave.">
-    <meta name="keywords" content="digital store, myanmar game shop, steam wallet mm, gift cards, premium accounts">
     <meta name="theme-color" content="#0f172a">
     
     <!-- Open Graph / Facebook -->
@@ -167,7 +178,6 @@ $curr_symbol = $curr_currency == 'USD' ? '$' : 'Ks';
                             <span class="text-xs font-bold text-white hidden sm:inline"><?php echo $lang_text; ?> <span class="text-slate-600 mx-1">|</span> <span class="text-[#00f0ff]"><?php echo $curr_symbol; ?></span></span>
                         </button>
                         
-                        <!-- Dropdown Menu -->
                         <div class="absolute right-0 top-full mt-2 w-56 bg-slate-900/95 backdrop-blur-xl rounded-xl shadow-[0_20px_50px_rgba(0,0,0,0.7)] border border-slate-700 opacity-0 invisible group-hover:opacity-100 group-hover:visible dropdown-menu z-50 overflow-hidden">
                             <div class="absolute -right-10 -top-10 w-32 h-32 bg-[#00f0ff]/10 rounded-full blur-3xl pointer-events-none"></div>
 
@@ -219,18 +229,20 @@ $curr_symbol = $curr_currency == 'USD' ? '$' : 'Ks';
                                     <h4 class="text-[10px] font-bold text-white uppercase tracking-widest flex items-center gap-2"><i class="fas fa-satellite-dish text-[#00f0ff]"></i> System Alerts</h4>
                                 </div>
                                 
-                                <!-- Push Subscription Prompt (Inside Dropdown) -->
-                                <div class="enable-push-wrapper bg-gradient-to-r from-blue-900/40 to-slate-900 border-b border-blue-500/30 p-3 flex justify-between items-center group/prompt">
+                                <!-- Push Subscription Prompt (Only shows if NOT in DB) -->
+                                <?php if (!$is_push_subscribed): ?>
+                                <div class="matrix-push-wrapper bg-gradient-to-r from-blue-900/40 to-slate-900 border-b border-blue-500/30 p-3 flex justify-between items-center group/prompt">
                                     <div class="flex items-center gap-2">
                                         <div class="w-6 h-6 rounded-full bg-[#00f0ff]/10 flex items-center justify-center border border-[#00f0ff]/20">
                                             <i class="fas fa-bolt text-[#00f0ff] text-xs animate-pulse"></i>
                                         </div>
                                         <span class="text-[9px] text-blue-300 font-black uppercase tracking-wider">Browser Uplink</span>
                                     </div>
-                                    <button type="button" class="enable-push-btn bg-[#00f0ff] hover:bg-blue-400 text-slate-900 px-3 py-1.5 rounded-lg text-[9px] font-black uppercase tracking-widest transition shadow-[0_0_10px_rgba(0,240,255,0.4)] transform active:scale-95">
+                                    <button type="button" class="matrix-push-btn bg-[#00f0ff] hover:bg-blue-400 text-slate-900 px-3 py-1.5 rounded-lg text-[9px] font-black uppercase tracking-widest transition shadow-[0_0_10px_rgba(0,240,255,0.4)] transform active:scale-95">
                                         Connect
                                     </button>
                                 </div>
+                                <?php endif; ?>
 
                                 <div class="max-h-64 overflow-y-auto custom-scrollbar" id="nav-notif-list">
                                     <div class="text-xs text-center py-8 text-slate-500">
@@ -289,12 +301,14 @@ $curr_symbol = $curr_currency == 'USD' ? '$' : 'Ks';
                     <?php else: ?>
                         
                         <!-- NOTIFICATION BELL (Guests - Initiates Subscription) -->
-                        <div class="enable-push-wrapper hidden sm:block">
-                            <button type="button" class="enable-push-btn relative w-9 h-9 lg:w-10 lg:h-10 rounded-xl bg-slate-900/80 hover:bg-slate-800 border border-[#00f0ff]/30 hover:border-[#00f0ff] text-[#00f0ff] flex items-center justify-center transition-all shadow-[inset_0_0_10px_rgba(0,240,255,0.1),0_0_15px_rgba(0,240,255,0.2)] group" title="Enable System Alerts">
+                        <?php if (!$is_push_subscribed): ?>
+                        <div class="matrix-push-wrapper hidden sm:block">
+                            <button type="button" class="matrix-push-btn relative w-9 h-9 lg:w-10 lg:h-10 rounded-xl bg-slate-900/80 hover:bg-slate-800 border border-[#00f0ff]/30 hover:border-[#00f0ff] text-[#00f0ff] flex items-center justify-center transition-all shadow-[inset_0_0_10px_rgba(0,240,255,0.1),0_0_15px_rgba(0,240,255,0.2)] group" title="Enable System Alerts">
                                 <i class="fas fa-bell group-hover:animate-shake-bell relative z-10"></i>
                                 <span class="absolute top-2 right-2 w-2 h-2 bg-[#00f0ff] rounded-full shadow-[0_0_8px_#00f0ff] animate-pulse"></span>
                             </button>
                         </div>
+                        <?php endif; ?>
 
                         <div class="hidden lg:flex items-center gap-3 ml-2">
                             <a href="index.php?module=auth&page=login" class="text-slate-300 hover:text-white font-medium text-sm transition px-4 py-2 rounded-lg hover:bg-slate-800 border border-transparent hover:border-slate-700">Login</a>
@@ -390,11 +404,14 @@ $curr_symbol = $curr_currency == 'USD' ? '$' : 'Ks';
                 </div>
             <?php else: ?>
                 <div class="space-y-3 mt-4">
-                    <div class="enable-push-wrapper">
-                        <button type="button" class="enable-push-btn block w-full text-center p-4 bg-slate-800/80 border border-[#00f0ff]/30 text-[#00f0ff] font-black uppercase tracking-widest rounded-xl shadow-[0_0_15px_rgba(0,240,255,0.1)] transition-all active:scale-95 flex items-center justify-center gap-2">
+                    <!-- Mobile Subscribe Prompt -->
+                    <?php if (!$is_push_subscribed): ?>
+                    <div class="matrix-push-wrapper">
+                        <button type="button" class="matrix-push-btn block w-full text-center p-4 bg-slate-800/80 border border-[#00f0ff]/30 text-[#00f0ff] font-black uppercase tracking-widest rounded-xl shadow-[0_0_15px_rgba(0,240,255,0.1)] transition-all active:scale-95 flex items-center justify-center gap-2">
                             <i class="fas fa-bell animate-pulse"></i> Enable Alerts
                         </button>
                     </div>
+                    <?php endif; ?>
                     <a href="index.php?module=auth&page=login" class="block w-full text-center p-3 bg-slate-800 border border-slate-600 text-white font-bold rounded-xl shadow-lg">Initiate Login</a>
                     <a href="index.php?module=auth&page=register" class="block w-full text-center p-3 bg-gradient-to-r from-blue-600 to-[#00f0ff] text-slate-900 font-black rounded-xl shadow-[0_0_15px_rgba(0,240,255,0.3)]">Deploy New Account</a>
                 </div>
@@ -445,10 +462,11 @@ $curr_symbol = $curr_currency == 'USD' ? '$' : 'Ks';
             }
         });
 
-        // ⚡️ INLINE DEBUG & FAILSAFE FOR PUSH BUTTON (Overrides app.js if needed)
+        // ⚡️ INLINE DEBUG & FAILSAFE FOR PUSH BUTTON
+        // Bypasses app.js to strictly follow Database Auth State
         document.addEventListener('DOMContentLoaded', () => {
-            document.querySelectorAll('.enable-push-btn').forEach(btn => {
-                btn.onclick = (e) => {
+            document.querySelectorAll('.matrix-push-btn').forEach(btn => {
+                btn.onclick = async (e) => {
                     e.preventDefault();
                     e.stopPropagation();
                     
@@ -456,17 +474,17 @@ $curr_symbol = $curr_currency == 'USD' ? '$' : 'Ks';
                     if (icon) icon.className = "fas fa-spinner fa-spin";
                     
                     if (typeof window.registerServiceWorker === 'function') {
-                        // Pass 'true' to ensure the local welcome push triggers
-                        window.registerServiceWorker(true).then(() => {
+                        try {
+                            await window.registerServiceWorker(true);
                             // Visually remove the prompt block upon success
-                            const wrapper = btn.closest('.enable-push-wrapper');
+                            const wrapper = btn.closest('.matrix-push-wrapper');
                             if (wrapper) wrapper.remove();
                             else btn.remove();
-                        }).catch(err => {
+                        } catch(err) {
                             console.error('Manual Uplink Error:', err);
                             if (icon) icon.className = "fas fa-bell-slash text-red-500";
                             alert("Uplink failed. Ensure notifications are allowed in site settings and cache is cleared.");
-                        });
+                        }
                     } else {
                         console.error('Matrix App.js not loaded.');
                         if (icon) icon.className = "fas fa-exclamation-triangle text-red-500";
@@ -475,8 +493,8 @@ $curr_symbol = $curr_currency == 'USD' ? '$' : 'Ks';
             });
         });
 
-        // ⚡️ SILENT PUSH SUBSCRIPTION SYNC
-        <?php if(isset($_SESSION['user_id'])): ?>
+        // ⚡️ SILENT PUSH SUBSCRIPTION SYNC (Background Healing)
+        <?php if(isset($_SESSION['user_id']) && !$is_push_subscribed): ?>
         window.addEventListener('load', async () => {
             if ('serviceWorker' in navigator && 'Notification' in window && Notification.permission === 'granted') {
                 try {
