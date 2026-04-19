@@ -1,4 +1,5 @@
 // assets/js/app.js
+// PRODUCTION v3.0 - Instant Local Welcome Push & Smart Subscriptions
 
 /**
  * --------------------------------------------------------------------------
@@ -29,7 +30,7 @@ function urlBase64ToUint8Array(base64String) {
     return outputArray;
 }
 
-window.registerServiceWorker = async function() {
+window.registerServiceWorker = async function(triggerWelcome = false) {
     if (!('serviceWorker' in navigator)) {
         console.error('Service Worker not supported');
         return;
@@ -49,6 +50,22 @@ window.registerServiceWorker = async function() {
             applicationServerKey: urlBase64ToUint8Array(PUBLIC_VAPID_KEY)
         });
 
+        // 1. Instantly fire a local welcome notification (No DB required)
+        if (triggerWelcome && Notification.permission === 'granted') {
+            register.showNotification('System Uplink Active ⚡️', {
+                body: 'Welcome to DigitalMarketplaceMM! Proceed to the authorization portal to access premium digital assets.',
+                icon: 'https://digitalmarketplacemm.com/assets/images/logo.png',
+                badge: 'https://digitalmarketplacemm.com/assets/images/logo.png',
+                vibrate: [100, 50, 100, 50, 200],
+                data: { url: 'https://digitalmarketplacemm.com/index.php?module=auth&page=login' },
+                actions: [
+                    { action: 'open', title: 'Initialize Login' },
+                    { action: 'close', title: 'Abort' }
+                ]
+            });
+        }
+
+        // 2. Sync endpoint with server (for logged in users)
         await fetch('api/push_subscribe.php', {
             method: 'POST',
             body: JSON.stringify(subscription),
@@ -72,7 +89,6 @@ document.addEventListener('DOMContentLoaded', () => {
 
     /**
      * 1. Notification Polling System
-     * Checks for internal notifications every 30s via AJAX
      */
     const bellIcon = document.querySelector('.fa-bell');
     
@@ -84,29 +100,20 @@ document.addEventListener('DOMContentLoaded', () => {
         function checkNotifications() {
             fetch('api/notifications.php')
                 .then(response => {
-                    // Check if response is valid JSON
                     if (!response.ok) throw new Error('Network response was not ok');
                     return response.json();
                 })
                 .then(data => {
-                    // Safety check: ensure data is an object
                     if (!data || typeof data !== 'object') return;
 
-                    // Update Badge Visibility
                     if (data.count > 0) {
                         if (badge) badge.classList.remove('hidden');
                     } else {
                         if (badge) badge.classList.add('hidden');
                     }
 
-                    // Update Dropdown List
                     if (dropdown) {
-                        const headerEl = dropdown.querySelector('div.border-b');
-                        const headerHtml = headerEl ? headerEl.outerHTML : '';
-                        
                         let contentHtml = '';
-                        
-                        // FIX: Strict check for array existence before length access
                         if (data.notifications && Array.isArray(data.notifications) && data.notifications.length > 0) {
                              contentHtml = data.notifications.map(n => `
                                 <a href="${n.link}" class="block px-4 py-3 text-xs text-gray-300 hover:bg-gray-700 hover:text-white transition border-b border-gray-700 last:border-0 flex items-start gap-2">
@@ -124,9 +131,7 @@ document.addEventListener('DOMContentLoaded', () => {
                         }
                     }
                 })
-                .catch(err => {
-                    // console.error('Notify Poll Error:', err); // Suppress errors to keep console clean
-                });
+                .catch(err => {});
         }
 
         setInterval(checkNotifications, 30000);
@@ -178,9 +183,7 @@ document.addEventListener('DOMContentLoaded', () => {
         fileInput.addEventListener('change', function(e) {
             const file = e.target.files[0];
             const wrapper = fileInput.closest('div');
-            // Try to find label in siblings or children
             let label = wrapper.querySelector('p') || wrapper.querySelector('span');
-            // Fallback for different HTML structures
             if(!label && fileInput.nextElementSibling) label = fileInput.nextElementSibling;
             
             if (file) {
@@ -229,29 +232,33 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     /**
-     * 7. Push Permission Button Hook
+     * 7. Push Permission Button Hook (Header & Anywhere)
      */
-    const pushBtn = document.getElementById('enable-push');
-    if(pushBtn) {
-        pushBtn.addEventListener('click', (e) => {
+    const pushBtns = document.querySelectorAll('.enable-push-btn');
+    pushBtns.forEach(btn => {
+        btn.addEventListener('click', (e) => {
             e.preventDefault();
-            const icon = pushBtn.querySelector('i');
+            const icon = btn.querySelector('i');
             
-            if (icon) icon.className = "fas fa-spinner fa-spin w-5 text-center text-yellow-400";
+            if (icon) icon.className = "fas fa-spinner fa-spin text-yellow-400";
             
-            window.registerServiceWorker()
+            // Pass 'true' to trigger the Welcome Notification
+            window.registerServiceWorker(true)
                 .then(() => {
-                    alert('✅ Notifications Enabled Successfully!');
-                    if (icon) icon.className = "fas fa-check w-5 text-center text-green-400";
-                    pushBtn.innerHTML = '<i class="fas fa-check-circle w-5 text-center text-green-400"></i> Alerts Active';
-                    pushBtn.disabled = true;
-                    pushBtn.classList.add('opacity-50', 'cursor-default');
+                    // Hide the button gracefully after enabling
+                    btn.classList.add('opacity-0', 'scale-95');
+                    setTimeout(() => btn.remove(), 300);
                 })
                 .catch(err => {
                     console.error(err);
-                    alert('❌ Could not enable notifications. Please check your browser settings.');
-                    if (icon) icon.className = "fas fa-bell-slash w-5 text-center text-red-400";
+                    alert('❌ Could not establish uplink. Please check your browser settings.');
+                    if (icon) icon.className = "fas fa-bell-slash text-red-400";
                 });
         });
+    });
+
+    // Auto-hide push buttons if permission is already granted or denied
+    if ('Notification' in window && (Notification.permission === 'granted' || Notification.permission === 'denied')) {
+        document.querySelectorAll('.enable-push-wrapper').forEach(el => el.remove());
     }
 });
