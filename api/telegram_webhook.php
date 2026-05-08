@@ -1,16 +1,17 @@
 <?php
 // api/telegram_webhook.php
-// PRODUCTION v2.3 - Advanced HTML UI & Standalone Multi-Admin Auth
+// PRODUCTION v3.0 - Two-Way Matrix Comms & Push Integration
 
 // Load Config
 require_once '../includes/config.php';
-require_once '../includes/functions.php'; // For DB connection $pdo
+require_once '../includes/functions.php'; 
 
 // =====================================================================================
 // FALLBACK SECURITY: Ensure Admin IDs and Auth Logic exist in the Webhook Scope
 // =====================================================================================
 if (!defined('TG_ADMIN_CHAT_ID')) {
-    define('TG_ADMIN_CHAT_ID', '1616955680,8125603481','1825894191','6329436647','5238556201'); 
+    // FIXED: PHP define() only takes two parameters. All IDs must be in ONE string separated by commas.
+    define('TG_ADMIN_CHAT_ID', '1616955680,8125603481,1825894191,6329436647,5238556201'); 
 }
 
 if (!function_exists('is_telegram_admin')) {
@@ -25,10 +26,7 @@ if (!function_exists('is_telegram_admin')) {
 $content = file_get_contents("php://input");
 $update = json_decode($content, true);
 
-if (!$update) {
-    // Silence is golden for security scanners
-    exit;
-}
+if (!$update) { exit; } // Silence scanners
 
 // 2. Extract Message Info
 $chat_id = $update['message']['chat']['id'] ?? null;
@@ -39,43 +37,47 @@ $username = $update['message']['from']['username'] ?? 'Unknown';
 if ($chat_id) {
     
     $reply = "";
-    
-    // Utilize the core helper to check if this node is authorized
     $isAdmin = is_telegram_admin($chat_id);
 
-    // Split command and arguments (e.g., "/approve 123" -> ["/approve", "123"])
-    $parts = explode(' ', $text);
-    $command = strtolower($parts[0]);
-    $arg = $parts[1] ?? null;
+    // Advanced Parser for Multi-Word Commands (e.g. /reply 123 Hello World)
+    $spacePos = strpos($text, ' ');
+    if ($spacePos !== false) {
+        $command = strtolower(substr($text, 0, $spacePos));
+        $argsStr = trim(substr($text, $spacePos + 1));
+        
+        $argsParts = explode(' ', $argsStr, 2);
+        $arg = $argsParts[0] ?? null;            // The Order ID
+        $msgPayload = $argsParts[1] ?? null;     // The rest of the text
+    } else {
+        $command = strtolower($text);
+        $arg = null;
+        $msgPayload = null;
+    }
 
     switch ($command) {
         case '/start':
         case '/help':
             $reply = "⚡️ <b>DigitalMarketplaceMM Matrix</b> ⚡️\n\n";
-            $reply .= "Greetings Operative <b>@$username</b>. I am the central notification AI.\n\n";
-            $reply .= "🆔 <b>Your Node ID:</b> <code>$chat_id</code>\n";
+            $reply .= "Greetings Operative <b>@$username</b>.\n\n";
             
             if ($isAdmin) {
-                $reply .= "\n🛠 <b><u>ADMINISTRATOR PROTOCOLS</u></b>\n";
-                $reply .= "🔹 /stats - View Live Telemetry\n";
-                $reply .= "🔹 /pending - List Awaiting Approvals\n";
-                $reply .= "🔹 /approve <code>[ID]</code> - Authorize & Deliver\n";
-                $reply .= "🔹 /reject <code>[ID]</code> - Terminate Request\n";
+                $reply .= "🛠 <b><u>ADMINISTRATOR PROTOCOLS</u></b>\n";
+                $reply .= "🔹 <code>/stats</code> - View Live Telemetry\n";
+                $reply .= "🔹 <code>/pending</code> - List Awaiting Approvals\n";
+                $reply .= "🔹 <code>/approve [ID]</code> - Authorize & Deliver\n";
+                $reply .= "🔹 <code>/reject [ID]</code> - Terminate Request\n";
+                $reply .= "🔹 <code>/reply [ID] [Message]</code> - Chat with User\n";
             } else {
+                $reply .= "🆔 <b>Your Node ID:</b> <code>$chat_id</code>\n";
                 $reply .= "\n<i>You do not possess Administrator clearance.</i>";
             }
             break;
 
-        case '/myid':
-            $reply = "🆔 <b>Identity Verified:</b>\n\n<code>$chat_id</code>\n\n<i>Inject this sequence into includes/functions.php under TG_ADMIN_CHAT_ID to establish the admin uplink. Separate multiple IDs with commas.</i>";
-            break;
-
         case '/stats':
             if ($isAdmin) {
-                // Fetch live stats
                 $pending = $pdo->query("SELECT COUNT(*) FROM orders WHERE status = 'pending'")->fetchColumn();
                 $revenue = $pdo->query("SELECT SUM(total_price_paid) FROM orders WHERE status = 'active' AND DATE(created_at) = CURDATE()")->fetchColumn() ?: 0;
-                $active_users = rand(120, 950); // Dynamic frontend replication
+                $active_users = rand(120, 950); 
                 
                 $reply = "📊 <b><u>SYSTEM TELEMETRY</u></b>\n";
                 $reply .= "━━━━━━━━━━━━━━━━━━━━\n";
@@ -84,8 +86,6 @@ if ($chat_id) {
                 $reply .= "🕒 <b>Pending Orders:</b> $pending\n";
                 $reply .= "💰 <b>Daily Volume:</b> " . number_format($revenue) . " Ks\n";
                 $reply .= "━━━━━━━━━━━━━━━━━━━━";
-            } else {
-                $reply = "⛔ <b>Access Denied:</b> Insufficient Clearance.";
             }
             break;
 
@@ -93,93 +93,103 @@ if ($chat_id) {
             if ($isAdmin) {
                 $stmt = $pdo->query("
                     SELECT o.id, o.total_price_paid, u.username, COALESCE(p.name, ps.name) as item_name
-                    FROM orders o 
-                    JOIN users u ON o.user_id = u.id
-                    LEFT JOIN products p ON o.product_id = p.id
-                    LEFT JOIN passes ps ON o.pass_id = ps.id
-                    WHERE o.status = 'pending' 
-                    ORDER BY o.id DESC LIMIT 10
+                    FROM orders o JOIN users u ON o.user_id = u.id
+                    LEFT JOIN products p ON o.product_id = p.id LEFT JOIN passes ps ON o.pass_id = ps.id
+                    WHERE o.status = 'pending' ORDER BY o.id DESC LIMIT 10
                 ");
                 $orders = $stmt->fetchAll();
                 
                 if ($orders) {
                     $reply = "🕒 <b><u>AWAITING AUTHORIZATION</u></b>\n\n";
                     foreach ($orders as $o) {
-                        $reply .= "🔹 <b>Order:</b> <code>#{$o['id']}</code>\n";
-                        $reply .= "👤 <b>User:</b> @{$o['username']}\n";
-                        $reply .= "📦 <b>Asset:</b> {$o['item_name']}\n";
-                        $reply .= "💰 <b>Value:</b> " . number_format($o['total_price_paid']) . " Ks\n";
+                        $reply .= "🔹 <b>Order:</b> <code>{$o['id']}</code> | 👤 @{$o['username']}\n";
+                        $reply .= "📦 {$o['item_name']}\n";
+                        $reply .= "💰 " . number_format($o['total_price_paid']) . " Ks\n";
                         $reply .= "━━━━━━━━━━━━━━━━\n";
                     }
-                    $reply .= "\n<i>Execute: /approve [ID] or /reject [ID]</i>";
+                    $reply .= "\n<i>Execute: /approve [ID], /reject [ID], or /reply [ID] [Msg]</i>";
                 } else {
                     $reply = "✅ <b>Matrix Clear:</b> Zero pending orders.";
                 }
-            } else {
-                $reply = "⛔ <b>Access Denied.</b>";
             }
             break;
 
         case '/approve':
-            if ($isAdmin) {
-                if (is_numeric($arg)) {
-                    // Check order first
-                    $check = $pdo->prepare("SELECT status FROM orders WHERE id = ?");
-                    $check->execute([$arg]);
-                    $ord = $check->fetch();
+            if ($isAdmin && is_numeric($arg)) {
+                $check = $pdo->prepare("SELECT o.status, o.user_id FROM orders o WHERE o.id = ?");
+                $check->execute([$arg]);
+                $ord = $check->fetch();
 
-                    if ($ord && $ord['status'] === 'pending') {
-                        $stmt = $pdo->prepare("UPDATE orders SET status = 'active' WHERE id = ?");
-                        $stmt->execute([$arg]);
-                        
-                        $reply = "✅ <b>AUTHORIZATION GRANTED</b>\n\n";
-                        $reply .= "Order <code>#$arg</code> has been successfully marked as <b>Active</b>. User interface has been updated.";
-                    } elseif ($ord && $ord['status'] === 'active') {
-                        $reply = "⚠️ Order <code>#$arg</code> is already active in the matrix.";
-                    } else {
-                        $reply = "⚠️ Order <code>#$arg</code> could not be located.";
-                    }
+                if ($ord && $ord['status'] === 'pending') {
+                    // Update Order Status
+                    $pdo->prepare("UPDATE orders SET status = 'active' WHERE id = ?")->execute([$arg]);
+                    
+                    // Inject automated message into chat
+                    $pdo->prepare("INSERT INTO order_messages (order_id, sender_type, message) VALUES (?, 'admin', '✅ Payment verified! Your order has been approved and is now active.')")->execute([$arg]);
+                    
+                    // Trigger Push Notification
+                    trigger_push_alert($pdo, $ord['user_id'], "Order Complete ✅", "Order #$arg has been verified and activated.", $arg);
+
+                    $reply = "✅ <b>AUTHORIZATION GRANTED</b>\n\nOrder <code>#$arg</code> is now Active. User has been notified.";
                 } else {
-                    $reply = "⚠️ <b>Syntax Error:</b> Use <code>/approve 123</code>";
+                    $reply = "⚠️ Order <code>#$arg</code> not found or already processed.";
                 }
-            } else {
-                $reply = "⛔ <b>Access Denied.</b>";
             }
             break;
 
         case '/reject':
+            if ($isAdmin && is_numeric($arg)) {
+                $check = $pdo->prepare("SELECT o.status, o.user_id FROM orders o WHERE o.id = ?");
+                $check->execute([$arg]);
+                $ord = $check->fetch();
+
+                if ($ord && $ord['status'] === 'pending') {
+                    $pdo->prepare("UPDATE orders SET status = 'rejected' WHERE id = ?")->execute([$arg]);
+                    
+                    $pdo->prepare("INSERT INTO order_messages (order_id, sender_type, message) VALUES (?, 'admin', '❌ Order Rejected. Please ensure your payment slip is valid or contact support.')")->execute([$arg]);
+                    trigger_push_alert($pdo, $ord['user_id'], "Order Rejected ❌", "Issue with Order #$arg. Please check the terminal.", $arg);
+
+                    $reply = "🚫 <b>DEPLOYMENT TERMINATED</b>\n\nOrder <code>#$arg</code> Rejected. User has been notified.";
+                } else {
+                    $reply = "⚠️ Order <code>#$arg</code> not found or not in pending state.";
+                }
+            }
+            break;
+
+        case '/reply':
             if ($isAdmin) {
-                if (is_numeric($arg)) {
-                    $check = $pdo->prepare("SELECT status FROM orders WHERE id = ?");
+                if (is_numeric($arg) && !empty($msgPayload)) {
+                    $check = $pdo->prepare("SELECT user_id FROM orders WHERE id = ?");
                     $check->execute([$arg]);
                     $ord = $check->fetch();
 
-                    if ($ord && $ord['status'] === 'pending') {
-                        $stmt = $pdo->prepare("UPDATE orders SET status = 'rejected' WHERE id = ?");
-                        $stmt->execute([$arg]);
-                        
-                        $reply = "🚫 <b>DEPLOYMENT TERMINATED</b>\n\n";
-                        $reply .= "Order <code>#$arg</code> has been <b>Rejected</b>. The secure channel is closed.";
+                    if ($ord) {
+                        // Inject message into DB
+                        $pdo->exec("SET NAMES 'utf8mb4'");
+                        $stmt = $pdo->prepare("INSERT INTO order_messages (order_id, sender_type, message) VALUES (?, 'admin', ?)");
+                        $stmt->execute([$arg, $msgPayload]);
+
+                        // Push Notification
+                        trigger_push_alert($pdo, $ord['user_id'], "New Transmission 💬", "Admin replied to Order #$arg", $arg);
+
+                        $reply = "✉️ <b>COMMS DISPATCHED</b>\n\nMessage successfully injected into Order <code>#$arg</code> chat matrix.";
                     } else {
-                        $reply = "⚠️ Order <code>#$arg</code> not found or not in pending state.";
+                        $reply = "⚠️ Order <code>#$arg</code> could not be located in the database.";
                     }
                 } else {
-                    $reply = "⚠️ <b>Syntax Error:</b> Use <code>/reject 123</code>";
+                    $reply = "⚠️ <b>Syntax Error:</b> Use <code>/reply [ID] [Your Message]</code>\nExample: <code>/reply 142 Hello, here is your key!</code>";
                 }
-            } else {
-                $reply = "⛔ <b>Access Denied.</b>";
             }
             break;
 
         default:
-            // Only respond to commands starting with / to avoid spamming normal chat
             if (strpos($text, '/') === 0) {
                 $reply = "❓ <b>Unknown Command.</b> Execute /help for protocols.";
             }
             break;
     }
 
-    // 4. Send Reply
+    // 4. Send Reply back to Admin
     if ($reply) {
         send_reply($chat_id, $reply);
     }
@@ -201,9 +211,25 @@ function send_reply($chat_id, $text) {
     curl_setopt($ch, CURLOPT_POST, true);
     curl_setopt($ch, CURLOPT_POSTFIELDS, $data);
     curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
-    // Disable SSL check for dev, but standard API endpoints usually succeed on cPanel
     curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, false); 
     curl_exec($ch);
     curl_close($ch);
+}
+
+/**
+ * Helper to trigger Web Push Notifications
+ */
+function trigger_push_alert($pdo, $user_id, $title, $body, $order_id) {
+    $push_file = __DIR__ . '/../includes/PushService.php';
+    if (file_exists($push_file)) {
+        require_once $push_file;
+        try {
+            $push = new PushService($pdo);
+            $url = "https://digitalmarketplacemm.com/index.php?module=user&page=orders&view_chat=" . $order_id;
+            $push->sendToUser($user_id, $title, $body, $url);
+        } catch (Exception $e) {
+            error_log("Webhook Push Fail: " . $e->getMessage());
+        }
+    }
 }
 ?>
