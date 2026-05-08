@@ -1,6 +1,6 @@
 <?php
 // modules/user/orders.php
-// PRODUCTION DEPLOYMENT v4.0 - Agent Pass Chat UI & Database Sync
+// PRODUCTION DEPLOYMENT v4.1 - Real-Time Telegram Comms & Neon Chat Matrix
 
 if (!is_logged_in()) redirect('index.php?module=auth&page=login');
 
@@ -20,7 +20,14 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['ajax_msg'])) {
         $msg = trim($_POST['message']);
         $oid = (int)$_POST['order_id'];
         
-        $stmt = $pdo->prepare("SELECT status FROM orders WHERE id = ? AND user_id = ?");
+        $stmt = $pdo->prepare("
+            SELECT o.status, u.username, COALESCE(p.name, ps.name) as item_name 
+            FROM orders o 
+            JOIN users u ON o.user_id = u.id
+            LEFT JOIN products p ON o.product_id = p.id
+            LEFT JOIN passes ps ON o.pass_id = ps.id
+            WHERE o.id = ? AND o.user_id = ?
+        ");
         $stmt->execute([$oid, $user_id]);
         $order_check = $stmt->fetch();
         
@@ -29,6 +36,37 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['ajax_msg'])) {
                 $pdo->exec("SET NAMES 'utf8mb4'");
                 $stmt = $pdo->prepare("INSERT INTO order_messages (order_id, sender_type, message) VALUES (?, 'user', ?)");
                 $stmt->execute([$oid, $msg]);
+                
+                // ⚡️ REAL-TIME TELEGRAM ALERT TO ADMINS
+                if (defined('TG_BOT_TOKEN') && defined('TG_ADMIN_CHAT_ID')) {
+                    $admin_url = defined('ADMIN_URL') ? ADMIN_URL : BASE_URL . 'admin/';
+                    
+                    $tg_msg = "💬 <b>New Encrypted Comm Received</b>\n\n";
+                    $tg_msg .= "🆔 <b>Node:</b> #{$oid} - {$order_check['item_name']}\n";
+                    $tg_msg .= "👤 <b>Operative:</b> @{$order_check['username']}\n";
+                    $tg_msg .= "💬 <b>Payload:</b> <i>" . htmlspecialchars($msg) . "</i>\n\n";
+                    $tg_msg .= "⚡️ <a href='{$admin_url}index.php?page=order_detail&id={$oid}'>Access Terminal to Reply</a>";
+
+                    $admin_ids = array_map('trim', explode(',', TG_ADMIN_CHAT_ID));
+                    foreach ($admin_ids as $adid) {
+                        if (empty($adid)) continue;
+                        $ch = curl_init("https://api.telegram.org/bot" . TG_BOT_TOKEN . "/sendMessage");
+                        curl_setopt_array($ch, [
+                            CURLOPT_POST => true,
+                            CURLOPT_RETURNTRANSFER => true,
+                            CURLOPT_SSL_VERIFYPEER => false,
+                            CURLOPT_POSTFIELDS => [
+                                'chat_id' => $adid,
+                                'text' => $tg_msg,
+                                'parse_mode' => 'HTML',
+                                'disable_web_page_preview' => true
+                            ]
+                        ]);
+                        curl_exec($ch);
+                        curl_close($ch);
+                    }
+                }
+                
                 echo json_encode(['success' => true]);
                 exit;
             } catch (Exception $e) {}
@@ -56,23 +94,33 @@ if (isset($_GET['ajax']) && $_GET['ajax'] == 1 && $active_chat_id > 0) {
         $is_user = $msg['sender_type'] === 'user';
         $align = $is_user ? 'justify-end' : 'justify-start';
         $item_align = $is_user ? 'items-end' : 'items-start';
-        $bubble_bg = $is_user ? 'bg-blue-600 text-white rounded-br-none border-blue-500 shadow-[0_0_10px_rgba(37,99,235,0.2)]' : 'bg-slate-800 text-slate-200 rounded-bl-none border-slate-600 shadow-md';
+        
+        // Neon UI Upgrade for Bubbles
+        $bubble_bg = $is_user 
+            ? 'bg-gradient-to-br from-[#00f0ff] to-blue-600 text-slate-900 font-medium rounded-2xl rounded-br-sm shadow-[0_4px_15px_rgba(0,240,255,0.3)]' 
+            : 'bg-slate-800 text-slate-200 border border-slate-700 rounded-2xl rounded-bl-sm shadow-md';
+            
         $time = date('H:i', strtotime($msg['created_at']));
         $safe_msg = htmlspecialchars($msg['message']);
 
-        echo "<div class='flex w-full {$align} mb-4 animate-fade-in-up'>";
+        echo "<div class='flex w-full {$align} mb-4 animate-fade-in-up group'>";
         echo "<div class='max-w-[85%] md:max-w-[75%] flex flex-col {$item_align}'>";
-        echo "<div class='px-4 py-3 text-sm relative rounded-2xl border {$bubble_bg}'>";
+        echo "<div class='px-4 py-3 text-[13px] md:text-sm relative {$bubble_bg}'>";
         
         if ($msg['is_credential']) {
-            echo "<div class='flex items-center gap-2 text-[10px] font-bold text-[#00f0ff] mb-2 border-b border-white/10 pb-1 uppercase tracking-wider'><i class='fas fa-shield-alt'></i> Secure Data</div>";
-            echo "<div class='font-mono text-xs whitespace-pre-wrap select-all bg-black/40 p-2.5 rounded-lg border border-white/5 text-green-400'>{$safe_msg}</div>";
+            echo "<div class='flex items-center gap-2 text-[10px] font-black " . ($is_user ? "text-slate-900" : "text-[#00f0ff]") . " mb-2 border-b " . ($is_user ? "border-slate-900/20" : "border-white/10") . " pb-1 uppercase tracking-wider'><i class='fas fa-shield-alt'></i> Secure Data</div>";
+            echo "<div class='font-mono text-xs whitespace-pre-wrap select-all " . ($is_user ? "bg-white/30 text-slate-900" : "bg-black/40 text-green-400") . " p-2.5 rounded-lg border border-white/10'>{$safe_msg}</div>";
         } else {
             echo "<div class='whitespace-pre-wrap break-words leading-relaxed'>{$safe_msg}</div>";
         }
         
         echo "</div>";
-        echo "<span class='text-[10px] text-slate-500 mt-1.5 px-1 font-medium'>{$time}</span>";
+        
+        echo "<div class='flex items-center gap-1.5 mt-1 px-1 opacity-60 group-hover:opacity-100 transition-opacity'>";
+        if($is_user) echo "<i class='fas fa-check-double text-[8px] text-[#00f0ff]'></i>";
+        echo "<span class='text-[9px] text-slate-400 font-medium tracking-wide'>{$time}</span>";
+        echo "</div>";
+        
         echo "</div></div>";
     }
     exit;
@@ -98,7 +146,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['message']) && !isset(
 // =====================================================================================
 
 // Fetch All Orders for Sidebar
-// FIX: Using COALESCE to gracefully fallback to the Pass name if product is NULL
 $stmt = $pdo->prepare("
     SELECT o.id, o.status, o.total_price_paid, o.created_at, o.pass_id,
            COALESCE(p.name, ps.name) as name, 
@@ -184,7 +231,7 @@ $main_display = $active_chat_id ? 'flex' : 'hidden md:flex';
                         <div class="flex items-center gap-2">
                             <span class="order-id-span text-xs font-mono <?php echo $isActive ? 'text-[#00f0ff]' : 'text-slate-500 group-hover:text-slate-300'; ?>">#<?php echo $ord['id']; ?></span>
                             <?php if($isPass): ?>
-                                <span class="text-[8px] bg-yellow-500/20 text-yellow-500 px-1.5 py-0.5 rounded border border-yellow-500/30 uppercase font-black"><i class="fas fa-crown"></i> Pass</span>
+                                <span class="text-[8px] bg-yellow-500/20 text-yellow-500 px-1.5 py-0.5 rounded border border-yellow-500/30 uppercase font-black tracking-widest"><i class="fas fa-crown"></i> Pass</span>
                             <?php endif; ?>
                         </div>
                         <span class="text-[9px] font-bold uppercase px-2 py-0.5 rounded border tracking-wider <?php echo $statusColor; ?>"><?php echo $ord['status']; ?></span>
@@ -225,7 +272,7 @@ $main_display = $active_chat_id ? 'flex' : 'hidden md:flex';
 
             <!-- Order Header -->
             <div class="p-5 border-b border-slate-700/50 bg-slate-800/80 backdrop-blur shrink-0 flex flex-col z-20 shadow-sm relative">
-                <button onclick="showMobileSidebar()" class="md:hidden text-slate-400 hover:text-white text-xs mb-3 flex items-center gap-2 w-max bg-slate-900 px-3 py-1.5 rounded-lg border border-slate-700 transition">
+                <button onclick="showMobileSidebar()" class="md:hidden text-slate-400 hover:text-white text-xs mb-3 flex items-center gap-2 w-max bg-slate-900 px-3 py-1.5 rounded-lg border border-slate-700 transition shadow-inner">
                     <i class="fas fa-arrow-left"></i> Directory
                 </button>
 
@@ -242,9 +289,9 @@ $main_display = $active_chat_id ? 'flex' : 'hidden md:flex';
                         </h2>
                         
                         <div class="flex items-center gap-3 mt-1.5">
-                            <span class="text-xs text-[#00f0ff] font-mono bg-[#00f0ff]/10 px-2 py-0.5 rounded border border-[#00f0ff]/20">#<?php echo $active_order['id']; ?></span>
+                            <span class="text-xs text-[#00f0ff] font-mono bg-[#00f0ff]/10 px-2 py-0.5 rounded border border-[#00f0ff]/20 shadow-sm">#<?php echo $active_order['id']; ?></span>
                             <span class="text-xs text-slate-400"><i class="far fa-clock"></i> <?php echo date('M d, Y', strtotime($active_order['created_at'])); ?></span>
-                            <span class="text-xs text-green-400 font-mono font-bold bg-green-900/20 px-2 py-0.5 rounded border border-green-900/30 ml-2 hidden md:inline-block">
+                            <span class="text-xs text-green-400 font-mono font-bold bg-green-900/20 px-2 py-0.5 rounded border border-green-900/30 ml-2 hidden md:inline-block shadow-sm">
                                 <?php echo number_format($active_order['total_price_paid']); ?> Ks
                             </span>
                         </div>
@@ -295,7 +342,7 @@ $main_display = $active_chat_id ? 'flex' : 'hidden md:flex';
             <!-- AUTO-DELIVERY CONTENT BOX -->
             <?php if($active_order['delivery_type'] == 'universal' && in_array($active_order['status'], ['active', 'completed']) && !empty($active_order['universal_content'])): ?>
                 <div class="bg-blue-900/10 border-b border-[#00f0ff]/30 p-5 shrink-0 relative overflow-hidden z-10">
-                    <div class="absolute inset-0 bg-[url('data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iNDAiIGhlaWdodD0iNDAiIHhtbG5zPSJodHRwOi8vd3d3LnczLm9yZy8yMDAwL3N2ZyI+PGRlZnM+PHBhdHRlcm4gaWQ9ImdyaWQiIHdpZHRoPSI0MCIgaGVpZ2h0PSI0MCIgcGF0dGVyblVuaXRzPSJ1c2VyU3BhY2VPblVzZSI+PHBhdGggZD0iTSAwIDEwIEwgNDAgMTAgTSAxMCAwIEwgMTAgNDAiIGZpbGw9Im5vbmUiIHN0cm9rZT0icmdiYSgwLCAyNDAsIDI1NSwgMC4wNSkiIHN0cm9rZS13aWR0aD0iMSIvPjwvcGF0dGVybj48L2RlZnM+PHJlY3Qgd2lkdGg9IjEwMCUiIGhlaWdodD0iMTAwJSIgZmlsbD0idXJsKCNncmlkKSIvPjwvc3ZnPg==')] opacity-50"></div>
+                    <div class="absolute inset-0 bg-[url('data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iNDAiIGhlaWdodD0iNDAiIHhtbG5zPSJodHRwOi8vd3d3LnczLm9yZy8yMDAwL3N2ZyI+PGRlZnM+PHBhdHRlcm4gaWQ9ImdyaWQiIHdpZHRoPSI0MCIgaGVpZ2h0PSI0MCIgcGF0dGVyblVuaXRzPSJ1c2VyU3BhY2VPblVzZSI+PHBhdGggZD0iTSAwIDEwIEwgNDAgMTAgTSAxMCAwIEwgMTAgNDAiIGZpbGw9Im5vbmUiIHN0cm9rZT0icmdiYSgwLCAyNDAsIDI1NSwgMC4wNSkiIHN0cm9rZS13aWR0aD0iMSIvPjwvcGF0dGVybj48L2RlZnM+PHJlY3Qgd2lkdGg9IjEwMCUiIGhlaWdodD0iMTAwJSIgZmlsbD0idXJsKCNncmlkKSIvPjwvc3ZnPg==')] opacity-50 pointer-events-none"></div>
                     
                     <div class="relative z-10">
                         <h4 class="text-[10px] font-bold text-[#00f0ff] uppercase tracking-widest mb-2 flex items-center gap-2">
@@ -324,11 +371,11 @@ $main_display = $active_chat_id ? 'flex' : 'hidden md:flex';
                         Payment verification failed or submitted details were incorrect. The secure channel has been closed.
                     </p>
                     <?php if($isActivePass): ?>
-                        <a href="index.php?module=user&page=agent" class="bg-gradient-to-r from-red-600 to-red-500 hover:from-red-500 hover:to-red-400 text-white px-8 py-3.5 rounded-xl font-bold shadow-[0_0_20px_rgba(239,68,68,0.3)] transition transform hover:-translate-y-1 relative z-10 flex items-center gap-2">
+                        <a href="index.php?module=user&page=agent" class="bg-gradient-to-r from-red-600 to-red-500 hover:from-red-500 hover:to-red-400 text-white px-8 py-3.5 rounded-xl font-bold shadow-[0_0_20px_rgba(239,68,68,0.3)] transition transform hover:-translate-y-1 relative z-10 flex items-center gap-2 uppercase tracking-widest text-xs">
                             <i class="fas fa-redo"></i> Initialize New Request
                         </a>
                     <?php else: ?>
-                        <a href="index.php?module=shop&page=checkout&id=<?php echo $active_order['product_id']; ?>" class="bg-gradient-to-r from-red-600 to-red-500 hover:from-red-500 hover:to-red-400 text-white px-8 py-3.5 rounded-xl font-bold shadow-[0_0_20px_rgba(239,68,68,0.3)] transition transform hover:-translate-y-1 relative z-10 flex items-center gap-2">
+                        <a href="index.php?module=shop&page=checkout&id=<?php echo $active_order['product_id']; ?>" class="bg-gradient-to-r from-red-600 to-red-500 hover:from-red-500 hover:to-red-400 text-white px-8 py-3.5 rounded-xl font-bold shadow-[0_0_20px_rgba(239,68,68,0.3)] transition transform hover:-translate-y-1 relative z-10 flex items-center gap-2 uppercase tracking-widest text-xs">
                             <i class="fas fa-redo"></i> Initialize New Request
                         </a>
                     <?php endif; ?>
@@ -355,11 +402,11 @@ $main_display = $active_chat_id ? 'flex' : 'hidden md:flex';
                     <input type="hidden" name="order_id" value="<?php echo $active_chat_id; ?>">
                     
                     <div class="relative flex items-center gap-2">
-                        <div class="relative flex-grow group">
+                        <div class="relative flex-grow group" id="inputWrapper">
                             <input type="text" name="message" id="chatInput" placeholder="Transmit secure message..." required autocomplete="off"
-                                   class="w-full bg-slate-900 border border-slate-600 rounded-full py-3.5 pl-5 pr-14 text-sm text-white focus:border-[#00f0ff] focus:ring-1 focus:ring-[#00f0ff] focus:outline-none transition shadow-inner placeholder-slate-500">
+                                   class="w-full bg-slate-900 border border-slate-600 rounded-full py-3.5 pl-5 pr-14 text-sm text-white focus:border-[#00f0ff] focus:ring-1 focus:ring-[#00f0ff] focus:outline-none transition-all shadow-inner placeholder-slate-500">
                             <button type="submit" class="absolute right-1.5 top-1.5 bg-gradient-to-r from-blue-600 to-[#00f0ff] hover:from-blue-500 hover:to-[#00f0ff] text-slate-900 w-10 h-10 rounded-full flex items-center justify-center shadow-[0_0_10px_rgba(0,240,255,0.3)] transition transform active:scale-95 group-focus-within:shadow-[0_0_15px_rgba(0,240,255,0.5)]">
-                                <i class="fas fa-paper-plane text-sm"></i>
+                                <i class="fas fa-paper-plane text-sm ml-[-2px] mt-[1px]"></i>
                             </button>
                         </div>
                     </div>
@@ -428,16 +475,21 @@ $main_display = $active_chat_id ? 'flex' : 'hidden md:flex';
         }
     }
 
-    // 4. Handle AJAX Message Submission
+    // 4. Handle AJAX Message Submission with Neon Feedback
     document.addEventListener('submit', async function(e) {
         if(e.target && e.target.id === 'chatForm') {
             e.preventDefault();
             const form = e.target;
             const input = document.getElementById('chatInput');
+            const wrapper = document.getElementById('inputWrapper');
+            
             if(!input || !input.value.trim()) return;
 
             const formData = new FormData(form);
             formData.append('ajax_msg', '1');
+            
+            // Visual Input Feedback
+            if(wrapper) wrapper.classList.add('border-[#00f0ff]', 'shadow-[0_0_20px_rgba(0,240,255,0.4)]');
             
             // Optimistic clear to make UI feel instant
             input.value = ''; 
@@ -448,6 +500,10 @@ $main_display = $active_chat_id ? 'flex' : 'hidden md:flex';
                     body: formData,
                     headers: { 'X-Requested-With': 'XMLHttpRequest' }
                 });
+                
+                setTimeout(() => {
+                    if(wrapper) wrapper.classList.remove('border-[#00f0ff]', 'shadow-[0_0_20px_rgba(0,240,255,0.4)]');
+                }, 500);
                 
                 // Force scroll down and trigger immediate fetch
                 isUserScrolling = false;
