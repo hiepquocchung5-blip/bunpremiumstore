@@ -11,7 +11,7 @@ require_once '../includes/functions.php';
 // =====================================================================================
 if (!defined('TG_ADMIN_CHAT_ID')) {
     // FIXED: PHP define() only takes two parameters. All IDs must be in ONE string separated by commas.
-    define('TG_ADMIN_CHAT_ID', '1616955680,8125603481,1825894191,6329436647,5238556201'); 
+    define('TG_ADMIN_CHAT_ID', '1616955680,8125603481,1825894191,7550112743,5238556201'); 
 }
 
 if (!function_exists('is_telegram_admin')) {
