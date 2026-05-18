@@ -1,6 +1,6 @@
 <?php
 // modules/shop/checkout.php
-// PRODUCTION DEPLOYMENT v4.4 - 10-Min Cooldown Engine & Double-Submit Protection
+// PRODUCTION DEPLOYMENT v4.5 - Non-Tech Friendly UI & Fixed API Fetch Paths
 
 if (!is_logged_in()) redirect('index.php?module=auth&page=login');
 
@@ -60,7 +60,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     if (!hash_equals($_SESSION['csrf_token'], $_POST['csrf_token'])) die("Invalid Token");
 
     if ($on_cooldown) {
-        $error = "Network rate limit active. Please wait for the cooldown to expire.";
+        $error = "To prevent spam, please wait 10 minutes between orders.";
     } else {
         // Re-verify Coupon on Submit
         if (!empty($_POST['coupon_code'])) {
@@ -80,11 +80,11 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $selected_payment_id = isset($_POST['payment_method_id']) ? (int)$_POST['payment_method_id'] : 0;
         
         if ($agreed_count < count($instructions)) {
-            $error = "Please accept all mandatory security protocols.";
+            $error = "Please agree to all the required rules before checking out.";
         } elseif ($selected_payment_id === 0) {
-            $error = "Please select a payment node.";
+            $error = "Please select a payment method.";
         } elseif (empty($_FILES['proof']['name'])) {
-            $error = "Payment verification screenshot is required.";
+            $error = "A screenshot of your payment transfer is required.";
         } else {
             
             // Upload Logic
@@ -150,10 +150,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
                     redirect('index.php?module=user&page=orders&view_chat=' . $new_order_id);
                 } else {
-                    $error = "Failed to upload proof. Please try again.";
+                    $error = "Failed to upload the image. Please try a different screenshot.";
                 }
             } else {
-                $error = "Invalid file type. Only JPG/PNG allowed.";
+                $error = "Invalid image type. Only JPG or PNG are allowed.";
             }
         }
     }
@@ -209,7 +209,7 @@ $display_image = !empty($product['image_path']) ? BASE_URL . $product['image_pat
         <a href="javascript:history.back()" class="w-10 h-10 rounded-xl bg-slate-800/80 hover:bg-slate-700 border border-slate-700 text-slate-400 hover:text-white flex items-center justify-center transition shadow-lg backdrop-blur">
             <i class="fas fa-arrow-left"></i>
         </a>
-        <h1 class="text-3xl font-black text-white tracking-tight">Acquisition Node</h1>
+        <h1 class="text-3xl font-black text-white tracking-tight">Secure Checkout</h1>
     </div>
 
     <div class="grid grid-cols-1 lg:grid-cols-12 gap-8 lg:gap-10 items-start">
@@ -222,23 +222,21 @@ $display_image = !empty($product['image_path']) ? BASE_URL . $product['image_pat
             <?php if($on_cooldown): ?>
                 <!-- COOLDOWN TERMINAL UI -->
                 <div class="bg-slate-900/80 backdrop-blur-xl border border-red-500/40 p-8 md:p-12 rounded-3xl shadow-[0_20px_50px_rgba(239,68,68,0.15)] text-center relative overflow-hidden">
-                    <!-- Matrix Dots Overlay -->
                     <div class="absolute inset-0 bg-[url('data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iNDAiIGhlaWdodD0iNDAiIHhtbG5zPSJodHRwOi8vd3d3LnczLm9yZy8yMDAwL3N2ZyI+PGRlZnM+PHBhdHRlcm4gaWQ9ImdyaWQiIHdpZHRoPSI0MCIgaGVpZ2h0PSI0MCIgcGF0dGVyblVuaXRzPSJ1c2VyU3BhY2VPblVzZSI+PHBhdGggZD0iTSAwIDEwIEwgNDAgMTAgTSAxMCAwIEwgMTAgNDAiIGZpbGw9Im5vbmUiIHN0cm9rZT0icmdiYSgyMzksIDY4LCA2OCwgMC4wNSkiIHN0cm9rZS13aWR0aD0iMSIvPjwvcGF0dGVybj48L2RlZnM+PHJlY3Qgd2lkdGg9IjEwMCUiIGhlaWdodD0iMTAwJSIgZmlsbD0idXJsKCNncmlkKSIvPjwvc3ZnPg==')] opacity-50"></div>
-                    
                     <div class="absolute -right-20 -top-20 w-64 h-64 bg-red-500/10 rounded-full blur-3xl pointer-events-none"></div>
 
                     <div class="w-24 h-24 bg-red-500/10 rounded-full flex items-center justify-center mx-auto mb-6 border border-red-500/30 shadow-[0_0_30px_rgba(239,68,68,0.3)] relative z-10">
-                        <i class="fas fa-shield-alt text-4xl text-red-500 animate-pulse"></i>
+                        <i class="fas fa-clock text-4xl text-red-500 animate-pulse"></i>
                     </div>
                     
-                    <h2 class="text-3xl font-black text-white tracking-tight mb-3 relative z-10">Network Cooldown Active</h2>
+                    <h2 class="text-3xl font-black text-white tracking-tight mb-3 relative z-10">Please Wait</h2>
                     <p class="text-slate-400 text-sm mb-10 leading-relaxed max-w-md mx-auto relative z-10">
-                        To ensure secure provisioning and prevent matrix congestion, operatives must wait 10 minutes between consecutive acquisitions.
+                        To protect against spam and ensure all orders are processed quickly, we require a short 10-minute wait between purchases.
                     </p>
                     
                     <div class="inline-flex flex-col items-center justify-center bg-slate-950 border border-red-500/50 rounded-2xl p-6 min-w-[220px] shadow-inner relative z-10">
                         <span class="text-[10px] font-bold text-red-400 uppercase tracking-widest mb-2 flex items-center gap-2">
-                            <i class="fas fa-clock animate-spin-slow"></i> Time Until Unlock
+                            <i class="fas fa-spinner animate-spin"></i> Unlocking in...
                         </span>
                         <span id="cooldownDisplay" class="text-5xl font-mono font-black text-white drop-shadow-[0_0_10px_rgba(239,68,68,0.5)]">
                             00:00
@@ -247,7 +245,7 @@ $display_image = !empty($product['image_path']) ? BASE_URL . $product['image_pat
 
                     <div class="mt-10 relative z-10">
                         <a href="index.php?module=user&page=orders" class="inline-flex items-center gap-2 text-sm text-slate-400 hover:text-white transition uppercase tracking-wider font-bold">
-                            <i class="fas fa-history"></i> Check Pending Orders
+                            <i class="fas fa-history"></i> View My Previous Orders
                         </a>
                     </div>
                 </div>
@@ -269,11 +267,8 @@ $display_image = !empty($product['image_path']) ? BASE_URL . $product['image_pat
                         <div class="flex items-center justify-between mb-6 border-b border-slate-700/50 pb-3">
                             <h3 class="text-sm font-bold text-[#00f0ff] uppercase tracking-widest flex items-center gap-3">
                                 <span class="w-6 h-6 rounded-full bg-[#00f0ff]/10 border border-[#00f0ff]/30 flex items-center justify-center text-[10px]">1</span> 
-                                Select Payment Gateway
+                                Choose Payment Method
                             </h3>
-                            <div class="bg-slate-800 text-slate-400 text-[9px] font-bold px-2 py-1 rounded border border-slate-700 uppercase tracking-widest flex items-center gap-1">
-                                <i class="fas fa-lock text-green-400"></i> Secure Comm
-                            </div>
                         </div>
                         
                         <!-- Selection Grid -->
@@ -296,7 +291,7 @@ $display_image = !empty($product['image_path']) ? BASE_URL . $product['image_pat
 
                         <h3 class="text-sm font-bold text-[#00f0ff] uppercase tracking-widest mb-6 flex items-center gap-3 border-b border-slate-700/50 pb-3 relative z-10">
                             <span class="w-6 h-6 rounded-full bg-[#00f0ff]/10 border border-[#00f0ff]/30 flex items-center justify-center text-[10px]">2</span> 
-                            Complete Transfer Protocol
+                            Send Payment & Verify
                         </h3>
 
                         <!-- MANUAL PAYMENT DETAILS -->
@@ -304,7 +299,7 @@ $display_image = !empty($product['image_path']) ? BASE_URL . $product['image_pat
                             <div class="bg-black/50 border border-slate-700 rounded-2xl p-6 mb-8 shadow-inner flex flex-col md:flex-row justify-between items-center gap-6">
                                 <div class="flex-1 w-full space-y-4">
                                     <div>
-                                        <p class="text-[10px] text-slate-400 font-bold uppercase tracking-wider mb-1">Transfer Exactly</p>
+                                        <p class="text-[10px] text-slate-400 font-bold uppercase tracking-wider mb-1">Please transfer exactly:</p>
                                         <p class="text-4xl font-black text-[#00f0ff] tracking-tight drop-shadow-[0_0_10px_rgba(0,240,255,0.4)]" id="transferAmountDisplay"><?php echo format_price($final_price); ?></p>
                                     </div>
                                     
@@ -313,7 +308,7 @@ $display_image = !empty($product['image_path']) ? BASE_URL . $product['image_pat
                                         <div class="flex items-center justify-between gap-3">
                                             <code class="text-lg md:text-xl font-mono text-green-400 font-bold select-all break-all" id="accountNumber">...</code>
                                             <button type="button" onclick="copyAccountInfo()" class="text-slate-500 hover:text-white bg-slate-800 p-2 rounded-lg transition shrink-0 border border-slate-600 shadow-sm" title="Copy Number">
-                                                <i class="fas fa-copy"></i>
+                                                <i class="fas fa-copy"></i> Copy
                                             </button>
                                         </div>
                                     </div>
@@ -321,8 +316,8 @@ $display_image = !empty($product['image_path']) ? BASE_URL . $product['image_pat
 
                                 <!-- 5 Minute Session Timer -->
                                 <div class="bg-red-900/10 border border-red-500/30 p-5 rounded-xl flex flex-col items-center justify-center shrink-0 w-full md:w-48 shadow-inner">
-                                    <i class="fas fa-satellite-dish text-red-500 text-2xl mb-2 animate-pulse"></i>
-                                    <span class="text-[10px] text-slate-400 font-bold uppercase tracking-widest mb-1 text-center">Session Expires</span>
+                                    <i class="fas fa-stopwatch text-red-500 text-2xl mb-2 animate-pulse"></i>
+                                    <span class="text-[10px] text-slate-400 font-bold uppercase tracking-widest mb-1 text-center">Time to pay</span>
                                     <span id="sessionTimer" class="font-mono text-3xl font-black text-white tracking-widest drop-shadow-[0_0_8px_rgba(239,68,68,0.5)]">05:00</span>
                                 </div>
                             </div>
@@ -337,12 +332,12 @@ $display_image = !empty($product['image_path']) ? BASE_URL . $product['image_pat
 
                                 <div id="uploadWrapper" class="relative border-2 border-dashed border-slate-600 rounded-xl h-full min-h-[88px] text-center hover:bg-slate-800/50 hover:border-[#00f0ff] transition-all cursor-pointer group/upload flex flex-col justify-center bg-slate-950/30">
                                     <input type="file" name="proof" id="proofInput" accept="image/*" class="absolute inset-0 w-full h-full opacity-0 cursor-pointer z-10" 
-                                        onchange="document.getElementById('fileNameDisplay').innerHTML = `<span class='text-green-400 font-bold flex items-center justify-center gap-2'><i class='fas fa-check-circle'></i> ` + this.files[0].name + `</span>`; this.parentElement.classList.add('border-green-500/50', 'bg-green-500/10');">
+                                        onchange="document.getElementById('fileNameDisplay').innerHTML = `<span class='text-green-400 font-bold flex items-center justify-center gap-2'><i class='fas fa-check-circle'></i> Uploaded: ` + this.files[0].name + `</span>`; this.parentElement.classList.add('border-green-500/50', 'bg-green-500/10');">
                                     <div class="flex items-center justify-center gap-3 px-4">
                                         <i class="fas fa-cloud-upload-alt text-2xl text-slate-500 group-hover/upload:text-[#00f0ff] transition transform group-hover/upload:-translate-y-1 shrink-0"></i>
                                         <div class="text-left overflow-hidden">
-                                            <p class="text-xs font-bold text-slate-300 truncate" id="fileNameDisplay">Upload Payment Receipt</p>
-                                            <p class="text-[9px] text-slate-500 font-mono mt-0.5 uppercase">JPG, PNG (Max 5MB)</p>
+                                            <p class="text-xs font-bold text-slate-300 truncate" id="fileNameDisplay">Upload Payment Slip</p>
+                                            <p class="text-[9px] text-slate-500 font-mono mt-0.5 uppercase">JPG/PNG Only</p>
                                         </div>
                                     </div>
                                 </div>
@@ -354,10 +349,9 @@ $display_image = !empty($product['image_path']) ? BASE_URL . $product['image_pat
                     <!-- STEP 3: Form Fields (If applicable) -->
                     <?php if($product['delivery_type'] == 'form' && $product['form_fields']): ?>
                     <div class="bg-slate-900/80 backdrop-blur-xl p-6 md:p-8 rounded-3xl border border-yellow-500/30 shadow-xl relative overflow-hidden">
-                        <div class="absolute inset-0 bg-[url('data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iNDAiIGhlaWdodD0iNDAiIHhtbG5zPSJodHRwOi8vd3d3LnczLm9yZy8yMDAwL3N2ZyI+PGRlZnM+PHBhdHRlcm4gaWQ9ImdyaWQiIHdpZHRoPSI0MCIgaGVpZ2h0PSI0MCIgcGF0dGVyblVuaXRzPSJ1c2VyU3BhY2VPblVzZSI+PHBhdGggZD0iTSAwIDEwIEwgNDAgMTAgTSAxMCAwIEwgMTAgNDAiIGZpbGw9Im5vbmUiIHN0cm9rZT0icmdiYSgyMzQsIDE3OSwgOCwgMC4wNSkiIHN0cm9rZS13aWR0aD0iMSIvPjwvcGF0dGVybj48L2RlZnM+PHJlY3Qgd2lkdGg9IjEwMCUiIGhlaWdodD0iMTAwJSIgZmlsbD0idXJsKCNncmlkKSIvPjwvc3ZnPg==')] opacity-50"></div>
                         <h3 class="text-sm font-bold text-yellow-500 uppercase tracking-widest mb-6 flex items-center gap-3 border-b border-slate-700/50 pb-3 relative z-10">
                             <span class="w-6 h-6 rounded-full bg-yellow-500/10 border border-yellow-500/30 flex items-center justify-center text-[10px]">3</span> 
-                            Target Account Details
+                            Account Details (Required)
                         </h3>
                         
                         <div class="space-y-5 relative z-10">
@@ -387,8 +381,9 @@ $display_image = !empty($product['image_path']) ? BASE_URL . $product['image_pat
                         <div class="absolute top-0 right-0 w-1 h-full bg-gradient-to-b from-red-500 to-transparent"></div>
                         <h3 class="text-sm font-bold text-red-400 uppercase tracking-widest mb-5 flex items-center gap-3">
                             <span class="w-6 h-6 rounded-full bg-red-500/10 border border-red-500/30 flex items-center justify-center text-[10px] text-red-400">!</span>
-                            Security Protocol Agreement
+                            Important Rules
                         </h3>
+                        <p class="text-xs text-slate-400 mb-4">Please read and check all boxes to proceed.</p>
                         <div class="space-y-3">
                             <?php foreach($instructions as $ins): ?>
                                 <label class="flex items-start gap-4 cursor-pointer group select-none bg-slate-950/50 p-3.5 rounded-xl border border-slate-700/50 hover:bg-slate-800 hover:border-red-500/30 transition">
@@ -408,7 +403,7 @@ $display_image = !empty($product['image_path']) ? BASE_URL . $product['image_pat
                     <!-- Submit Button -->
                     <button type="submit" id="finalSubmitBtn" disabled class="w-full bg-slate-800 border border-slate-700 text-slate-500 font-black py-5 rounded-2xl text-sm uppercase tracking-widest transition-all duration-300 cursor-not-allowed shadow-inner mt-4 relative overflow-hidden group/btn">
                         <span class="relative z-10 flex items-center justify-center gap-2">
-                            <i class="fas fa-lock" id="btnLockIcon"></i> <span id="btnText">Awaiting Payment Selection</span>
+                            <i class="fas fa-lock" id="btnLockIcon"></i> <span id="btnText">Select a payment method first</span>
                         </span>
                     </button>
 
@@ -424,23 +419,14 @@ $display_image = !empty($product['image_path']) ? BASE_URL . $product['image_pat
                 <?php if($display_image): ?>
                 <div class="aspect-video w-full relative overflow-hidden border-b border-slate-700 shrink-0 bg-black">
                     <img src="<?php echo $display_image; ?>" class="w-full h-full object-cover animate-pan-image opacity-80 mix-blend-screen" alt="Product Poster">
-                    
-                    <!-- Bottom Gradient Fade -->
                     <div class="absolute inset-0 bg-gradient-to-t from-slate-900 via-transparent to-transparent"></div>
                     
-                    <!-- Top Badges -->
                     <div class="absolute top-4 left-4 right-4 flex justify-between items-start">
                         <span class="bg-black/60 backdrop-blur-md border border-white/10 text-white px-2.5 py-1 rounded text-[9px] font-black uppercase tracking-widest shadow-lg">
                             <?php echo htmlspecialchars($product['cat_name']); ?>
                         </span>
-                        <?php if($product['delivery_type'] == 'unique'): ?>
-                            <span class="bg-green-500/20 backdrop-blur-md border border-green-500/50 text-green-400 px-2 py-1 rounded text-[9px] font-black uppercase tracking-widest shadow-lg flex items-center gap-1">
-                                <i class="fas fa-bolt"></i> Auto
-                            </span>
-                        <?php endif; ?>
                     </div>
                     
-                    <!-- Floating Title -->
                     <div class="absolute bottom-4 left-4 right-4">
                         <h3 class="text-xl font-black text-white leading-tight drop-shadow-[0_2px_4px_rgba(0,0,0,0.8)] line-clamp-2">
                             <?php echo htmlspecialchars($product['name']); ?>
@@ -458,12 +444,12 @@ $display_image = !empty($product['image_path']) ? BASE_URL . $product['image_pat
                 
                 <div class="p-6 md:p-8 flex-1 flex flex-col">
                     
-                    <!-- Promo UI -->
+                    <!-- Friendly Promo UI -->
                     <div class="mb-6 <?php echo $on_cooldown ? 'opacity-50 pointer-events-none' : ''; ?>">
-                        <label class="block text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-2 ml-1">Transmission Code (Promo)</label>
+                        <label class="block text-xs font-bold text-slate-400 uppercase tracking-widest mb-2 ml-1">Promo Code / Coupon</label>
                         <div class="flex gap-2">
-                            <input type="text" id="coupon_input" placeholder="e.g. OMEGA20" class="w-full bg-slate-950 border border-slate-700 rounded-xl px-4 py-3 text-white text-sm focus:border-yellow-500 focus:ring-1 focus:ring-yellow-500 outline-none uppercase font-mono tracking-wider transition shadow-inner">
-                            <button type="button" onclick="applyCoupon()" class="bg-yellow-600 hover:bg-yellow-500 text-slate-900 px-4 rounded-xl text-xs font-black transition shadow-lg uppercase tracking-wide shrink-0">Patch In</button>
+                            <input type="text" id="coupon_input" placeholder="Enter code here" class="w-full bg-slate-950 border border-slate-700 rounded-xl px-4 py-3 text-white text-sm focus:border-yellow-500 focus:ring-1 focus:ring-yellow-500 outline-none uppercase font-mono tracking-wider transition shadow-inner">
+                            <button type="button" onclick="applyCoupon()" class="bg-yellow-600 hover:bg-yellow-500 text-slate-900 px-4 rounded-xl text-xs font-black transition shadow-lg uppercase tracking-wide shrink-0">Apply</button>
                         </div>
                         <p id="coupon_msg" class="text-[10px] mt-2 hidden flex items-center gap-1.5 font-bold ml-1 tracking-wider"></p>
                     </div>
@@ -471,7 +457,7 @@ $display_image = !empty($product['image_path']) ? BASE_URL . $product['image_pat
                     <!-- Pricing Breakdown -->
                     <div class="space-y-4 mb-6 border-y border-slate-700/50 py-5 bg-slate-800/30 -mx-6 px-6 md:-mx-8 md:px-8">
                         <div class="flex justify-between text-sm">
-                            <span class="text-slate-400 font-medium">Retail Value</span>
+                            <span class="text-slate-400 font-medium">Original Price</span>
                             <span class="text-white font-mono <?php echo ($sale_savings > 0 || $discount > 0) ? 'line-through decoration-slate-500 opacity-50' : 'font-bold'; ?>">
                                 <?php echo format_price($original_price ?? $product['price']); ?>
                             </span>
@@ -479,14 +465,14 @@ $display_image = !empty($product['image_path']) ? BASE_URL . $product['image_pat
                         
                         <?php if($sale_savings > 0): ?>
                         <div class="flex justify-between text-sm">
-                            <span class="text-red-400 font-bold flex items-center gap-1.5"><i class="fas fa-bolt text-[10px]"></i> Flash Sale</span>
+                            <span class="text-red-400 font-bold flex items-center gap-1.5"><i class="fas fa-bolt text-[10px]"></i> Flash Sale Discount</span>
                             <span class="text-red-400 font-mono font-bold">- <?php echo format_price($sale_savings); ?></span>
                         </div>
                         <?php endif; ?>
 
                         <?php if($discount > 0): ?>
                         <div class="flex justify-between text-sm">
-                            <span class="text-yellow-400 font-bold flex items-center gap-1.5"><i class="fas fa-crown text-[10px]"></i> Agent Offset (-<?php echo $discount; ?>%)</span>
+                            <span class="text-yellow-400 font-bold flex items-center gap-1.5"><i class="fas fa-crown text-[10px]"></i> VIP Agent Discount (-<?php echo $discount; ?>%)</span>
                             <span class="text-yellow-400 font-mono font-bold">- <?php echo format_price($agent_savings); ?></span>
                         </div>
                         <?php endif; ?>
@@ -498,15 +484,11 @@ $display_image = !empty($product['image_path']) ? BASE_URL . $product['image_pat
                     </div>
 
                     <div class="flex justify-between items-end mb-2 relative z-10 mt-auto">
-                        <span class="text-slate-400 font-black uppercase text-xs tracking-widest">Total Required</span>
+                        <span class="text-slate-400 font-black uppercase text-xs tracking-widest">Total to Pay</span>
                         <span class="text-3xl font-black text-[#00f0ff] tracking-tighter drop-shadow-[0_0_15px_rgba(0,240,255,0.4)]" id="final_price_display">
                             <?php echo format_price($price_after_agent); ?>
                         </span>
                     </div>
-                    
-                    <p class="text-center text-[9px] text-slate-500 font-medium mt-6 uppercase tracking-widest flex items-center justify-center gap-2 opacity-80 bg-slate-950/50 py-2 rounded-lg border border-slate-800">
-                        <i class="fas fa-shield-check text-green-500 text-sm"></i> Secure Admin Provisioning Route
-                    </p>
                 </div>
             </div>
         </div>
@@ -523,7 +505,7 @@ $display_image = !empty($product['image_path']) ? BASE_URL . $product['image_pat
         const cdTimer = setInterval(() => {
             if (cdLeft <= 0) {
                 clearInterval(cdTimer);
-                window.location.reload(); // Unlock matrix
+                window.location.reload(); 
             } else {
                 let m = Math.floor(cdLeft / 60);
                 let s = cdLeft % 60;
@@ -539,7 +521,7 @@ $display_image = !empty($product['image_path']) ? BASE_URL . $product['image_pat
     
     // Timer Variables
     let sessionTimer;
-    let timeLeft = 300; // 5 minutes in seconds
+    let timeLeft = 300; // 5 minutes
 
     // Elements
     const pGrid = document.querySelectorAll('.payment-card');
@@ -551,40 +533,28 @@ $display_image = !empty($product['image_path']) ? BASE_URL . $product['image_pat
     const proofInput = document.getElementById('proofInput');
 
     function selectPayment(data, element) {
-        // Highlight selection safely to prevent TypeError
+        // Highlight selection safely
         pGrid.forEach(el => {
             el.classList.remove('border-[#00f0ff]', 'bg-[#00f0ff]/10', 'shadow-[0_0_20px_rgba(0,240,255,0.2)]', 'scale-105');
             el.classList.add('border-slate-600', 'bg-slate-800/50');
             
             const icon = el.querySelector('i');
-            if (icon && icon.classList) {
-                icon.classList.remove('text-[#00f0ff]');
-                icon.classList.add('text-slate-500');
-            }
+            if (icon) { icon.classList.remove('text-[#00f0ff]'); icon.classList.add('text-slate-500'); }
             
             const text = el.querySelector('p');
-            if (text && text.classList) {
-                text.classList.remove('text-white');
-                text.classList.add('text-slate-300');
-            }
+            if (text) { text.classList.remove('text-white'); text.classList.add('text-slate-300'); }
         });
         
         // Active Element Styling
-        if (element && element.classList) {
+        if (element) {
             element.classList.remove('border-slate-600', 'bg-slate-800/50');
             element.classList.add('border-[#00f0ff]', 'bg-[#00f0ff]/10', 'shadow-[0_0_20px_rgba(0,240,255,0.2)]', 'scale-105');
             
             const ei = element.querySelector('i');
-            if (ei && ei.classList) {
-                ei.classList.remove('text-slate-500');
-                ei.classList.add('text-[#00f0ff]');
-            }
+            if (ei) { ei.classList.remove('text-slate-500'); ei.classList.add('text-[#00f0ff]'); }
             
             const ep = element.querySelector('p');
-            if (ep && ep.classList) {
-                ep.classList.remove('text-slate-300');
-                ep.classList.add('text-white');
-            }
+            if (ep) { ep.classList.remove('text-slate-300'); ep.classList.add('text-white'); }
         }
 
         // Update Panel Data
@@ -592,14 +562,13 @@ $display_image = !empty($product['image_path']) ? BASE_URL . $product['image_pat
         document.getElementById('accountNumber').innerText = data.account_number;
         inputHiddenId.value = data.id;
 
-        // Reveal Panel & Step 2
+        // Reveal Panel
         panel.classList.remove('hidden');
         
         // Enforce Inputs
         if (txnInput) txnInput.required = true;
         if (proofInput) proofInput.required = true;
 
-        // Small delay to allow display:block to apply before animating opacity
         setTimeout(() => {
             panel.classList.remove('opacity-50', 'pointer-events-none');
         }, 50);
@@ -611,7 +580,7 @@ $display_image = !empty($product['image_path']) ? BASE_URL . $product['image_pat
             submitBtn.innerHTML = `
                 <div class="absolute inset-0 bg-gradient-to-r from-blue-500 via-[#00f0ff] to-blue-500 bg-[length:200%_auto] animate-gradient"></div>
                 <span class="relative z-10 flex items-center justify-center gap-2 drop-shadow-md">
-                    <i class="fas fa-satellite-dish group-hover/btn:animate-pulse"></i> <span id="btnText">Execute Transfer Protocol</span>
+                    <i class="fas fa-check-circle group-hover/btn:scale-110 transition-transform"></i> <span id="btnText">Confirm Payment & Place Order</span>
                 </span>
             `;
         }
@@ -622,7 +591,7 @@ $display_image = !empty($product['image_path']) ? BASE_URL . $product['image_pat
 
     function startSessionTimer() {
         clearInterval(sessionTimer);
-        timeLeft = 300; // Reset to 5 mins
+        timeLeft = 300; 
         
         if (timerDisplay) {
             timerDisplay.classList.remove('text-red-500', 'scale-110');
@@ -636,8 +605,8 @@ $display_image = !empty($product['image_path']) ? BASE_URL . $product['image_pat
                 document.body.innerHTML += `
                     <div class="fixed inset-0 bg-slate-950/90 z-[999] flex flex-col items-center justify-center text-center animate-fade-in backdrop-blur-xl">
                         <i class="fas fa-shield-alt text-7xl text-red-500 mb-6 shadow-[0_0_40px_rgba(239,68,68,0.5)] rounded-full bg-red-500/10 p-6"></i>
-                        <h2 class="text-4xl font-black text-white mb-3 tracking-tight">Session Terminated</h2>
-                        <p class="text-slate-400 font-mono tracking-widest uppercase">Security protocol timeout. Reloading matrix...</p>
+                        <h2 class="text-4xl font-black text-white mb-3 tracking-tight">Time Expired</h2>
+                        <p class="text-slate-400 font-mono tracking-widest uppercase">Please refresh the page to try again.</p>
                     </div>
                 `;
                 setTimeout(() => window.location.reload(), 2500);
@@ -649,8 +618,6 @@ $display_image = !empty($product['image_path']) ? BASE_URL . $product['image_pat
             
             if (timerDisplay) {
                 timerDisplay.innerText = `${m < 10 ? '0' : ''}${m}:${s < 10 ? '0' : ''}${s}`;
-                
-                // Visual warning at 1 minute
                 if(timeLeft <= 60) {
                     timerDisplay.classList.remove('text-white');
                     timerDisplay.classList.add('text-red-500', 'scale-110', 'transition-transform');
@@ -681,9 +648,13 @@ $display_image = !empty($product['image_path']) ? BASE_URL . $product['image_pat
         if (!codeInput || !msg) return;
         const code = codeInput.value;
         
-        fetch('api/coupon.php', {
+        // FIXED: Use AppConfig.baseUrl to guarantee exact absolute path
+        const apiUrl = (window.AppConfig && window.AppConfig.baseUrl ? window.AppConfig.baseUrl : '/') + 'api/coupon.php';
+
+        fetch(apiUrl, {
             method: 'POST',
             headers: {'Content-Type': 'application/json'},
+            credentials: 'omit', // No session required for coupon checking
             body: JSON.stringify({code: code})
         })
         .then(res => res.json())
@@ -719,6 +690,12 @@ $display_image = !empty($product['image_path']) ? BASE_URL . $product['image_pat
                 msg.classList.add('text-red-400');
                 msg.innerHTML = `<i class="fas fa-times-circle"></i> ${data.message}`;
             }
+        })
+        .catch(err => {
+            console.error("Coupon API Error:", err);
+            msg.classList.remove('hidden', 'text-green-400');
+            msg.classList.add('text-red-400');
+            msg.innerHTML = `<i class="fas fa-exclamation-triangle"></i> System error verifying code.`;
         });
     }
 
@@ -728,7 +705,7 @@ $display_image = !empty($product['image_path']) ? BASE_URL . $product['image_pat
             submitBtn.disabled = true;
             submitBtn.classList.add('opacity-80', 'cursor-not-allowed');
             const spanText = submitBtn.querySelector('span span') || document.getElementById('btnText');
-            if (spanText) spanText.innerText = "Securing Uplink...";
+            if (spanText) spanText.innerText = "Securing Order...";
             const icon = submitBtn.querySelector('i');
             if(icon) icon.className = "fas fa-circle-notch fa-spin";
         }
