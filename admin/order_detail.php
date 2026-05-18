@@ -1,6 +1,6 @@
 <?php
 // admin/order_detail.php
-// PRODUCTION v6.0 - Zero-Reload Status Engine & Cinematic Lifecycle Tracker
+// PRODUCTION v6.1 - Mobile-Optimized Terminal & Resilient Error Handling
 
 // Include Notification Services
 @include_once dirname(__DIR__) . '/includes/MailService.php';
@@ -82,7 +82,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['ajax_status'])) {
                             $mailer = new MailService();
                             $mailer->sendOrderConfirmation($ord_meta['email'], $ord_meta['username'], $order_id, $ord_meta['product_name'], $ord_meta['total_price_paid']);
                         }
-                    } catch (Exception $e) {}
+                    } catch (Exception $e) {
+                        error_log("Mail Sync Failed: " . $e->getMessage());
+                    }
                     
                 } elseif ($status === 'rejected') {
                     $status_title = "Order Rejected ❌";
@@ -95,18 +97,29 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['ajax_status'])) {
                         $push = new PushService($pdo);
                         $push->sendToUser($ord_meta['user_id'], $status_title, $status_msg, $url);
                     }
-                } catch (Exception $e) {}
+                } catch (Exception $e) {
+                    error_log("Push Sync Failed: " . $e->getMessage());
+                }
             }
 
             echo json_encode(['success' => true, 'new_status' => $status]);
             exit;
-        } catch (Exception $e) {
+            
+        } catch (PDOException $e) {
             $pdo->rollBack();
-            echo json_encode(['success' => false, 'error' => $e->getMessage()]);
+            http_response_code(500);
+            echo json_encode(['success' => false, 'error' => 'Database integrity error.', 'details' => $e->getMessage()]);
+            exit;
+        } catch (Exception $e) {
+            if ($pdo->inTransaction()) $pdo->rollBack();
+            http_response_code(400);
+            echo json_encode(['success' => false, 'error' => 'System logic error.', 'details' => $e->getMessage()]);
             exit;
         }
     }
-    echo json_encode(['success' => false, 'error' => 'Invalid parameters']);
+    
+    http_response_code(400);
+    echo json_encode(['success' => false, 'error' => 'Invalid status parameters provided.']);
     exit;
 }
 
@@ -126,12 +139,14 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['ajax_msg'])) {
 
             echo json_encode(['success' => true]);
             exit;
-        } catch (Exception $e) {
-            echo json_encode(['success' => false, 'error' => $e->getMessage()]);
+        } catch (PDOException $e) {
+            http_response_code(500);
+            echo json_encode(['success' => false, 'error' => 'Data insertion failed.', 'details' => $e->getMessage()]);
             exit;
         }
     }
-    echo json_encode(['success' => false, 'error' => 'Invalid order ID or empty message']);
+    http_response_code(400);
+    echo json_encode(['success' => false, 'error' => 'Invalid order ID or empty payload detected.']);
     exit;
 }
 
@@ -144,49 +159,53 @@ if (isset($_GET['ajax']) && $_GET['ajax'] == 1) {
     // Strict payload delimiter to prevent header/sidebar bleed
     echo "<!--CHAT_PAYLOAD_START-->";
 
-    $stmt = $pdo->prepare("SELECT * FROM order_messages WHERE order_id = ? ORDER BY created_at ASC");
-    $stmt->execute([$order_id]);
-    $messages = $stmt->fetchAll();
-    
-    if(empty($messages)) {
-        echo "<div class='flex flex-col items-center justify-center h-full text-slate-500'>
-                <div class='w-20 h-20 bg-[#00f0ff]/10 rounded-full flex items-center justify-center mb-4 shadow-[0_0_30px_rgba(0,240,255,0.1)]'>
-                    <i class='fas fa-satellite-dish text-3xl opacity-50 text-[#00f0ff] animate-pulse'></i>
-                </div>
-                <p class='text-sm font-bold text-[#00f0ff] tracking-widest uppercase'>Secure Channel Open</p>
-                <p class='text-xs mt-1'>Awaiting communication initialization.</p>
-              </div>";
-    } else {
-        foreach($messages as $msg) {
-            $is_admin = $msg['sender_type'] === 'admin';
-            $align = $is_admin ? 'justify-end' : 'justify-start';
-            $item_align = $is_admin ? 'items-end' : 'items-start';
-            
-            $bubble_bg = $is_admin 
-                ? 'bg-gradient-to-br from-blue-600 to-[#00f0ff] text-slate-900 rounded-2xl rounded-br-sm shadow-[0_4px_15px_rgba(0,240,255,0.2)]' 
-                : 'bg-slate-800 text-slate-200 border border-slate-700 rounded-2xl rounded-bl-sm shadow-md';
+    try {
+        $stmt = $pdo->prepare("SELECT * FROM order_messages WHERE order_id = ? ORDER BY created_at ASC");
+        $stmt->execute([$order_id]);
+        $messages = $stmt->fetchAll();
+        
+        if(empty($messages)) {
+            echo "<div class='flex flex-col items-center justify-center h-full text-slate-500'>
+                    <div class='w-20 h-20 bg-[#00f0ff]/10 rounded-full flex items-center justify-center mb-4 shadow-[0_0_30px_rgba(0,240,255,0.1)]'>
+                        <i class='fas fa-satellite-dish text-3xl opacity-50 text-[#00f0ff] animate-pulse'></i>
+                    </div>
+                    <p class='text-sm font-bold text-[#00f0ff] tracking-widest uppercase'>Secure Channel Open</p>
+                    <p class='text-xs mt-1'>Awaiting communication initialization.</p>
+                  </div>";
+        } else {
+            foreach($messages as $msg) {
+                $is_admin = $msg['sender_type'] === 'admin';
+                $align = $is_admin ? 'justify-end' : 'justify-start';
+                $item_align = $is_admin ? 'items-end' : 'items-start';
                 
-            $time = date('H:i', strtotime($msg['created_at']));
-            $safe_msg = htmlspecialchars($msg['message']);
+                $bubble_bg = $is_admin 
+                    ? 'bg-gradient-to-br from-blue-600 to-[#00f0ff] text-slate-900 rounded-2xl rounded-br-sm shadow-[0_4px_15px_rgba(0,240,255,0.2)]' 
+                    : 'bg-slate-800 text-slate-200 border border-slate-700 rounded-2xl rounded-bl-sm shadow-md';
+                    
+                $time = date('H:i', strtotime($msg['created_at']));
+                $safe_msg = htmlspecialchars($msg['message']);
 
-            echo "<div class='flex w-full {$align} mb-4 animate-fade-in-up group'>";
-            echo "<div class='max-w-[85%] sm:max-w-[75%] flex flex-col {$item_align}'>";
-            echo "<div class='px-4 py-3 text-[13px] md:text-sm relative {$bubble_bg}'>";
-            
-            if ($msg['is_credential']) {
-                echo "<div class='flex items-center gap-2 text-[10px] font-black " . ($is_admin ? "text-slate-900" : "text-[#00f0ff]") . " mb-2 border-b " . ($is_admin ? "border-slate-900/20" : "border-white/10") . " pb-1 uppercase tracking-wider'><i class='fas fa-shield-alt'></i> SECURE CREDENTIAL</div>";
-                echo "<div class='font-mono text-xs whitespace-pre-wrap select-all " . ($is_admin ? "bg-white/30 text-slate-900" : "bg-black/40 text-green-300") . " p-2.5 rounded-lg border border-white/10'>{$safe_msg}</div>";
-            } else {
-                echo "<div class='whitespace-pre-wrap break-words leading-relaxed font-medium'>{$safe_msg}</div>";
+                echo "<div class='flex w-full {$align} mb-4 animate-fade-in-up group'>";
+                echo "<div class='max-w-[85%] sm:max-w-[75%] flex flex-col {$item_align}'>";
+                echo "<div class='px-4 py-3 text-[13px] md:text-sm relative {$bubble_bg}'>";
+                
+                if ($msg['is_credential']) {
+                    echo "<div class='flex items-center gap-2 text-[10px] font-black " . ($is_admin ? "text-slate-900" : "text-[#00f0ff]") . " mb-2 border-b " . ($is_admin ? "border-slate-900/20" : "border-white/10") . " pb-1 uppercase tracking-wider'><i class='fas fa-shield-alt'></i> SECURE CREDENTIAL</div>";
+                    echo "<div class='font-mono text-xs whitespace-pre-wrap select-all " . ($is_admin ? "bg-white/30 text-slate-900" : "bg-black/40 text-green-300") . " p-2.5 rounded-lg border border-white/10'>{$safe_msg}</div>";
+                } else {
+                    echo "<div class='whitespace-pre-wrap break-words leading-relaxed font-medium'>{$safe_msg}</div>";
+                }
+                
+                echo "</div>";
+                echo "<div class='flex items-center gap-1.5 mt-1 px-1 opacity-60 group-hover:opacity-100 transition-opacity'>";
+                if($is_admin) echo "<i class='fas fa-check-double text-[8px] text-[#00f0ff]'></i>";
+                echo "<span class='text-[9px] text-slate-400 font-medium tracking-wide'>{$time}</span>";
+                echo "</div>";
+                echo "</div></div>";
             }
-            
-            echo "</div>";
-            echo "<div class='flex items-center gap-1.5 mt-1 px-1 opacity-60 group-hover:opacity-100 transition-opacity'>";
-            if($is_admin) echo "<i class='fas fa-check-double text-[8px] text-[#00f0ff]'></i>";
-            echo "<span class='text-[9px] text-slate-400 font-medium tracking-wide'>{$time}</span>";
-            echo "</div>";
-            echo "</div></div>";
         }
+    } catch (Exception $e) {
+        echo "<div class='text-red-500 text-center text-xs p-4 border border-red-500/20 rounded-xl bg-red-900/10'><i class='fas fa-exclamation-triangle'></i> Matrix disruption: Unable to load comms logic.</div>";
     }
     
     echo "<!--CHAT_PAYLOAD_END-->";
@@ -225,7 +244,7 @@ $stmt->execute([$order_id]);
 $order = $stmt->fetch();
 
 if (!$order) {
-    echo "<div class='p-6 bg-red-500/20 text-red-400 rounded-xl border border-red-500/50 mt-6 mx-4'>Order #$order_id not found.</div>";
+    echo "<div class='p-6 bg-red-500/20 text-red-400 rounded-xl border border-red-500/50 mt-6 mx-4'>Order #$order_id not found in the matrix.</div>";
     return;
 }
 
@@ -289,13 +308,13 @@ if ($order['status'] === 'active' || $order['status'] === 'completed') {
     </div>
 </div>
 
-<!-- Main Layout Container (Uses min-h-0 and dvh for perfect mobile scaling without header conflict) -->
-<div class="max-w-[1600px] w-full mx-auto flex-1 flex flex-col lg:flex-row gap-6 px-4 pb-6 min-h-0 overflow-hidden h-[calc(100dvh-180px)] lg:h-[calc(100vh-100px)]">
+<!-- Main Layout Container (Fluid Mobile & Desktop Scaling) -->
+<div class="max-w-[1600px] w-full mx-auto flex-1 flex flex-col lg:flex-row gap-6 px-4 pb-6 min-h-0 overflow-hidden h-[calc(100dvh-130px)] lg:h-[calc(100vh-100px)]">
     
     <!-- ========================================== -->
     <!-- LEFT PANEL: Order Info & Verification      -->
     <!-- ========================================== -->
-    <div id="colInfo" class="w-full lg:w-1/3 xl:w-1/4 flex flex-col gap-6 overflow-y-auto custom-scrollbar lg:h-full pb-10 lg:pb-0 transition-all shrink-0 lg:shrink">
+    <div id="colInfo" class="w-full lg:w-1/3 xl:w-1/4 flex flex-col gap-6 overflow-y-auto custom-scrollbar h-full pb-6 lg:pb-0 transition-all shrink-0 lg:shrink">
         
         <!-- Header Card -->
         <div class="bg-slate-900/80 p-5 rounded-2xl border <?php echo $is_pass_order ? 'border-yellow-500/30' : 'border-[#00f0ff]/30'; ?> relative overflow-hidden group shrink-0 shadow-[0_10px_30px_rgba(0,0,0,0.4)]">
@@ -429,9 +448,8 @@ if ($order['status'] === 'active' || $order['status'] === 'completed') {
 
     <!-- ========================================== -->
     <!-- RIGHT PANEL: Live Chat & Fulfillment       -->
-    <!-- NEW: Fully isolated flex terminal window   -->
     <!-- ========================================== -->
-    <div id="colChat" class="w-full lg:w-2/3 xl:w-3/4 hidden lg:flex flex-col bg-slate-900/90 rounded-3xl border border-slate-700 shadow-2xl relative flex-1 min-h-[500px] lg:min-h-0 overflow-hidden">
+    <div id="colChat" class="w-full lg:w-2/3 xl:w-3/4 hidden lg:flex flex-col bg-slate-900/90 rounded-3xl border border-slate-700 shadow-2xl relative flex-1 h-full overflow-hidden">
         
         <?php if($is_pass_order): ?>
             <!-- Agent Pass Control Panel (Replaces Chat) -->
@@ -519,7 +537,7 @@ if ($order['status'] === 'active' || $order['status'] === 'completed') {
                 </div>
 
                 <!-- Dynamic SPA Chat Area -->
-                <div class="flex-1 min-h-0 overflow-y-auto p-4 chat-bg-pattern relative z-0 scroll-smooth" id="chatBox">
+                <div class="flex-1 min-h-0 overflow-y-auto p-4 chat-bg-pattern relative z-0 scroll-smooth custom-scrollbar" id="chatBox">
                     <div class="flex items-center justify-center h-full text-slate-500" id="chatLoading">
                         <i class="fas fa-circle-notch fa-spin text-2xl text-[#00f0ff]"></i>
                     </div>
@@ -603,8 +621,11 @@ if ($order['status'] === 'active' || $order['status'] === 'completed') {
             btnChat.className = "flex-1 py-2.5 text-xs font-bold uppercase tracking-wider rounded-lg transition-all bg-slate-700 text-white shadow-sm relative";
             btnInfo.className = "flex-1 py-2.5 text-xs font-bold uppercase tracking-wider rounded-lg transition-all text-slate-400 hover:text-white";
             
-            const chatBox = document.getElementById('chatBox');
-            if(chatBox) chatBox.scrollTop = chatBox.scrollHeight;
+            // Force recalculate scroll position for mobile keyboards
+            setTimeout(() => {
+                const chatBox = document.getElementById('chatBox');
+                if(chatBox) chatBox.scrollTop = chatBox.scrollHeight;
+            }, 50);
         }
     }
 
@@ -689,7 +710,7 @@ if ($order['status'] === 'active' || $order['status'] === 'completed') {
                 setTimeout(() => { if(btn) btn.innerHTML = '<i class="fas fa-save"></i>'; }, 2000);
 
             } else {
-                alert('Matrix Error: ' + data.error);
+                alert('Matrix Error: ' + (data.details || data.error));
                 if(btn) btn.innerHTML = '<i class="fas fa-save"></i>';
             }
         } catch(err) {
@@ -719,7 +740,7 @@ if ($order['status'] === 'active' || $order['status'] === 'completed') {
             
             chatInput.value = ''; // clear immediately
             try {
-                await fetch(`index.php?page=order_detail&id=${orderId}`, {
+                const response = await fetch(`index.php?page=order_detail&id=${orderId}`, {
                     method: 'POST',
                     body: formData,
                     headers: { 'X-Requested-With': 'XMLHttpRequest' }
@@ -759,7 +780,10 @@ if ($order['status'] === 'active' || $order['status'] === 'completed') {
             if(!orderId) return;
             
             fetch(`index.php?page=order_detail&id=${orderId}&ajax=1&_=${Date.now()}`)
-                .then(res => res.text())
+                .then(res => {
+                    if(!res.ok) throw new Error('HTTP status ' + res.status);
+                    return res.text();
+                })
                 .then(html => {
                     const loading = document.getElementById('chatLoading');
                     if(loading) loading.remove();
@@ -797,11 +821,17 @@ if ($order['status'] === 'active' || $order['status'] === 'completed') {
                 chatInput.style.height = '44px';
                 
                 try {
-                    await fetch(`index.php?page=order_detail&id=${orderId}`, {
+                    const response = await fetch(`index.php?page=order_detail&id=${orderId}`, {
                         method: 'POST',
                         body: formData,
                         headers: { 'X-Requested-With': 'XMLHttpRequest' }
                     });
+                    
+                    const data = await response.json();
+                    if(!data.success) {
+                        console.error('API Rejection:', data.error);
+                    }
+                    
                     isUserScrolling = false;
                     if(secureToggle) secureToggle.checked = false;
                     fetchChat(); 
