@@ -37,6 +37,15 @@ $lang_text = $curr_lang == 'my' ? 'MY' : 'EN';
 $curr_currency = $_SESSION['currency'] ?? 'MMK';
 $curr_symbol = $curr_currency == 'USD' ? '$' : 'Ks';
 
+// ⚡️ NEW: PERFECT RESUME LOGIC (Track last visited page)
+$current_query = $_SERVER['QUERY_STRING'] ?? '';
+$is_auth_page = (isset($_GET['module']) && $_GET['module'] === 'auth');
+$is_ajax = (isset($_GET['ajax']) && $_GET['ajax'] == 1);
+
+if (!$is_auth_page && !$is_ajax) {
+    $_SESSION['resume_url'] = 'index.php' . ($current_query ? '?' . $current_query : '');
+}
+
 // 5. Database State Check: Is User Subscribed?
 $is_push_subscribed = false;
 if (isset($_SESSION['user_id'])) {

@@ -123,7 +123,10 @@ if ($_SESSION['login_attempts'] >= 5 && time() < $_SESSION['login_lockout']) {
                         $_SESSION['user_name'] = $user['username'];
                         $_SESSION['user_email'] = $user['email'];
                         
-                        redirect('index.php?module=user&dashboard');
+                        // ⚡️ PERFECT RESUME: Prioritize saved session URL
+                        $target = $_SESSION['resume_url'] ?? 'index.php?module=user&page=dashboard';
+                        unset($_SESSION['resume_url']); // Clear after use
+                        redirect($target);
                     } else {
                         // Auto-Register New User (Google V3)
                         $base_username = strtolower(preg_replace('/[^a-zA-Z0-9]/', '', $g_name));
@@ -201,7 +204,10 @@ if ($_SESSION['login_attempts'] >= 5 && time() < $_SESSION['login_lockout']) {
                         setcookie(session_name(), session_id(), time() + (86400 * 30), $params["path"], $params["domain"], $params["secure"], $params["httponly"]);
                     }
 
-                    $redirect_url = isset($_GET['redirect']) ? urldecode($_GET['redirect']) : 'index.php?module=user&page=dashboard';
+                    // ⚡️ PERFECT RESUME: Prioritize saved session URL over GET parameter for better persistence
+                    $redirect_url = $_SESSION['resume_url'] ?? (isset($_GET['redirect']) ? urldecode($_GET['redirect']) : 'index.php?module=user&page=dashboard');
+                    unset($_SESSION['resume_url']); // Clear after use
+                    
                     if (!preg_match('/^index\.php/', $redirect_url)) {
                         $redirect_url = 'index.php';
                     }
