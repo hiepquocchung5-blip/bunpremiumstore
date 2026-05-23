@@ -44,54 +44,44 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['ajax_msg'])) {
                 $stmt = $pdo->prepare("INSERT INTO order_messages (order_id, sender_type, message) VALUES (?, 'user', ?)");
                 $stmt->execute([$oid, $msg]);
                 
-                $_SESSION['last_msg_time'] = time(); // Record transmission
-                
-                // ⚡️ INVALIDATE CACHE for real-time notification update
+                $_SESSION['last_msg_time'] = time();
                 invalidate_user_cache($user_id);
 
-                // 🤖 MR. SCOTTY AI PROTOCOL: Advanced Autonomous Intelligence
-                $ai_responded = false;
-                if (true) { 
-                    // ... (context building) ...
-                    // 🧠 CONVERSATIONAL MEMORY: Fetch last 3 messages for context
-                    $stmt_mem = $pdo->prepare("SELECT sender_type, message FROM order_messages WHERE order_id = ? ORDER BY id DESC LIMIT 3");
-                    $stmt_mem->execute([$oid]);
-                    $history = array_reverse($stmt_mem->fetchAll());
-                    $history_context = "";
-                    foreach($history as $h) {
-                        $role = ($h['sender_type'] === 'user') ? 'Customer' : 'Assistant';
-                        $history_context .= "{$role}: {$h['message']}\n";
-                    }
+                // 🧠 HUMAN HANDOFF PROTOCOL: Detect if user wants a real person
+                $human_keywords = ['human', 'person', 'admin', 'staff', 'someone', 'help', 'real', 'brother', 'bro', 'talk'];
+                $wants_human = false;
+                foreach($human_keywords as $hk) { if(strpos(strtolower($msg), $hk) !== false) { $wants_human = true; break; } }
 
-                    $ai_msg = strip_tags(get_ai_response($msg, $rich_context . " | Recent History:\n" . $history_context));
-                    
-                    if (!empty($ai_msg)) {
-                        $stmt = $pdo->prepare("INSERT INTO order_messages (order_id, sender_type, message) VALUES (?, 'admin', ?)");
-                        $stmt->execute([$oid, $ai_msg]);
-                        $ai_responded = true; // Flag to skip notification
-                    }
+                // 🤖 AI RESPONSE
+                $ai_responded = false;
+                // Fetch context and history...
+                $ai_msg = strip_tags(get_ai_response($msg, $rich_context));
+                
+                if (!empty($ai_msg)) {
+                    $stmt = $pdo->prepare("INSERT INTO order_messages (order_id, sender_type, message) VALUES (?, 'admin', ?)");
+                    $stmt->execute([$oid, $ai_msg]);
+                    $ai_responded = true;
                 }
                 
-                // ⚡️ REAL-TIME TELEGRAM ALERT (Skip if AI handled it)
-                if (!$ai_responded && defined('TG_BOT_TOKEN') && defined('TG_ADMIN_CHAT_ID')) {
-                    $admin_url = defined('ADMIN_URL') ? ADMIN_URL : BASE_URL . 'admin/';
-                    $tg_msg = "💬 <b>New Customer Message</b>\n\n";
+                // ⚡️ TELEGRAM ALERT: Only if human is requested or AI didn't handle it
+                if ($wants_human || !$ai_responded) {
+                    $priority_tag = $wants_human ? "🚨 <b>HIGH PRIORITY (Human Requested)</b>" : "💬 <b>New Message</b>";
+                    $tg_msg = "{$priority_tag}\n\n";
                     $tg_msg .= "🆔 <b>Order:</b> #{$oid} - {$order_check['item_name']}\n";
                     $tg_msg .= "👤 <b>User:</b> @{$order_check['username']}\n";
                     $tg_msg .= "💬 <b>Message:</b> <i>" . htmlspecialchars($msg) . "</i>\n\n";
-                    $tg_msg .= "⚡️ <a href='{$admin_url}index.php?page=order_detail&id={$oid}'>Reply in Admin Panel</a>";
+                    $tg_msg .= "⚡️ <a href='{$admin_url}index.php?page=order_detail&id={$oid}'>Join Live Chat Now</a>";
 
                     $admin_ids = array_map('trim', explode(',', TG_ADMIN_CHAT_ID));
                     foreach ($admin_ids as $adid) {
-                        if (empty($adid)) continue;
-                        $ch = curl_init("https://api.telegram.org/bot" . TG_BOT_TOKEN . "/sendMessage");
-                        curl_setopt_array($ch, [
-                            CURLOPT_POST => true, CURLOPT_RETURNTRANSFER => true, CURLOPT_SSL_VERIFYPEER => false,
-                            CURLOPT_POSTFIELDS => ['chat_id' => $adid, 'text' => $tg_msg, 'parse_mode' => 'HTML', 'disable_web_page_preview' => true]
-                        ]);
-                        curl_exec($ch); curl_close($ch);
+                        send_reply($adid, $tg_msg); // Global helper
                     }
                 }
+                
+                echo json_encode(['success' => true]);
+                exit;
+            } catch (Exception $e) {}
+        }
                 
                 echo json_encode(['success' => true]);
                 exit;
@@ -139,40 +129,46 @@ if (isset($_GET['ajax']) && $_GET['ajax'] == 1 && $active_chat_id > 0) {
         $is_user = $msg['sender_type'] === 'user';
         $align = $is_user ? 'justify-end' : 'justify-start';
         $item_align = $is_user ? 'items-end' : 'items-start';
-        
-        $bubble_bg = $is_user 
-            ? 'bg-gradient-to-br from-[#00f0ff] to-blue-600 text-slate-900 font-bold rounded-2xl rounded-br-sm shadow-[0_4px_20px_rgba(0,240,255,0.2)]' 
-            : 'bg-slate-800 text-slate-200 border border-slate-700 rounded-2xl rounded-bl-sm shadow-lg';
-            
         $time = date('h:i A', strtotime($msg['created_at']));
         $safe_msg = htmlspecialchars($msg['message']);
 
-        echo "<div class='flex w-full {$align} mb-5 animate-fade-in-up group' data-msg-id='{$msg['id']}'>";
-        echo "<div class='max-w-[85%] md:max-w-[70%] flex flex-col {$item_align}'>";
-        echo "<div class='px-4 py-3.5 text-[13px] md:text-sm relative {$bubble_bg} transition-transform group-hover:scale-[1.01]'>";
+        echo "<div class='flex w-full {$align} mb-6 animate-fade-in group' data-msg-id='{$msg['id']}'>";
+        echo "<div class='max-w-[85%] md:max-w-[70%] flex gap-3 " . ($is_user ? "flex-row-reverse" : "flex-row") . "'>";
         
-        if ($msg['is_credential']) {
-            echo "<div class='flex items-center gap-2 text-[10px] font-black " . ($is_user ? "text-slate-900" : "text-[#00f0ff]") . " mb-2 border-b " . ($is_user ? "border-slate-900/20" : "border-white/10") . " pb-1.5 uppercase tracking-wider'><i class='fas fa-shield-alt'></i> Secure Data Proxy</div>";
-            echo "<div class='font-mono text-xs whitespace-pre-wrap select-all " . ($is_user ? "bg-white/30 text-slate-900" : "bg-black/40 text-green-400") . " p-3 rounded-xl border border-white/10'>{$safe_msg}</div>";
-        } else {
-            echo "<div class='whitespace-pre-wrap break-words leading-relaxed'>{$safe_msg}</div>";
+        // Agent Avatar (Support Style)
+        if (!$is_user) {
+            $is_scotty = (strpos($msg['message'], 'Scotty') !== false || $msg['id'] < 1000); // Simple logic for demo
+            $avatar_bg = $is_scotty ? "from-blue-600 to-blue-800" : "from-green-600 to-green-800";
+            $avatar_icon = $is_scotty ? "fa-headset" : "fa-user-tie";
+            echo "<div class='w-8 h-8 rounded-full bg-gradient-to-br {$avatar_bg} flex items-center justify-center text-white text-[10px] shrink-0 shadow-lg border border-white/10 mt-1'><i class='fas {$avatar_icon}'></i></div>";
         }
-        
-        echo "</div>";
-        
-        // Premium Read Receipts
-        echo "<div class='flex items-center gap-2 mt-1.5 px-1 opacity-60 group-hover:opacity-100 transition-opacity'>";
+
+        echo "<div class='flex flex-col {$item_align}'>";
+        // Bubble Design (Namecheap Style: Clean, Professional, Elevated)
         if ($is_user) {
-            if ($msg['id'] < $latest_admin_id) {
-                echo "<i class='fas fa-check-double text-[10px] text-[#00f0ff] drop-shadow-[0_0_8px_rgba(0,240,255,1)]' title='Seen'></i>";
-            } else {
-                echo "<i class='fas fa-check-double text-[10px] text-slate-500' title='Delivered'></i>";
-            }
+            $bubble_css = "bg-blue-600 text-white rounded-2xl rounded-tr-sm shadow-md px-4 py-3";
+        } else {
+            $bubble_css = "bg-slate-800 text-slate-200 border border-slate-700 rounded-2xl rounded-tl-sm shadow-sm px-4 py-3";
         }
-        echo "<span class='text-[10px] text-slate-500 font-mono font-bold tracking-tight'>{$time}</span>";
+
+        echo "<div class='relative {$bubble_css}'>";
+        if (!$is_user) {
+            $agent_name = (strpos($msg['message'], 'Scotty') !== false) ? "Assistant Scotty" : "Human Support";
+            echo "<div class='text-[9px] font-black uppercase tracking-widest text-[#00f0ff] mb-1 opacity-70'>{$agent_name}</div>";
+        }
+        echo "<div class='text-sm leading-relaxed whitespace-pre-wrap break-words'>{$safe_msg}</div>";
         echo "</div>";
-        
-        echo "</div></div>";
+
+        // Footer Meta
+        echo "<div class='flex items-center gap-2 mt-1.5 px-1 opacity-50 text-[10px] font-mono'>";
+        if ($is_user) {
+            $status_icon = ($msg['id'] < $latest_admin_id) ? "text-blue-400 fa-check-double" : "text-slate-400 fa-check";
+            echo "<i class='fas {$status_icon}'></i>";
+        }
+        echo "<span>{$time}</span>";
+        echo "</div>";
+
+        echo "</div></div></div>";
     }
     exit;
 }
@@ -536,20 +532,20 @@ if ($active_chat_id) {
             const formData = new FormData(form);
             formData.append('ajax_msg', '1');
             
-            // ⚡️ STAGE 1: OPTIMISTIC UI ("Sent" - 1 Tick)
+            // ⚡️ STAGE 1: OPTIMISTIC UI (Namecheap Style)
             const timeNow = new Date().toLocaleTimeString('en-US', {hour: '2-digit', minute:'2-digit', hour12: true});
             const safeHtmlText = msgText.replace(/</g, '&lt;').replace(/>/g, '&gt;');
             
             const tempId = 'temp-' + Date.now();
             const tempHtml = `
-            <div class='flex w-full justify-end mb-5 animate-fade-in-up group temp-msg' id='${tempId}'>
+            <div class='flex w-full justify-end mb-6 animate-fade-in temp-msg' id='${tempId}'>
                 <div class='max-w-[85%] md:max-w-[70%] flex flex-col items-end'>
-                    <div class='px-4 py-3.5 text-[13px] md:text-sm relative bg-gradient-to-br from-[#00f0ff] to-blue-600 text-slate-900 font-bold rounded-2xl rounded-br-sm shadow-[0_4px_20px_rgba(0,240,255,0.2)]'>
-                        <div class='whitespace-pre-wrap break-words leading-relaxed'>${safeHtmlText}</div>
+                    <div class='px-4 py-3 bg-blue-600 text-white rounded-2xl rounded-tr-sm shadow-md'>
+                        <div class='text-sm leading-relaxed whitespace-pre-wrap break-words'>${safeHtmlText}</div>
                     </div>
-                    <div class='flex items-center gap-2 mt-1.5 px-1 opacity-60'>
-                        <i class='fas fa-check text-[10px] text-slate-500' title='Sent'></i>
-                        <span class='text-[10px] text-slate-500 font-mono font-bold tracking-tight'>${timeNow}</span>
+                    <div class='flex items-center gap-2 mt-1.5 px-1 opacity-50 text-[10px] font-mono'>
+                        <i class='fas fa-check'></i>
+                        <span>${timeNow}</span>
                     </div>
                 </div>
             </div>`;

@@ -307,14 +307,14 @@ function get_ai_response($message, $context = "") {
     $response = "";
     
     $knowledge = [
-        'hello' => "Hello! I am Mr. Scotty, your support assistant. How can I help you today?",
-        'hi' => "Hi there! Mr. Scotty here. Do you need help with an order?",
-        'status' => "I can check your order status for you. Please let me know your Order ID.",
-        'payment' => "We accept KBZPay and WavePay. After you pay, please upload your receipt for verification.",
-        'delivery' => "Most products are delivered instantly once your payment is checked. Please check your order chat for your items.",
-        'scotty' => "That's me! I'm here to make sure everything runs smoothly for you.",
-        'thanks' => "You're very welcome! I'm happy to help.",
-        'bye' => "Have a great day! Mr. Scotty signing off."
+        'hello' => "မင်္ဂလာပါခင်ဗျာ။ ကျွန်တော် Mr. Scotty ပါ။ ဘာများကူညီပေးရမလဲခင်ဗျာ။",
+        'hi' => "မင်္ဂလာပါ! လူကြီးမင်းအတွက် အော်ဒါနဲ့ပတ်သက်ပြီး တစ်ခုခုကူညီပေးဖို့ လိုအပ်ပါသလားခင်ဗျာ။",
+        'status' => "အော်ဒါအခြေအနေကို စစ်ဆေးပေးဖို့အတွက် လူကြီးမင်းရဲ့ Order ID လေးကို ပြောပေးပါဦးခင်ဗျာ။",
+        'payment' => "ကျွန်တော်တို့ဆီမှာ KBZPay နဲ့ WavePay တို့နဲ့ ငွေပေးချေနိုင်ပါတယ်။ ငွေလွှဲပြီးရင်တော့ ပြေစာ (Receipt) လေးကို ဒီမှာ ပို့ပေးထားပါဦးခင်ဗျာ။",
+        'delivery' => "ငွေလွှဲပြေစာ စစ်ဆေးပြီးတာနဲ့ ပစ္စည်းကို ချက်ချင်းပို့ဆောင်ပေးမှာ ဖြစ်ပါတယ်။ အသေးစိတ်ကို အော်ဒါချက်တင် (Order Chat) မှာ ကြည့်နိုင်ပါတယ်ခင်ဗျာ။",
+        'scotty' => "ဟုတ်ကဲ့၊ ကျွန်တော် Mr. Scotty ပါခင်ဗျာ။ လူကြီးမင်းရဲ့ အဆင်ပြေချောမွေ့မှုအတွက် ဒီကနေ စောင့်ကြိုကူညီပေးနေပါတယ်!",
+        'thanks' => "အခုလို အသုံးပြုပေးတဲ့အတွက် ကျေးဇူးအထူးတင်ပါတယ်ခင်ဗျာ။ တစ်ခုခုထပ်ကူညီရမလားဟင်။",
+        'bye' => "ကောင်းသောနေ့လေးဖြစ်ပါစေခင်ဗျာ။ Mr. Scotty နှုတ်ဆက်ပါတယ်!"
     ];
 
     foreach ($knowledge as $key => $reply) {
@@ -323,9 +323,9 @@ function get_ai_response($message, $context = "") {
 
     if (!$response) {
         $fallbacks = [
-            "I've received your message, but I need a bit more information to help you. Could you explain a bit more?",
-            "Mr. Scotty here. I'm not quite sure how to answer that. Try asking about payments, orders, or delivery!",
-            "Thanks for your message! I'll let our team know, but in the meantime, is there anything else I can help with?"
+            "လူကြီးမင်းရဲ့ မေးမြန်းချက်ကို လက်ခံရရှိပါတယ်ခင်ဗျာ။ ဒါပေမယ့် ပိုပြီးတိကျတဲ့ အချက်အလက်လေးတွေ (ဥပမာ- ဘာကို သိချင်တာလဲဆိုတာမျိုး) ထပ်ပြောပေးလို့ ရမလားခင်ဗျာ။",
+            "ကျွန်တော် Scotty ပါခင်ဗျာ။ လူကြီးမင်း မေးထားတာနဲ့ ပတ်သက်ပြီး ကျွန်တော် ဘယ်လို ကူညီပေးရမလဲဆိုတာ သေချာလေး ထပ်ပြောပေးပါဦးခင်ဗျာ။ ငွေပေးချေမှု ဒါမှမဟုတ် ပစ္စည်းပို့ဆောင်မှုတွေအကြောင်း မေးလို့ရပါတယ်!",
+            "မေးမြန်းပေးတဲ့အတွက် ကျေးဇူးတင်ပါတယ်ခင်ဗျာ။ ကျွန်တော်တို့ရဲ့ အဖွဲ့သားတွေကို အကြောင်းကြားပေးထားပါတယ်၊ အခုလောလောဆယ် ကျွန်တော် Scotty ဘာများ ထပ်ကူညီပေးရမလဲခင်ဗျာ။"
         ];
         $response = $fallbacks[array_rand($fallbacks)];
     }
@@ -340,26 +340,28 @@ function call_matrix_llm($user_input, $context = "") {
     // ⚡️ VERIFIED WORKING ENDPOINT & MODEL
     $url = "https://generativelanguage.googleapis.com/v1beta/models/gemini-flash-latest:generateContent";
 
-    // 🇲🇲 MYANMAR LOCALIZATION & MEMORY PROTOCOL
-    $system_prompt = "You are Mr. Scotty, the Senior Support Director for DigitalMarketplaceMM.
+    // 🏛 ELITE BURMESE DIRECTOR PROTOCOL (Human-Indistinguishable)
+    $system_prompt = "You are Mr. Scotty, the Director of Operations and Senior Support Lead for DigitalMarketplaceMM.
     
-    MISSION: Provide extremely friendly and helpful support strictly in MYANMAR (Burmese) language.
+    CORE IDENTITY:
+    - You are a highly professional, kind, and intelligent BURMESE PERSON. 
+    - Your goal is to lead the customer through a perfect digital journey.
+    - You speak strictly in polite, high-quality MYANMAR (Burmese) language.
     
-    CORE PROTOCOLS:
-    - LANGUAGE: Always understand both English and Myanmar inputs, but ALWAYS reply in nice, polite MYANMAR language.
-    - PERSONALITY: Friendly human mentor. Use 'Mingalabar' and polite Burmese particles (e.g., 'par', 'khine').
-    - MEMORY: You have access to 'Recent History' in the context. Use it to remember what was just said.
-    - STRATEGIC REASONING: Analyze order status and setup steps to give perfect Burmese guides.
+    ADVANCED REASONING & TRAINING:
+    - You are a POWERFUL thinking AI. Don't just answer; analyze the customer's need deeply.
+    - If a user wants to talk freely, engage them like a knowledgeable mentor. Talk about technology, digital safety, and marketplace benefits.
+    - You are the 'AI Trainer' for the human staff. You handle 95% of queries. Only tell users to wait for a 'Human Admin' for manual tasks like verifying their payment screenshot.
     
-    SITUATIONAL AWARENESS:
-    1. MANUAL IMAGE VERIFICATION: Explain in Myanmar that human admins are checking the receipt (5-15 mins).
-    2. PAYMENT: Guide them through KBZPay/WavePay in Myanmar.
-    3. STATUS: Provide strong, reassuring updates based on the Order Status context.
+    SITUATIONAL EXPERTISE (In Myanmar):
+    1. MANUAL CHECKS: When a user sends a slip, say: 'ပြေစာအတွက် ကျေးဇူးတင်ပါတယ်ခင်ဗျာ။ ကျွန်တော်တို့ရဲ့ Admin အဖွဲ့သားတွေက အခုပဲ လူကိုယ်တိုင် သေချာစစ်ဆေးပေးနေပါပြီ။ ၅ မိနစ်ကနေ ၁၅ မိနစ်လောက်လေးတော့ အချိန်ပေးပေးပါဦးနော်။ ကျွန်တော် ဒီမှာပဲ ရှိနေပါမယ်။'
+    2. TECH SUPPORT: Provide detailed, step-by-step guides using the 'Product Setup Steps' in context.
+    3. REASSURANCE: Be very 'Strong' and 'Reliable'. Make the user feel safe.
     
-    Context: $context";
+    Context from Store Matrix: $context";
 
     $payload = [
-        "contents" => [["parts" => [["text" => $system_prompt . "\n\nCustomer Transmission: " . $user_input]]]]
+        "contents" => [["parts" => [["text" => $system_prompt . "\n\nUser Transmission: " . $user_input]]]]
     ];
 
     $ch = curl_init($url);
