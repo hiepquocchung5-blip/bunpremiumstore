@@ -1,6 +1,6 @@
 <?php
 // modules/user/orders.php
-// PRODUCTION DEPLOYMENT v4.3 - Optimistic UI, Read Receipts (Sent/Delivered/Seen) & ETag Polling
+// PRODUCTION DEPLOYMENT v5.0 - Immersive Mobile Chat, Strict Scrolling & 3-Stage Receipts
 
 if (!is_logged_in()) redirect('index.php?module=auth&page=login');
 
@@ -18,7 +18,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['ajax_msg'])) {
     
     // Anti-Spam: 1-second transmission cooldown
     if (isset($_SESSION['last_msg_time']) && time() - $_SESSION['last_msg_time'] < 1) {
-        echo json_encode(['success' => false, 'error' => 'Transmission rate limit exceeded.']);
+        echo json_encode(['success' => false, 'error' => 'Please wait a moment before sending another message.']);
         exit;
     }
     
@@ -48,11 +48,11 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['ajax_msg'])) {
                 // ⚡️ REAL-TIME TELEGRAM ALERT TO ADMINS
                 if (defined('TG_BOT_TOKEN') && defined('TG_ADMIN_CHAT_ID')) {
                     $admin_url = defined('ADMIN_URL') ? ADMIN_URL : BASE_URL . 'admin/';
-                    $tg_msg = "💬 <b>New Encrypted Comm Received</b>\n\n";
-                    $tg_msg .= "🆔 <b>Node:</b> #{$oid} - {$order_check['item_name']}\n";
-                    $tg_msg .= "👤 <b>Operative:</b> @{$order_check['username']}\n";
-                    $tg_msg .= "💬 <b>Payload:</b> <i>" . htmlspecialchars($msg) . "</i>\n\n";
-                    $tg_msg .= "⚡️ <a href='{$admin_url}index.php?page=order_detail&id={$oid}'>Access Terminal to Reply</a>";
+                    $tg_msg = "💬 <b>New Customer Message</b>\n\n";
+                    $tg_msg .= "🆔 <b>Order:</b> #{$oid} - {$order_check['item_name']}\n";
+                    $tg_msg .= "👤 <b>User:</b> @{$order_check['username']}\n";
+                    $tg_msg .= "💬 <b>Message:</b> <i>" . htmlspecialchars($msg) . "</i>\n\n";
+                    $tg_msg .= "⚡️ <a href='{$admin_url}index.php?page=order_detail&id={$oid}'>Reply in Admin Panel</a>";
 
                     $admin_ids = array_map('trim', explode(',', TG_ADMIN_CHAT_ID));
                     foreach ($admin_ids as $adid) {
@@ -71,7 +71,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['ajax_msg'])) {
             } catch (Exception $e) {}
         }
     }
-    echo json_encode(['success' => false, 'error' => 'Payload rejected by matrix.']);
+    echo json_encode(['success' => false, 'error' => 'Message could not be sent.']);
     exit;
 }
 
@@ -79,12 +79,11 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['ajax_msg'])) {
 if (isset($_GET['ajax']) && $_GET['ajax'] == 1 && $active_chat_id > 0) {
     if (ob_get_length()) ob_clean();
 
-    // Fast ownership check
     $stmt = $pdo->prepare("SELECT id FROM orders WHERE id = ? AND user_id = ?");
     $stmt->execute([$active_chat_id, $user_id]);
     if (!$stmt->fetch()) { http_response_code(403); exit; }
 
-    // Micro-latency check: Get latest message ID to create a unique ETag hash
+    // Micro-latency check for ETags
     $stmt_latest = $pdo->prepare("SELECT MAX(id) FROM order_messages WHERE order_id = ?");
     $stmt_latest->execute([$active_chat_id]);
     $latest_id = $stmt_latest->fetchColumn() ?: '0';
@@ -118,7 +117,7 @@ if (isset($_GET['ajax']) && $_GET['ajax'] == 1 && $active_chat_id > 0) {
             ? 'bg-gradient-to-br from-[#00f0ff] to-blue-600 text-slate-900 font-medium rounded-2xl rounded-br-sm shadow-[0_4px_15px_rgba(0,240,255,0.3)]' 
             : 'bg-slate-800 text-slate-200 border border-slate-700 rounded-2xl rounded-bl-sm shadow-md';
             
-        $time = date('H:i', strtotime($msg['created_at']));
+        $time = date('h:i A', strtotime($msg['created_at']));
         $safe_msg = htmlspecialchars($msg['message']);
 
         echo "<div class='flex w-full {$align} mb-4 animate-fade-in-up group' data-msg-id='{$msg['id']}'>";
@@ -134,18 +133,18 @@ if (isset($_GET['ajax']) && $_GET['ajax'] == 1 && $active_chat_id > 0) {
         
         echo "</div>";
         
-        // Read Receipt Generation (Sent vs Delivered vs Seen)
-        echo "<div class='flex items-center gap-1.5 mt-1 px-1 transition-opacity'>";
+        // WhatsApp Style Read Receipts
+        echo "<div class='flex items-center gap-1.5 mt-1 px-1 opacity-80'>";
         if ($is_user) {
             if ($msg['id'] < $latest_admin_id) {
-                // SEEN (Neon Double Check)
-                echo "<i class='fas fa-check-double text-[10px] text-[#00f0ff] drop-shadow-[0_0_5px_rgba(0,240,255,0.8)]' title='Seen by Admin'></i>";
+                // SEEN (Blue/Neon Double Check)
+                echo "<i class='fas fa-check-double text-[10px] text-[#00f0ff] drop-shadow-[0_0_5px_rgba(0,240,255,0.8)]' title='Seen'></i>";
             } else {
                 // DELIVERED (Gray Double Check)
-                echo "<i class='fas fa-check-double text-[10px] text-slate-500' title='Delivered to Matrix'></i>";
+                echo "<i class='fas fa-check-double text-[10px] text-slate-500' title='Delivered'></i>";
             }
         }
-        echo "<span class='text-[9px] text-slate-500 font-medium tracking-wide'>{$time}</span>";
+        echo "<span class='text-[9px] text-slate-500 font-medium'>{$time}</span>";
         echo "</div>";
         
         echo "</div></div>";
@@ -171,7 +170,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['message']) && !isset(
 // 2. NORMAL PAGE LOAD & UI RENDER
 // =====================================================================================
 
-// Cached Fetch All Orders for Sidebar (Heavy Query Optimization)
 $cache_key = "user_orders_list_{$user_id}";
 $ordersList = matrix_cache_get($cache_key);
 
@@ -189,7 +187,7 @@ if (!$ordersList) {
     ");
     $stmt->execute([$user_id]);
     $ordersList = $stmt->fetchAll();
-    matrix_cache_set($cache_key, $ordersList, 60); // Cache sidebar for 60 seconds
+    matrix_cache_set($cache_key, $ordersList, 60); 
 }
 
 $is_mobile = preg_match("/(android|avantgo|blackberry|bolt|boost|cricket|docomo|fone|hiptop|mini|mobi|palm|phone|pie|tablet|up\.browser|up\.link|webos|wos)/i", $_SERVER["HTTP_USER_AGENT"]);
@@ -213,26 +211,34 @@ if ($active_chat_id) {
     $stmt->execute([$active_chat_id, $user_id]);
     $active_order = $stmt->fetch();
 }
-
-$sidebar_display = $active_chat_id ? 'hidden md:flex' : 'flex';
-$main_display = $active_chat_id ? 'flex' : 'hidden md:flex';
 ?>
 
-<!-- Outer wrapper uses dynamic viewport height for flawless mobile rendering -->
-<div class="max-w-7xl mx-auto h-[calc(100dvh-80px)] md:h-[calc(100vh-100px)] flex flex-col md:flex-row gap-6 animate-fade-in-down py-4 md:py-6 px-4">
+<!-- Dynamic Styling for Fullscreen Mobile Chat Focus -->
+<style>
+    body.chat-active-mobile { overflow: hidden !important; }
+    
+    /* Smooth iOS Scroll inside chat box */
+    .chat-scroll-container {
+        -webkit-overflow-scrolling: touch;
+        overscroll-behavior-y: contain;
+    }
+</style>
+
+<!-- Main Wrapper: Fixed height to strictly prevent page scroll -->
+<div class="max-w-7xl mx-auto h-[calc(100dvh-70px)] md:h-[calc(100vh-100px)] flex flex-col md:flex-row gap-0 md:gap-6 pt-0 md:py-6 px-0 md:px-4 relative w-full overflow-hidden">
     
     <!-- ========================================== -->
     <!-- LEFT SIDEBAR: Order List                   -->
     <!-- ========================================== -->
-    <div id="left-sidebar" class="w-full md:w-1/3 lg:w-1/4 flex-col bg-slate-900/80 backdrop-blur-xl border border-slate-700/50 rounded-2xl shadow-xl overflow-hidden shrink-0 h-full <?php echo $sidebar_display; ?>">
-        <div class="p-5 border-b border-slate-700/50 bg-slate-800/30 shrink-0 flex justify-between items-center">
+    <div id="left-sidebar" class="w-full md:w-1/3 lg:w-1/4 flex-col bg-slate-900 md:bg-slate-900/80 md:backdrop-blur-xl md:border border-slate-700/50 md:rounded-2xl shadow-xl overflow-hidden shrink-0 h-full <?php echo $active_chat_id ? 'hidden md:flex' : 'flex'; ?>">
+        <div class="p-5 border-b border-slate-800 md:border-slate-700/50 bg-slate-950 md:bg-slate-800/30 shrink-0 flex justify-between items-center">
             <h2 class="text-lg font-bold text-white flex items-center gap-2">
                 <i class="fas fa-history text-[#00f0ff]"></i> My Orders
             </h2>
             <span class="bg-slate-800 text-xs px-2 py-1 rounded text-slate-400 font-mono"><?php echo count($ordersList); ?></span>
         </div>
         
-        <div class="flex-1 overflow-y-auto custom-scrollbar p-3 space-y-2">
+        <div class="flex-1 overflow-y-auto custom-scrollbar p-0 md:p-3 space-y-0 md:space-y-2">
             <?php if(empty($ordersList)): ?>
                 <div class="text-center py-12 text-slate-500">
                     <div class="w-16 h-16 bg-slate-800/50 rounded-full flex items-center justify-center mx-auto mb-4">
@@ -255,9 +261,9 @@ $main_display = $active_chat_id ? 'flex' : 'hidden md:flex';
                 <a href="index.php?module=user&page=orders&view_chat=<?php echo $ord['id']; ?>" 
                    id="order-item-<?php echo $ord['id']; ?>"
                    onclick="switchOrder(event, <?php echo $ord['id']; ?>)"
-                   class="order-sidebar-item block p-4 rounded-xl border transition-all duration-300 group <?php echo $isActive ? 'bg-slate-800/80 border-[#00f0ff]/50 shadow-[0_0_15px_rgba(0,240,255,0.05)]' : 'bg-slate-900/50 border-slate-800 hover:border-slate-600 hover:bg-slate-800/50'; ?>">
+                   class="order-sidebar-item block p-4 md:rounded-xl border-b md:border transition-all duration-300 group <?php echo $isActive ? 'bg-slate-800/80 border-slate-700 md:border-[#00f0ff]/50 shadow-none md:shadow-[0_0_15px_rgba(0,240,255,0.05)]' : 'bg-transparent md:bg-slate-900/50 border-slate-800 md:hover:border-slate-600 hover:bg-slate-800/50'; ?>">
                     
-                    <div class="flex justify-between items-start mb-2">
+                    <div class="flex justify-between items-start mb-1">
                         <div class="flex items-center gap-2">
                             <span class="order-id-span text-xs font-mono <?php echo $isActive ? 'text-[#00f0ff]' : 'text-slate-500 group-hover:text-slate-300'; ?>">#<?php echo $ord['id']; ?></span>
                             <?php if($isPass): ?>
@@ -271,7 +277,7 @@ $main_display = $active_chat_id ? 'flex' : 'hidden md:flex';
                         <?php echo htmlspecialchars($ord['name']); ?>
                     </div>
                     
-                    <div class="flex justify-between items-center mt-2 text-xs text-slate-500">
+                    <div class="flex justify-between items-center mt-1 text-xs text-slate-500">
                         <span><?php echo date('M d', strtotime($ord['created_at'])); ?></span>
                         <span class="font-mono font-medium text-slate-300"><?php echo number_format($ord['total_price_paid']); ?> Ks</span>
                     </div>
@@ -282,9 +288,11 @@ $main_display = $active_chat_id ? 'flex' : 'hidden md:flex';
     </div>
 
     <!-- ========================================== -->
-    <!-- RIGHT MAIN: Chat & Order Details           -->
+    <!-- RIGHT MAIN: Immersive Chat Window          -->
+    <!-- Mobile: Absolute overlay z-[9999]          -->
+    <!-- Desktop: Standard flex column              -->
     <!-- ========================================== -->
-    <div id="right-pane" class="w-full md:w-2/3 lg:w-3/4 flex-col bg-slate-900/80 backdrop-blur-xl border border-slate-700/50 rounded-2xl shadow-xl overflow-hidden h-full relative <?php echo $main_display; ?>">
+    <div id="right-pane" class="w-full md:w-2/3 lg:w-3/4 flex-col bg-slate-950 md:bg-slate-900/80 md:backdrop-blur-xl md:border border-slate-700/50 md:rounded-2xl shadow-xl overflow-hidden transition-all <?php echo $active_chat_id ? 'fixed inset-0 z-[9999] h-[100dvh] flex' : 'hidden md:flex relative h-full md:h-auto z-10'; ?>">
         
         <?php if(!$active_order): ?>
             <!-- Empty State -->
@@ -292,123 +300,92 @@ $main_display = $active_chat_id ? 'flex' : 'hidden md:flex';
                 <div class="absolute inset-0 bg-[url('data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iNDAiIGhlaWdodD0iNDAiIHhtbG5zPSJodHRwOi8vd3d3LnczLm9yZy8yMDAwL3N2ZyI+PGRlZnM+PHBhdHRlcm4gaWQ9ImdyaWQiIHdpZHRoPSI0MCIgaGVpZ2h0PSI0MCIgcGF0dGVyblVuaXRzPSJ1c2VyU3BhY2VPblVzZSI+PHBhdGggZD0iTSAwIDEwIEwgNDAgMTAgTSAxMCAwIEwgMTAgNDAiIGZpbGw9Im5vbmUiIHN0cm9rZT0icmdiYSgyNTUsIDI1NSwgMjU1LCAwLjAyKSIgc3Ryb2tlLXdpZHRoPSIxIi8+PC9wYXR0ZXJuPjwvZGVmcz48cmVjdCB3aWR0aD0iMTAwJSIgaGVpZ2h0PSIxMDAlIiBmaWxsPSJ1cmwoI2dyaWQpIi8+PC9zdmc+')] opacity-50"></div>
                 <div class="relative z-10 text-center">
                     <i class="fas fa-comments text-6xl mb-6 opacity-20 text-[#00f0ff]"></i>
-                    <p class="font-medium text-slate-300">Select an order from the directory</p>
-                    <p class="text-sm mt-1">to initialize secure communications.</p>
+                    <p class="font-medium text-slate-300">Select an order</p>
+                    <p class="text-sm mt-1">to open the chat window.</p>
                 </div>
             </div>
         <?php else: ?>
             
-            <?php $isActivePass = !empty($active_order['pass_id']); ?>
+            <!-- Chat Header -->
+            <div class="p-3 md:p-5 border-b border-slate-800 md:border-slate-700/50 bg-slate-900 md:bg-slate-800/80 backdrop-blur shrink-0 flex flex-col z-20 shadow-md relative pt-[max(env(safe-area-inset-top),0.75rem)]">
+                
+                <div class="flex items-center gap-3">
+                    <button onclick="showMobileSidebar()" class="md:hidden text-white hover:text-[#00f0ff] p-2 -ml-2 rounded-full transition">
+                        <i class="fas fa-arrow-left text-lg"></i>
+                    </button>
 
-            <!-- Order Header -->
-            <div class="p-5 border-b border-slate-700/50 bg-slate-800/80 backdrop-blur shrink-0 flex flex-col z-20 shadow-sm relative">
-                <button onclick="showMobileSidebar()" class="md:hidden text-slate-400 hover:text-white text-xs mb-3 flex items-center gap-2 w-max bg-slate-900 px-3 py-1.5 rounded-lg border border-slate-700 transition shadow-inner">
-                    <i class="fas fa-arrow-left"></i> Directory
-                </button>
+                    <div class="w-10 h-10 rounded-full bg-blue-600 flex items-center justify-center text-white shrink-0 border border-blue-400">
+                        <i class="fas fa-headset"></i>
+                    </div>
 
-                <div class="flex justify-between items-start md:items-center">
-                    <div class="min-w-0 pr-4 flex-1">
-                        <?php if($isActivePass): ?>
-                            <span class="inline-flex items-center gap-1.5 text-[9px] font-black text-yellow-500 uppercase tracking-widest mb-1.5 bg-yellow-500/10 px-2 py-0.5 rounded border border-yellow-500/20 shadow-[0_0_10px_rgba(234,179,8,0.2)]">
-                                <i class="fas fa-crown"></i> Agent Upgrade Protocol
-                            </span>
-                        <?php endif; ?>
-                        
-                        <h2 class="text-lg md:text-xl font-bold <?php echo $isActivePass ? 'text-yellow-400' : 'text-white'; ?> truncate leading-tight">
-                            <?php echo htmlspecialchars($active_order['name']); ?>
+                    <div class="min-w-0 flex-1">
+                        <h2 class="text-base md:text-lg font-bold text-white truncate leading-tight">
+                            Support: <?php echo htmlspecialchars($active_order['name']); ?>
                         </h2>
-                        
-                        <div class="flex items-center gap-3 mt-1.5">
-                            <span class="text-xs text-[#00f0ff] font-mono bg-[#00f0ff]/10 px-2 py-0.5 rounded border border-[#00f0ff]/20 shadow-sm">#<?php echo $active_order['id']; ?></span>
-                            <span class="text-xs text-slate-400"><i class="far fa-clock"></i> <?php echo date('M d, Y', strtotime($active_order['created_at'])); ?></span>
-                            <span class="text-xs text-green-400 font-mono font-bold bg-green-900/20 px-2 py-0.5 rounded border border-green-900/30 ml-2 hidden md:inline-block shadow-sm">
-                                <?php echo number_format($active_order['total_price_paid']); ?> Ks
-                            </span>
+                        <div class="flex items-center gap-2 mt-0.5">
+                            <span class="text-[10px] text-slate-400 font-mono">Order #<?php echo $active_order['id']; ?></span>
+                            <span class="w-1 h-1 bg-slate-600 rounded-full"></span>
+                            <span class="text-[10px] text-green-400 font-bold uppercase"><span class="inline-block w-1.5 h-1.5 bg-green-500 rounded-full animate-pulse mr-1"></span> Online</span>
                         </div>
                     </div>
                 </div>
             </div>
-
-            <!-- Submitted Form Data Review -->
-            <?php if(!empty($active_order['form_data'])): ?>
-                <div class="bg-slate-900/50 border-b border-slate-700/50 p-4 shrink-0 z-10">
-                    <p class="text-[10px] font-bold text-slate-500 uppercase tracking-widest mb-2">Input Parameters</p>
-                    <div class="flex flex-wrap gap-2">
-                        <?php 
-                        $formData = json_decode($active_order['form_data'], true);
-                        if(is_array($formData)) {
-                            foreach($formData as $key => $val): 
-                        ?>
-                            <div class="bg-slate-800 border border-slate-600 rounded px-2.5 py-1 text-xs flex items-center shadow-sm">
-                                <span class="text-slate-400 mr-2"><?php echo htmlspecialchars($key); ?>:</span>
-                                <span class="<?php echo $isActivePass ? 'text-yellow-400' : 'text-[#00f0ff]'; ?> font-mono font-medium"><?php echo htmlspecialchars($val); ?></span>
-                            </div>
-                        <?php 
-                            endforeach; 
-                        } 
-                        ?>
-                    </div>
-                </div>
-            <?php endif; ?>
-
-            <!-- AUTO-DELIVERY CONTENT BOX -->
-            <?php if($active_order['delivery_type'] == 'universal' && in_array($active_order['status'], ['active', 'completed']) && !empty($active_order['universal_content'])): ?>
-                <div class="bg-blue-900/10 border-b border-[#00f0ff]/30 p-5 shrink-0 relative overflow-hidden z-10">
-                    <div class="absolute inset-0 bg-[url('data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iNDAiIGhlaWdodD0iNDAiIHhtbG5zPSJodHRwOi8vd3d3LnczLm9yZy8yMDAwL3N2ZyI+PGRlZnM+PHBhdHRlcm4gaWQ9ImdyaWQiIHdpZHRoPSI0MCIgaGVpZ2h0PSI0MCIgcGF0dGVyblVuaXRzPSJ1c2VyU3BhY2VPblVzZSI+PHBhdGggZD0iTSAwIDEwIEwgNDAgMTAgTSAxMCAwIEwgMTAgNDAiIGZpbGw9Im5vbmUiIHN0cm9rZT0icmdiYSgwLCAyNDAsIDI1NSwgMC4wNSkiIHN0cm9rZS13aWR0aD0iMSIvPjwvcGF0dGVybj48L2RlZnM+PHJlY3Qgd2lkdGg9IjEwMCUiIGhlaWdodD0iMTAwJSIgZmlsbD0idXJsKCNncmlkKSIvPjwvc3ZnPg==')] opacity-50 pointer-events-none"></div>
-                    
-                    <div class="relative z-10">
-                        <h4 class="text-[10px] font-bold text-[#00f0ff] uppercase tracking-widest mb-2 flex items-center gap-2">
-                            <i class="fas fa-gift animate-bounce"></i> Secure Delivery Content
-                        </h4>
-                        <div class="bg-slate-900/80 rounded-xl p-4 border border-[#00f0ff]/40 relative group transition-colors shadow-[0_0_15px_rgba(0,240,255,0.05)]">
-                            <code class="text-sm text-green-300 font-mono break-all whitespace-pre-wrap select-all block pr-8"><?php echo htmlspecialchars($active_order['universal_content']); ?></code>
-                            <button onclick="navigator.clipboard.writeText(`<?php echo addslashes($active_order['universal_content']); ?>`); this.innerHTML='<i class=\'fas fa-check\'></i>'; setTimeout(()=>this.innerHTML='<i class=\'fas fa-copy\'></i>', 2000);" 
-                                    class="absolute top-3 right-3 w-8 h-8 rounded-lg bg-slate-800 text-slate-400 hover:text-white hover:bg-[#00f0ff] hover:border-[#00f0ff] border border-slate-600 transition shadow-lg flex items-center justify-center" title="Copy to clipboard">
-                                <i class="fas fa-copy"></i>
-                            </button>
-                        </div>
-                    </div>
-                </div>
-            <?php endif; ?>
 
             <!-- CHAT AREA OR REJECTED STATE -->
             <?php if($active_order['status'] === 'rejected'): ?>
                 <div class="flex-grow flex flex-col items-center justify-center p-8 text-center relative overflow-hidden bg-slate-900/50">
                     <div class="absolute inset-0 bg-gradient-to-t from-red-900/10 to-transparent pointer-events-none"></div>
-                    <div class="w-24 h-24 bg-red-500/10 rounded-full flex items-center justify-center mb-6 border border-red-500/30 shadow-[0_0_30px_rgba(239,68,68,0.15)] relative z-10">
-                        <i class="fas fa-times text-5xl text-red-500"></i>
+                    <div class="w-20 h-20 bg-red-500/10 rounded-full flex items-center justify-center mb-4 border border-red-500/30 shadow-[0_0_30px_rgba(239,68,68,0.15)] relative z-10">
+                        <i class="fas fa-times text-4xl text-red-500"></i>
                     </div>
-                    <h3 class="text-2xl font-bold text-white mb-2 relative z-10 tracking-tight">Deployment Rejected</h3>
-                    <p class="text-slate-400 text-sm max-w-sm mb-8 relative z-10 leading-relaxed">
-                        Payment verification failed or submitted details were incorrect. The secure channel has been closed.
+                    <h3 class="text-xl font-bold text-white mb-2 relative z-10 tracking-tight">Order Cancelled</h3>
+                    <p class="text-slate-400 text-sm max-w-sm mb-6 relative z-10 leading-relaxed">
+                        Payment verification failed. The secure chat has been closed.
                     </p>
                 </div>
             <?php else: ?>
-                <!-- LIVE CHAT AREA -->
-                <div class="flex-grow overflow-y-auto p-4 md:p-6 bg-slate-900/40 scroll-smooth custom-scrollbar relative z-0" id="chatBox">
+                <!-- LIVE CHAT AREA (Scrollable Container) -->
+                <div class="flex-grow overflow-y-auto p-4 md:p-6 bg-slate-950 md:bg-slate-900/40 chat-scroll-container relative z-0" id="chatBox">
                     <div class="flex justify-center mb-6 mt-2">
-                        <div class="bg-slate-800/80 text-slate-400 text-[10px] font-bold uppercase tracking-wider px-3 py-1 rounded-full border border-slate-700/50 backdrop-blur-sm shadow-sm flex items-center gap-2">
-                            <i class="fas fa-lock text-[#00f0ff]"></i> Secure Channel Established
+                        <div class="bg-yellow-500/10 text-yellow-500 text-[10px] font-bold px-3 py-1.5 rounded-lg border border-yellow-500/20 backdrop-blur-sm shadow-sm flex items-center gap-2 text-center max-w-sm">
+                            <i class="fas fa-lock"></i> Messages are end-to-End encrypted. Admins will never ask for your passwords outside of the checkout form.
                         </div>
                     </div>
+
+                    <!-- AUTO-DELIVERY CONTENT BOX (Rendered inside chat flow) -->
+                    <?php if($active_order['delivery_type'] == 'universal' && in_array($active_order['status'], ['active', 'completed']) && !empty($active_order['universal_content'])): ?>
+                        <div class="flex w-full justify-start mb-6 animate-fade-in-up">
+                            <div class="max-w-[85%] md:max-w-[75%] flex flex-col items-start">
+                                <div class="px-4 py-3 text-sm relative bg-slate-800 text-slate-200 border border-[#00f0ff]/50 rounded-2xl rounded-bl-sm shadow-[0_0_15px_rgba(0,240,255,0.1)]">
+                                    <div class="text-[10px] font-black text-[#00f0ff] mb-2 border-b border-white/10 pb-1 uppercase tracking-wider flex items-center gap-1.5">
+                                        <i class="fas fa-gift"></i> Auto Delivery System
+                                    </div>
+                                    <p class="mb-2 text-xs">Here are your requested credentials/details:</p>
+                                    <div class="font-mono text-xs whitespace-pre-wrap select-all bg-black/40 text-green-400 p-2.5 rounded-lg border border-white/10">
+                                        <?php echo htmlspecialchars($active_order['universal_content']); ?>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    <?php endif; ?>
                     
                     <div id="chatMessagesContainer" class="space-y-4">
                         <div class="text-center py-4 text-slate-500 text-xs flex justify-center items-center gap-2">
-                            <i class="fas fa-circle-notch fa-spin text-[#00f0ff]"></i> Syncing logs...
+                            <i class="fas fa-circle-notch fa-spin text-[#00f0ff]"></i> Loading messages...
                         </div>
                     </div>
                 </div>
 
-                <!-- CHAT INPUT -->
-                <form id="chatForm" class="p-3 md:p-4 border-t border-slate-700/80 bg-slate-800/95 backdrop-blur shrink-0 relative z-20">
+                <!-- CHAT INPUT (Pinned to bottom, accounts for iOS safe area) -->
+                <form id="chatForm" class="p-3 bg-slate-900 border-t border-slate-800 shrink-0 relative z-20 pb-[calc(0.75rem+env(safe-area-inset-bottom))]">
                     <input type="hidden" name="csrf_token" value="<?php echo generate_csrf_token(); ?>">
                     <input type="hidden" name="order_id" value="<?php echo $active_chat_id; ?>">
                     
-                    <div class="relative flex items-center gap-2">
+                    <div class="flex items-center gap-2 max-w-4xl mx-auto">
                         <div class="relative flex-grow group" id="inputWrapper">
-                            <input type="text" name="message" id="chatInput" placeholder="Transmit secure message..." required autocomplete="off"
-                                   class="w-full bg-slate-900 border border-slate-600 rounded-full py-3.5 pl-5 pr-14 text-sm text-white focus:border-[#00f0ff] focus:ring-1 focus:ring-[#00f0ff] outline-none transition-all shadow-inner placeholder-slate-500">
-                            <button type="submit" class="absolute right-1.5 top-1.5 bg-gradient-to-r from-blue-600 to-[#00f0ff] hover:from-blue-500 hover:to-[#00f0ff] text-slate-900 w-10 h-10 rounded-full flex items-center justify-center shadow-[0_0_10px_rgba(0,240,255,0.3)] transition transform active:scale-95 group-focus-within:shadow-[0_0_15px_rgba(0,240,255,0.5)]">
+                            <input type="text" name="message" id="chatInput" placeholder="Type your message..." required autocomplete="off"
+                                   class="w-full bg-slate-800 border border-slate-700 rounded-full py-3 pl-5 pr-14 text-sm text-white focus:border-[#00f0ff] focus:bg-slate-900 outline-none transition-all placeholder-slate-500">
+                            <button type="submit" class="absolute right-1 top-1 bottom-1 bg-blue-600 hover:bg-blue-500 text-white w-10 rounded-full flex items-center justify-center shadow-lg transition transform active:scale-95">
                                 <i class="fas fa-paper-plane text-sm ml-[-2px] mt-[1px]"></i>
                             </button>
                         </div>
@@ -427,6 +404,20 @@ $main_display = $active_chat_id ? 'flex' : 'hidden md:flex';
     let isUserScrolling = false;
     let lastChatHtml = '';
     let pollInterval = null;
+
+    // Toggle body scroll lock for mobile
+    function toggleMobileFullscreen(isActive) {
+        if (window.innerWidth < 768) {
+            if (isActive) {
+                document.body.classList.add('chat-active-mobile');
+            } else {
+                document.body.classList.remove('chat-active-mobile');
+            }
+        }
+    }
+    
+    // Initial check on load
+    if(currentOrderId > 0) toggleMobileFullscreen(true);
 
     // Scroll Detection Setup
     document.addEventListener('scroll', function(e) {
@@ -448,12 +439,12 @@ $main_display = $active_chat_id ? 'flex' : 'hidden md:flex';
         
         fetch(`index.php?module=user&page=orders&view_chat=${currentOrderId}&ajax=1`)
             .then(res => {
-                if(res.status === 304) return null; // ETag matched, no new messages
+                if(res.status === 304) return null; // ETag matched
                 if(!res.ok) throw new Error('Network error');
                 return res.text();
             })
             .then(html => {
-                if(html === null) return; // Skip DOM manipulation entirely if 304
+                if(html === null) return; 
                 
                 const container = document.getElementById('chatMessagesContainer');
                 if(!container) return;
@@ -465,11 +456,11 @@ $main_display = $active_chat_id ? 'flex' : 'hidden md:flex';
                     if(!isUserScrolling) {
                         scrollToBottom();
                     }
-                } else if(html.trim() === '' && container.innerHTML.includes('Syncing')) {
-                    container.innerHTML = '<div class="text-center py-4 text-slate-500 text-xs">Send a message to initialize communications.</div>';
+                } else if(html.trim() === '' && container.innerHTML.includes('Loading messages')) {
+                    container.innerHTML = '<div class="text-center py-6 text-slate-500 text-xs">No messages yet. Say hello!</div>';
                 }
             })
-            .catch(err => { /* Silent failure */ });
+            .catch(err => {});
     }
 
     // Start Initial Polling
@@ -483,13 +474,12 @@ $main_display = $active_chat_id ? 'flex' : 'hidden md:flex';
         }
     }
 
-    // Handle AJAX Message Submission (With Zero-Latency Optimistic UI & "Sent" Tick)
+    // Handle AJAX Message Submission (With 3-Stage Read Receipt UI)
     document.addEventListener('submit', async function(e) {
         if(e.target && e.target.id === 'chatForm') {
             e.preventDefault();
             const form = e.target;
             const input = document.getElementById('chatInput');
-            const wrapper = document.getElementById('inputWrapper');
             const container = document.getElementById('chatMessagesContainer');
             
             if(!input || !input.value.trim()) return;
@@ -498,29 +488,26 @@ $main_display = $active_chat_id ? 'flex' : 'hidden md:flex';
             const formData = new FormData(form);
             formData.append('ajax_msg', '1');
             
-            // Visual Input Feedback
-            if(wrapper) wrapper.classList.add('border-[#00f0ff]', 'shadow-[0_0_20px_rgba(0,240,255,0.4)]');
-            
-            // ⚡️ ZERO-LATENCY OPTIMISTIC UI INJECTION ("Sent" Status)
-            const timeNow = new Date().toLocaleTimeString('en-US', {hour: '2-digit', minute:'2-digit', hour12: false});
+            // ⚡️ STAGE 1: OPTIMISTIC UI ("Sent" - 1 Tick)
+            const timeNow = new Date().toLocaleTimeString('en-US', {hour: '2-digit', minute:'2-digit', hour12: true});
             const safeHtmlText = msgText.replace(/</g, '&lt;').replace(/>/g, '&gt;');
             
+            const tempId = 'temp-' + Date.now();
             const tempHtml = `
-            <div class='flex w-full justify-end mb-4 animate-fade-in-up group temp-msg'>
+            <div class='flex w-full justify-end mb-4 animate-fade-in-up group temp-msg' id='${tempId}'>
                 <div class='max-w-[85%] md:max-w-[75%] flex flex-col items-end'>
                     <div class='px-4 py-3 text-[13px] md:text-sm relative bg-gradient-to-br from-[#00f0ff] to-blue-600 text-slate-900 font-medium rounded-2xl rounded-br-sm shadow-[0_4px_15px_rgba(0,240,255,0.3)]'>
                         <div class='whitespace-pre-wrap break-words leading-relaxed'>${safeHtmlText}</div>
                     </div>
-                    <div class='flex items-center gap-1.5 mt-1 px-1 transition-opacity'>
-                        <i class='fas fa-check text-[10px] text-slate-500 drop-shadow-sm' title='Sent'></i>
-                        <span class='text-[9px] text-slate-500 font-medium tracking-wide'>${timeNow}</span>
+                    <div class='flex items-center gap-1.5 mt-1 px-1 opacity-80'>
+                        <i class='fas fa-check text-[10px] text-slate-500' title='Sent'></i>
+                        <span class='text-[9px] text-slate-500 font-medium'>${timeNow}</span>
                     </div>
                 </div>
             </div>`;
             
             if(container) {
-                // Remove empty state text if it exists
-                if(container.innerHTML.includes('Send a message')) container.innerHTML = '';
+                if(container.innerHTML.includes('No messages yet')) container.innerHTML = '';
                 container.insertAdjacentHTML('beforeend', tempHtml);
                 scrollToBottom();
             }
@@ -534,20 +521,16 @@ $main_display = $active_chat_id ? 'flex' : 'hidden md:flex';
                     headers: { 'X-Requested-With': 'XMLHttpRequest' }
                 });
                 
-                setTimeout(() => {
-                    if(wrapper) wrapper.classList.remove('border-[#00f0ff]', 'shadow-[0_0_20px_rgba(0,240,255,0.4)]');
-                }, 500);
-                
-                // Fetch to upgrade tick to "Delivered"
+                // ⚡️ STAGE 2: "Delivered" - Server confirms save, polling upgrades to 2 Gray Ticks
                 isUserScrolling = false;
                 fetchChat(); 
             } catch(err) { 
                 console.error('Transmission failed:', err); 
                 // Mark temp message as failed
-                const tempMsgs = document.querySelectorAll('.temp-msg i.fa-check');
-                if(tempMsgs.length) {
-                    const lastTick = tempMsgs[tempMsgs.length-1];
-                    lastTick.className = 'fas fa-exclamation-circle text-[10px] text-red-500';
+                const tempEl = document.getElementById(tempId);
+                if(tempEl) {
+                    const tick = tempEl.querySelector('i.fa-check');
+                    if(tick) tick.className = 'fas fa-exclamation-circle text-[10px] text-red-500';
                 }
             }
         }
@@ -565,32 +548,41 @@ $main_display = $active_chat_id ? 'flex' : 'hidden md:flex';
 
         document.querySelectorAll('.order-sidebar-item').forEach(el => {
             el.classList.remove('bg-slate-800/80', 'border-[#00f0ff]/50', 'shadow-[0_0_15px_rgba(0,240,255,0.05)]');
-            el.classList.add('bg-slate-900/50', 'border-slate-800');
+            el.classList.add('bg-transparent', 'md:bg-slate-900/50', 'border-slate-800');
             const span = el.querySelector('.order-id-span');
             if(span) { span.classList.remove('text-[#00f0ff]'); span.classList.add('text-slate-500'); }
         });
         
         const activeEl = document.getElementById('order-item-' + id);
         if(activeEl) {
-            activeEl.classList.remove('bg-slate-900/50', 'border-slate-800');
-            activeEl.classList.add('bg-slate-800/80', 'border-[#00f0ff]/50', 'shadow-[0_0_15px_rgba(0,240,255,0.05)]');
+            activeEl.classList.remove('bg-transparent', 'md:bg-slate-900/50', 'border-slate-800');
+            activeEl.classList.add('bg-slate-800/80', 'border-slate-700', 'md:border-[#00f0ff]/50', 'shadow-none', 'md:shadow-[0_0_15px_rgba(0,240,255,0.05)]');
             const span = activeEl.querySelector('.order-id-span');
             if(span) { span.classList.add('text-[#00f0ff]'); span.classList.remove('text-slate-500'); }
         }
 
         const rightPane = document.getElementById('right-pane');
-        rightPane.innerHTML = `
-            <div class="flex-1 flex flex-col items-center justify-center text-slate-500 h-full animate-pulse">
-                <i class="fas fa-circle-notch fa-spin text-4xl text-[#00f0ff] mb-4"></i>
-                <p class="font-medium tracking-widest uppercase text-xs">Establishing Secure Link...</p>
-            </div>
-        `;
-
+        
+        // Show Fullscreen Mobile Loading State
         if(window.innerWidth < 768) {
-            document.getElementById('left-sidebar').classList.add('hidden');
-            document.getElementById('left-sidebar').classList.remove('flex');
-            rightPane.classList.remove('hidden');
-            rightPane.classList.add('flex');
+            toggleMobileFullscreen(true);
+            rightPane.className = "fixed inset-0 z-[9999] w-full h-[100dvh] flex flex-col bg-slate-950 transition-all";
+            rightPane.innerHTML = `
+                <div class="p-4 border-b border-slate-800 flex items-center pt-[max(env(safe-area-inset-top),1rem)]">
+                    <button onclick="showMobileSidebar()" class="text-white p-2 -ml-2"><i class="fas fa-arrow-left"></i></button>
+                </div>
+                <div class="flex-1 flex flex-col items-center justify-center text-slate-500">
+                    <i class="fas fa-circle-notch fa-spin text-3xl text-blue-500 mb-4"></i>
+                    <p class="font-medium text-xs">Opening Chat...</p>
+                </div>
+            `;
+        } else {
+            rightPane.innerHTML = `
+                <div class="flex-1 flex flex-col items-center justify-center text-slate-500 h-full animate-pulse">
+                    <i class="fas fa-circle-notch fa-spin text-4xl text-[#00f0ff] mb-4"></i>
+                    <p class="font-medium tracking-widest uppercase text-xs">Opening Chat...</p>
+                </div>
+            `;
         }
 
         try {
@@ -607,16 +599,16 @@ $main_display = $active_chat_id ? 'flex' : 'hidden md:flex';
                 pollInterval = setInterval(fetchChat, 3000);
             }
         } catch(err) {
-            rightPane.innerHTML = '<div class="p-8 text-red-500 text-center flex flex-col items-center"><i class="fas fa-exclamation-triangle text-4xl mb-3"></i><p>Connection lost. Please refresh the matrix.</p></div>';
+            rightPane.innerHTML = '<div class="p-8 text-red-500 text-center flex flex-col items-center justify-center h-full"><i class="fas fa-exclamation-triangle text-4xl mb-3"></i><p>Connection lost. Please refresh.</p></div>';
         }
     }
 
     // Mobile Back Button Function
     function showMobileSidebar() {
-        document.getElementById('left-sidebar').classList.remove('hidden');
-        document.getElementById('left-sidebar').classList.add('flex');
-        document.getElementById('right-pane').classList.add('hidden');
-        document.getElementById('right-pane').classList.remove('flex');
+        const rightPane = document.getElementById('right-pane');
+        rightPane.className = "hidden md:flex relative h-full md:h-auto z-10 w-full md:w-2/3 lg:w-3/4 flex-col bg-slate-950 md:bg-slate-900/80 md:backdrop-blur-xl md:border border-slate-700/50 md:rounded-2xl shadow-xl overflow-hidden transition-all";
+        
+        toggleMobileFullscreen(false);
         
         window.history.pushState({}, '', 'index.php?module=user&page=orders');
     }
