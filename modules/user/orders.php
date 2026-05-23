@@ -76,8 +76,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['ajax_msg'])) {
                     $history_context .= "{$role}: {$h['message']}\n";
                 }
 
-                $ai_msg = strip_tags(get_ai_response($msg, $rich_context . " | Recent History:\n" . $history_context));
-                
+                $ai_msg = strip_tags(get_ai_response($msg, $rich_context . " | Recent History:\n" . $history_context));                
                 if (!empty($ai_msg)) {
                     $stmt = $pdo->prepare("INSERT INTO order_messages (order_id, sender_type, message) VALUES (?, 'admin', ?)");
                     $stmt->execute([$oid, $ai_msg]);
@@ -159,9 +158,8 @@ if (isset($_GET['ajax']) && $_GET['ajax'] == 1 && $active_chat_id > 0) {
         
         // Agent Avatar (Support Style)
         if (!$is_user) {
-            $is_scotty = (strpos($msg['message'], 'Scotty') !== false || $msg['id'] < 1000); // Simple logic for demo
-            $avatar_bg = $is_scotty ? "from-blue-600 to-blue-800" : "from-green-600 to-green-800";
-            $avatar_icon = $is_scotty ? "fa-headset" : "fa-user-tie";
+            $avatar_bg = "from-green-600 to-green-800";
+            $avatar_icon = "fa-user-tie";
             echo "<div class='w-8 h-8 rounded-full bg-gradient-to-br {$avatar_bg} flex items-center justify-center text-white text-[10px] shrink-0 shadow-lg border border-white/10 mt-1'><i class='fas {$avatar_icon}'></i></div>";
         }
 
@@ -175,7 +173,8 @@ if (isset($_GET['ajax']) && $_GET['ajax'] == 1 && $active_chat_id > 0) {
 
         echo "<div class='relative {$bubble_css}'>";
         if (!$is_user) {
-            $agent_name = (strpos($msg['message'], 'Scotty') !== false) ? "Assistant Scotty" : "Human Support";
+            $agent_names = ['Ko Scotty', 'Support Team', 'Digital Support', 'Ryan', 'Nora', 'Alex', 'Customer Care'];
+            $agent_name = $agent_names[$active_chat_id % count($agent_names)];
             echo "<div class='text-[9px] font-black uppercase tracking-widest text-[#00f0ff] mb-1 opacity-70'>{$agent_name}</div>";
         }
         echo "<div class='text-sm leading-relaxed whitespace-pre-wrap break-words'>{$safe_msg}</div>";
@@ -575,23 +574,43 @@ if ($active_chat_id) {
             if(container) {
                 if(container.innerHTML.includes('No messages yet')) container.innerHTML = '';
                 container.insertAdjacentHTML('beforeend', tempHtml);
+
+                // Add Typing Indicator
+                const typingId = 'typing-' + Date.now();
+                const typingHtml = `
+                <div class='flex w-full justify-start mb-6 animate-fade-in group temp-typing' id='${typingId}'>
+                    <div class='max-w-[85%] md:max-w-[70%] flex gap-3 flex-row'>
+                        <div class='w-8 h-8 rounded-full bg-gradient-to-br from-green-600 to-green-800 flex items-center justify-center text-white text-[10px] shrink-0 shadow-lg border border-white/10 mt-1'><i class='fas fa-user-tie'></i></div>
+                        <div class='flex flex-col items-start'>
+                            <div class='relative bg-slate-800 text-slate-200 border border-slate-700 rounded-2xl rounded-tl-sm shadow-sm px-4 py-3'>
+                                <div class='text-[9px] font-black uppercase tracking-widest text-[#00f0ff] mb-1 opacity-70'>Support Team</div>
+                                <div class='text-sm flex items-center gap-1 opacity-70'>
+                                    <span class="w-1.5 h-1.5 bg-slate-400 rounded-full animate-bounce"></span>
+                                    <span class="w-1.5 h-1.5 bg-slate-400 rounded-full animate-bounce" style="animation-delay: 0.1s"></span>
+                                    <span class="w-1.5 h-1.5 bg-slate-400 rounded-full animate-bounce" style="animation-delay: 0.2s"></span>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>`;
+                container.insertAdjacentHTML('beforeend', typingHtml);
+
                 scrollToBottom();
             }
 
-            input.value = ''; 
-            
+            input.value = '';
+
             try {
                 const res = await fetch('index.php?module=user&page=orders', {
                     method: 'POST',
                     body: formData,
                     headers: { 'X-Requested-With': 'XMLHttpRequest' }
                 });
-                
+
                 // ⚡️ STAGE 2: "Delivered" - Server confirms save, polling upgrades to 2 Gray Ticks
                 isUserScrolling = false;
-                fetchChat(); 
-            } catch(err) { 
-                console.error('Transmission failed:', err); 
+                fetchChat();
+            } catch(err) {                console.error('Transmission failed:', err); 
                 // Mark temp message as failed
                 const tempEl = document.getElementById(tempId);
                 if(tempEl) {

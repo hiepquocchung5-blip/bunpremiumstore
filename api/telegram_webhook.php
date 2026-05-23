@@ -228,8 +228,8 @@ try {
                     // Normal message from user -> AUTO REPLY BY MR. SCOTTY
                     $reply = get_ai_response($text, "User: @{$username}");
                     
-                    // Also notify admins that a user is talking to Scotty
-                    $admin_notify = "🤖 <b>Mr. Scotty</b> is helping 👤 @{$username}\n💬 <i>{$text}</i>";
+                    // Also notify admins that a user is talking to AI
+                    $admin_notify = "🤖 <b>AI Support</b> is helping 👤 @{$username}\n💬 <i>{$text}</i>";
                     $admin_ids = array_map('trim', explode(',', TG_ADMIN_CHAT_ID));
                     foreach ($admin_ids as $adid) {
                         if ($adid == $chat_id) continue;

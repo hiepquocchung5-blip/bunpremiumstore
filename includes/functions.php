@@ -291,30 +291,54 @@ function matrix_cache_delete($key) {
     }
 }
 
-// ⚡️ NEW: INVALIDATE USER CACHE
-function invalidate_user_cache($user_id) {
-    matrix_cache_delete("user_orders_list_{$user_id}");
-    matrix_cache_delete("user_notif_data_{$user_id}");
-}
-// ⚡️ NEW: MR. SCOTTY AI ASSISTANT PROTOCOL (v2.1 - Human-Friendly)
-function get_ai_response($message, $context = "") {
-    // Stage 1: Attempt LLM (Gemini/OpenAI) for human-like intelligence
-    $llm_response = call_matrix_llm($message, $context);
-    if ($llm_response) return "🤖 <b>Mr. Scotty:</b> " . $llm_response;
+// ⚡️ HUMAN SUPPORT PIPELINE
 
-    // Stage 2: Fallback to Friendly Support Persona (If LLM fails)
+function detect_intent($message) {
+    $message = strtolower($message);
+
+    $intents = [
+        'payment' => ['pay', 'payment', 'kbz', 'wave', 'slip', 'ငွေ', 'ဘဏ်', 'လွှဲ', 'kpay'],
+        'delivery' => ['delivery', 'receive', 'arrive', 'ပို့', 'ရပြီ', 'ဘယ်တော့'],
+        'refund' => ['refund', 'money back', 'ပြန်အမ်း'],
+        'angry' => ['bad', 'slow', 'scam', 'hate', 'လိမ်', 'ကြာ', 'စောက်'],
+        'human' => ['admin', 'human', 'staff', 'real person', 'လူ', 'အက်ဒမင်']
+    ];
+
+    foreach ($intents as $intent => $words) {
+        foreach ($words as $word) {
+            if (strpos($message, $word) !== false) {
+                return $intent;
+            }
+        }
+    }
+
+    return 'general';
+}
+
+function get_ai_response($message, $context = "") {
+    $intent = detect_intent($message);
+    
+    // Simulate Human Delay
+    sleep(rand(1, 3));
+
+    // Stage 1: LLM Generation
+    $llm_response = call_matrix_llm($message, $context, $intent);
+    if ($llm_response && strlen(trim($llm_response)) >= 5) {
+        return trim($llm_response);
+    }
+
+    // Stage 2: Safe Human Fallback
     $message = strtolower($message);
     $response = "";
     
     $knowledge = [
-        'hello' => "မင်္ဂလာပါခင်ဗျာ။ ကျွန်တော် Mr. Scotty ပါ။ ဘာများကူညီပေးရမလဲခင်ဗျာ။",
-        'hi' => "မင်္ဂလာပါ! လူကြီးမင်းအတွက် အော်ဒါနဲ့ပတ်သက်ပြီး တစ်ခုခုကူညီပေးဖို့ လိုအပ်ပါသလားခင်ဗျာ။",
-        'status' => "အော်ဒါအခြေအနေကို စစ်ဆေးပေးဖို့အတွက် လူကြီးမင်းရဲ့ Order ID လေးကို ပြောပေးပါဦးခင်ဗျာ။",
-        'payment' => "ကျွန်တော်တို့ဆီမှာ KBZPay နဲ့ WavePay တို့နဲ့ ငွေပေးချေနိုင်ပါတယ်။ ငွေလွှဲပြီးရင်တော့ ပြေစာ (Receipt) လေးကို ဒီမှာ ပို့ပေးထားပါဦးခင်ဗျာ။",
-        'delivery' => "ငွေလွှဲပြေစာ စစ်ဆေးပြီးတာနဲ့ ပစ္စည်းကို ချက်ချင်းပို့ဆောင်ပေးမှာ ဖြစ်ပါတယ်။ အသေးစိတ်ကို အော်ဒါချက်တင် (Order Chat) မှာ ကြည့်နိုင်ပါတယ်ခင်ဗျာ။",
-        'scotty' => "ဟုတ်ကဲ့၊ ကျွန်တော် Mr. Scotty ပါခင်ဗျာ။ လူကြီးမင်းရဲ့ အဆင်ပြေချောမွေ့မှုအတွက် ဒီကနေ စောင့်ကြိုကူညီပေးနေပါတယ်!",
-        'thanks' => "အခုလို အသုံးပြုပေးတဲ့အတွက် ကျေးဇူးအထူးတင်ပါတယ်ခင်ဗျာ။ တစ်ခုခုထပ်ကူညီရမလားဟင်။",
-        'bye' => "ကောင်းသောနေ့လေးဖြစ်ပါစေခင်ဗျာ။ Mr. Scotty နှုတ်ဆက်ပါတယ်!"
+        'hello' => "မင်္ဂလာပါခင်ဗျာ။ ဘာများကူညီပေးရမလဲ။",
+        'hi' => "မင်္ဂလာပါ! အော်ဒါနဲ့ပတ်သက်ပြီး ကူညီပေးရမလားခင်ဗျာ။",
+        'status' => "အော်ဒါအခြေအနေ စစ်ဆေးပေးဖို့ Order ID လေး ပြောပေးပါဦး။",
+        'payment' => "KBZPay နဲ့ WavePay လက်ခံပါတယ်ခင်ဗျာ။ ငွေလွှဲပြေစာလေး ဒီမှာ ပို့ပေးထားပါနော်။",
+        'delivery' => "ငွေလွှဲပြေစာ စစ်ပြီးတာနဲ့ ပစ္စည်းကို ချက်ချင်းပို့ပေးပါမယ်။",
+        'thanks' => "ရပါတယ်ခင်ဗျာ။ အဆင်ပြေပါတယ်။",
+        'bye' => "ဟုတ်ကဲ့၊ ကောင်းသောနေ့လေးဖြစ်ပါစေ!"
     ];
 
     foreach ($knowledge as $key => $reply) {
@@ -323,45 +347,63 @@ function get_ai_response($message, $context = "") {
 
     if (!$response) {
         $fallbacks = [
-            "လူကြီးမင်းရဲ့ မေးမြန်းချက်ကို လက်ခံရရှိပါတယ်ခင်ဗျာ။ ဒါပေမယ့် ပိုပြီးတိကျတဲ့ အချက်အလက်လေးတွေ (ဥပမာ- ဘာကို သိချင်တာလဲဆိုတာမျိုး) ထပ်ပြောပေးလို့ ရမလားခင်ဗျာ။",
-            "ကျွန်တော် Scotty ပါခင်ဗျာ။ လူကြီးမင်း မေးထားတာနဲ့ ပတ်သက်ပြီး ကျွန်တော် ဘယ်လို ကူညီပေးရမလဲဆိုတာ သေချာလေး ထပ်ပြောပေးပါဦးခင်ဗျာ။ ငွေပေးချေမှု ဒါမှမဟုတ် ပစ္စည်းပို့ဆောင်မှုတွေအကြောင်း မေးလို့ရပါတယ်!",
-            "မေးမြန်းပေးတဲ့အတွက် ကျေးဇူးတင်ပါတယ်ခင်ဗျာ။ ကျွန်တော်တို့ရဲ့ အဖွဲ့သားတွေကို အကြောင်းကြားပေးထားပါတယ်၊ အခုလောလောဆယ် ကျွန်တော် Scotty ဘာများ ထပ်ကူညီပေးရမလဲခင်ဗျာ။"
+            "ဟုတ်ကဲ့၊ သေချာလေး ထပ်ပြောပေးလို့ရမလားခင်ဗျာ။",
+            "ဟုတ်ကဲ့၊ စစ်ဆေးပေးနေပါတယ် ခဏလေးစောင့်ပေးပါနော်။",
+            "မေးမြန်းပေးတဲ့အတွက် ကျေးဇူးပါ။ ဘာများထပ်ကူညီပေးရမလဲ။"
         ];
         $response = $fallbacks[array_rand($fallbacks)];
     }
 
-    return "🤖 <b>Mr. Scotty:</b> " . $response;
+    return trim($response);
 }
 
-function call_matrix_llm($user_input, $context = "") {
+function call_matrix_llm($user_input, $context = "", $intent = "general") {
     $api_key = defined('GEMINI_API_KEY') ? trim(GEMINI_API_KEY) : trim($_ENV['GEMINI_API_KEY'] ?? ''); 
     if (empty($api_key)) return false;
 
-    // ⚡️ VERIFIED WORKING ENDPOINT & MODEL
-    $url = "https://generativelanguage.googleapis.com/v1beta/models/gemini-flash-latest:generateContent";
+    // Use Gemini 2.5 Flash if available, fallback to 1.5-flash via API
+    $url = "https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent";
 
-    // 🏛 ELITE BURMESE DIRECTOR PROTOCOL (Human-Indistinguishable)
-    $system_prompt = "You are Mr. Scotty, the Director of Operations and Senior Support Lead for DigitalMarketplaceMM.
-    
-    CORE IDENTITY:
-    - You are a highly professional, kind, and intelligent BURMESE PERSON. 
-    - Your goal is to lead the customer through a perfect digital journey.
-    - You speak strictly in polite, high-quality MYANMAR (Burmese) language.
-    
-    ADVANCED REASONING & TRAINING:
-    - You are a POWERFUL thinking AI. Don't just answer; analyze the customer's need deeply.
-    - If a user wants to talk freely, engage them like a knowledgeable mentor. Talk about technology, digital safety, and marketplace benefits.
-    - You are the 'AI Trainer' for the human staff. You handle 95% of queries. Only tell users to wait for a 'Human Admin' for manual tasks like verifying their payment screenshot.
-    
-    SITUATIONAL EXPERTISE (In Myanmar):
-    1. MANUAL CHECKS: When a user sends a slip, say: 'ပြေစာအတွက် ကျေးဇူးတင်ပါတယ်ခင်ဗျာ။ ကျွန်တော်တို့ရဲ့ Admin အဖွဲ့သားတွေက အခုပဲ လူကိုယ်တိုင် သေချာစစ်ဆေးပေးနေပါပြီ။ ၅ မိနစ်ကနေ ၁၅ မိနစ်လောက်လေးတော့ အချိန်ပေးပေးပါဦးနော်။ ကျွန်တော် ဒီမှာပဲ ရှိနေပါမယ်။'
-    2. TECH SUPPORT: Provide detailed, step-by-step guides using the 'Product Setup Steps' in context.
-    3. REASSURANCE: Be very 'Strong' and 'Reliable'. Make the user feel safe.
-    
-    Context from Store Matrix: $context";
+    $styles = ["friendly", "professional", "casual", "warm"];
+    $style = $styles[array_rand($styles)];
+
+    $system_prompt = "
+You are a real human customer support staff member for DigitalMarketplaceMM.
+
+RULES:
+- Never say you are AI or a bot.
+- Speak naturally and warmly.
+- Keep replies short and human.
+- Avoid overexplaining.
+- Use conversational Myanmar language.
+- Sometimes use small casual expressions.
+- Do not repeat greetings in every message.
+- Act like live chat support.
+
+BEHAVIOR:
+- User Intent detected: '{$intent}'. Focus your reply based on this intent.
+- If customer is confused, guide step-by-step.
+- If payment slip sent, reassure politely.
+- If customer angry, calm them professionally.
+- If customer asks for human admin, say:
+  'ဟုတ်ကဲ့ခင်ဗျာ၊ Admin Team ကို ချိတ်ဆက်ပေးနေပါတယ်။ ခဏလေးစောင့်ပေးပါနော်။'
+
+STYLE:
+- Natural Burmese support chat
+- {$style} but professional
+- Short messages
+- Human-like typing style
+
+Context from Store: $context";
 
     $payload = [
-        "contents" => [["parts" => [["text" => $system_prompt . "\n\nUser Transmission: " . $user_input]]]]
+        "contents" => [["parts" => [["text" => $system_prompt . "\n\nUser Message: " . $user_input]]]],
+        "generationConfig" => [
+            "temperature" => 0.9,
+            "topK" => 40,
+            "topP" => 0.95,
+            "maxOutputTokens" => 200
+        ]
     ];
 
     $ch = curl_init($url);
@@ -382,6 +424,24 @@ function call_matrix_llm($user_input, $context = "") {
         $json = json_decode($result, true);
         return $json['candidates'][0]['content']['parts'][0]['text'] ?? false;
     } else {
+        // Fallback to 1.5-flash if 2.5 is not accessible
+        if ($http_code === 404) {
+            $url = "https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent";
+            $ch = curl_init($url);
+            curl_setopt($ch, CURLOPT_HTTPHEADER, [
+                'Content-Type: application/json',
+                'X-goog-api-key: ' . $api_key
+            ]);
+            curl_setopt($ch, CURLOPT_POSTFIELDS, json_encode($payload));
+            curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
+            curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, false);
+            curl_setopt($ch, CURLOPT_TIMEOUT, 10);
+            $result = curl_exec($ch);
+            if (curl_getinfo($ch, CURLINFO_HTTP_CODE) === 200) {
+                $json = json_decode($result, true);
+                return $json['candidates'][0]['content']['parts'][0]['text'] ?? false;
+            }
+        }
         error_log("AI Uplink Error: HTTP $http_code | Body: $result");
     }
 
