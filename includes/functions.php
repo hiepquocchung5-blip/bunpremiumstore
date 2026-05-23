@@ -374,11 +374,18 @@ function call_matrix_llm($user_input, $context = "") {
 
     $result = curl_exec($ch);
     $http_code = curl_getinfo($ch, CURLINFO_HTTP_CODE);
+    $curl_error = curl_error($ch);
     curl_close($ch);
 
     if ($http_code === 200) {
         $json = json_decode($result, true);
-        return $json['candidates'][0]['content']['parts'][0]['text'] ?? false;
+        $text = $json['candidates'][0]['content']['parts'][0]['text'] ?? false;
+        if (!$text) {
+            error_log("Gemini API Parse Error: " . $result);
+        }
+        return $text;
+    } else {
+        error_log("Gemini API HTTP Error $http_code: " . $result . " | Curl: " . $curl_error);
     }
 
     return false;

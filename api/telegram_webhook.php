@@ -80,7 +80,7 @@ try {
 
         case '/approve':
             if ($isAdmin && is_numeric($arg)) {
-                $check = $pdo->prepare("SELECT status, user_id FROM orders WHERE id = ?");
+                $check = $pdo->prepare("SELECT status, user_id, COALESCE(p.name, ps.name) as item_name FROM orders o LEFT JOIN products p ON o.product_id=p.id LEFT JOIN passes ps ON o.pass_id=ps.id WHERE o.id = ?");
                 $check->execute([$arg]);
                 $ord = $check->fetch();
 
@@ -88,11 +88,14 @@ try {
                     $pdo->prepare("UPDATE orders SET status = 'active' WHERE id = ?")->execute([$arg]);
                     $pdo->prepare("INSERT INTO order_messages (order_id, sender_type, message) VALUES (?, 'admin', '✅ Payment verified! Your order has been approved.')")->execute([$arg]);
                     
-                    // ⚡️ Real-time Cache Invalidation
+                    // 🤖 MR. SCOTTY AUTOMATIC DELIVERY MSG (Extra effort)
+                    $delivery_msg = "Operative! Your deployment for <b>{$ord['item_name']}</b> is now active in the matrix. Check your orders tab!";
+                    $pdo->prepare("INSERT INTO order_messages (order_id, sender_type, message) VALUES (?, 'admin', ?)")->execute([$arg, $delivery_msg]);
+
                     invalidate_user_cache($ord['user_id']);
-                    
                     trigger_push_alert($pdo, $ord['user_id'], "Order Complete ✅", "Order #$arg has been verified and activated.", $arg);
-                    $reply = "✅ <b>AUTHORIZATION GRANTED</b>\n\nOrder <code>#$arg</code> Active. Cache cleared.";
+                    
+                    $reply = "✅ <b>AUTHORIZATION GRANTED</b>\n\nOrder <code>#$arg</code> Active. Cache cleared. Delivery protocols initialized.";
                 } else {
                     $reply = "⚠️ Order <code>#$arg</code> not found or processed.";
                 }

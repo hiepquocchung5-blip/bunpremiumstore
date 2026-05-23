@@ -1,5 +1,5 @@
 // sw.js (MUST BE IN ROOT DIRECTORY)
-// PRODUCTION v2.6 - Hardened Matrix Service Worker & Body Clone Fix
+// PRODUCTION v2.7 - Hardened Matrix SW & Response Stability Fix
 
 const CACHE_NAME = 'matrix-static-v1';
 const IMAGE_CACHE_NAME = 'matrix-images-v1';
@@ -32,10 +32,9 @@ self.addEventListener('activate', event => {
 self.addEventListener('fetch', event => {
     const url = new URL(event.request.url);
 
-    // Skip non-GET requests
+    // Skip non-GET requests (Critical for forms/AJAX)
     if (event.request.method !== 'GET') return;
     
-    // Skip cross-origin requests for internal caching (optional, but safer for Tailwind CDN issues)
     const isInternal = url.origin === self.location.origin;
 
     // ⚡️ STRATEGY 1: Image Cache First (Internal only)
@@ -45,11 +44,16 @@ self.addEventListener('fetch', event => {
                 const cachedResponse = await cache.match(event.request);
                 if (cachedResponse) return cachedResponse;
 
-                const networkResponse = await fetch(event.request);
-                if (networkResponse && networkResponse.status === 200) {
-                    cache.put(event.request, networkResponse.clone());
+                try {
+                    const networkResponse = await fetch(event.request);
+                    if (networkResponse && networkResponse.status === 200) {
+                        cache.put(event.request, networkResponse.clone());
+                    }
+                    return networkResponse;
+                } catch (e) {
+                    // Fail gracefully, maybe return a placeholder?
+                    return new Response('', { status: 404 });
                 }
-                return networkResponse;
             })
         );
         return;
@@ -67,15 +71,25 @@ self.addEventListener('fetch', event => {
                     return networkResponse;
                 }).catch(() => null);
 
-                return cachedResponse || fetchPromise;
+                // ENSURE WE ALWAYS RETURN A VALID RESPONSE
+                return cachedResponse || fetchPromise || new Response('', { status: 503 });
             })
         );
         return;
     }
 
-    // Default: Network First with Cache Fallback
+    // Default Strategy: Network First with Graceful Fallback
     event.respondWith(
-        fetch(event.request).catch(() => caches.match(event.request))
+        fetch(event.request).catch(async () => {
+            const cached = await caches.match(event.request);
+            // ⚡️ CRITICAL FIX: If no cache match, return a valid 404 Response object 
+            // instead of 'undefined' to prevent the "Failed to convert to Response" error.
+            return cached || new Response('Offline: Resource not in Matrix Cache', {
+                status: 503,
+                statusText: 'Service Unavailable',
+                headers: new Headers({ 'Content-Type': 'text/plain' })
+            });
+        })
     );
 });
 
