@@ -1,5 +1,5 @@
 // sw.js (MUST BE IN ROOT DIRECTORY)
-// PRODUCTION v2.7 - Hardened Matrix SW & Response Stability Fix
+// PRODUCTION v2.8 - Resilient Sync & 503 Error Elimination
 
 const CACHE_NAME = 'matrix-static-v1';
 const IMAGE_CACHE_NAME = 'matrix-images-v1';
@@ -32,9 +32,12 @@ self.addEventListener('activate', event => {
 self.addEventListener('fetch', event => {
     const url = new URL(event.request.url);
 
-    // Skip non-GET requests (Critical for forms/AJAX)
+    // 1. Skip non-GET (Forms, API POSTs must go to network)
     if (event.request.method !== 'GET') return;
     
+    // 2. Skip Admin/API paths from aggressive caching
+    if (url.pathname.includes('/admin/') || url.pathname.includes('/api/')) return;
+
     const isInternal = url.origin === self.location.origin;
 
     // ⚡️ STRATEGY 1: Image Cache First (Internal only)
@@ -51,7 +54,6 @@ self.addEventListener('fetch', event => {
                     }
                     return networkResponse;
                 } catch (e) {
-                    // Fail gracefully, maybe return a placeholder?
                     return new Response('', { status: 404 });
                 }
             })
@@ -59,7 +61,7 @@ self.addEventListener('fetch', event => {
         return;
     }
 
-    // ⚡️ STRATEGY 2: Stale-While-Revalidate for CSS/JS (Internal only)
+    // ⚡️ STRATEGY 2: Stale-While-Revalidate for CSS/JS
     if (isInternal && (event.request.destination === 'style' || event.request.destination === 'script')) {
         event.respondWith(
             caches.open(CACHE_NAME).then(async cache => {
@@ -71,23 +73,23 @@ self.addEventListener('fetch', event => {
                     return networkResponse;
                 }).catch(() => null);
 
-                // ENSURE WE ALWAYS RETURN A VALID RESPONSE
-                return cachedResponse || fetchPromise || new Response('', { status: 503 });
+                return cachedResponse || fetchPromise;
             })
         );
         return;
     }
 
-    // Default Strategy: Network First with Graceful Fallback
+    // ⚡️ DEFAULT: Network First with Graceful Fallback (NO 503)
     event.respondWith(
         fetch(event.request).catch(async () => {
             const cached = await caches.match(event.request);
-            // ⚡️ CRITICAL FIX: If no cache match, return a valid 404 Response object 
-            // instead of 'undefined' to prevent the "Failed to convert to Response" error.
-            return cached || new Response('Offline: Resource not in Matrix Cache', {
-                status: 503,
-                statusText: 'Service Unavailable',
-                headers: new Headers({ 'Content-Type': 'text/plain' })
+            if (cached) return cached;
+            
+            // If it's a page request, we could return an offline page here
+            // For now, we return a basic 404 to avoid the 'Service Unavailable' 503 error
+            return new Response('Offline: Connection Required', {
+                status: 404,
+                headers: { 'Content-Type': 'text/plain' }
             });
         })
     );
@@ -100,11 +102,11 @@ self.addEventListener('push', function(event) {
     try {
         data = event.data ? event.data.json() : {};
     } catch (e) {
-        data = { title: 'Secure Transmission', body: 'Encrypted payload received.' };
+        data = { title: 'New Update', body: 'You have a new message from our store.' };
     }
 
     const options = {
-        body: data.body || 'Incoming transmission...',
+        body: data.body || 'New message received.',
         icon: data.icon || '/assets/images/logo.png',
         badge: data.badge || '/assets/images/logo.png',
         vibrate: [100, 50, 100, 50, 200],
