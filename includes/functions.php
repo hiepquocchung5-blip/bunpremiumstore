@@ -29,6 +29,14 @@ function is_telegram_admin($chat_id) {
     return in_array((string)$chat_id, $admin_ids);
 }
 
+// ⚡️ INVALIDATE USER CACHE
+function invalidate_user_cache($user_id) {
+    if (function_exists('matrix_cache_delete')) {
+        matrix_cache_delete("user_orders_list_{$user_id}");
+        matrix_cache_delete("user_notif_data_{$user_id}");
+    }
+}
+
 // Generate CSRF Token for Forms
 function generate_csrf_token() {
     if (empty($_SESSION['csrf_token'])) {

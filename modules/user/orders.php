@@ -45,7 +45,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['ajax_msg'])) {
                 $stmt->execute([$oid, $msg]);
                 
                 $_SESSION['last_msg_time'] = time();
-                invalidate_user_cache($user_id);
+                if (function_exists('invalidate_user_cache')) {
+                    invalidate_user_cache($user_id);
+                }
 
                 // 🧠 HUMAN HANDOFF PROTOCOL: Detect if user wants a real person
                 $human_keywords = ['human', 'person', 'admin', 'staff', 'someone', 'help', 'real', 'brother', 'bro', 'talk'];
