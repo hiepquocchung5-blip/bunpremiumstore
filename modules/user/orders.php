@@ -26,8 +26,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['ajax_msg'])) {
         $msg = trim($_POST['message']);
         $oid = (int)$_POST['order_id'];
         
+        // ⚡️ REAL-TIME DATABASE LOOKUP FOR AI (The "Siri" Step)
         $stmt = $pdo->prepare("
-            SELECT o.status, u.username, COALESCE(p.name, ps.name) as item_name 
+            SELECT o.*, u.username, u.full_name, COALESCE(p.name, ps.name) as item_name, p.user_instruction
             FROM orders o 
             JOIN users u ON o.user_id = u.id
             LEFT JOIN products p ON o.product_id = p.id
@@ -48,16 +49,27 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['ajax_msg'])) {
                 // ⚡️ INVALIDATE CACHE for real-time notification update
                 invalidate_user_cache($user_id);
 
-                // 🤖 MR. SCOTTY AI PROTOCOL: Auto-reply if it's a "normal" inquiry
-                $ai_trigger_keywords = ['hello', 'hi', 'scotty', 'help', 'status', 'payment', 'delivery', 'thanks'];
-                $should_ai_reply = false;
-                foreach($ai_trigger_keywords as $k) { if(strpos(strtolower($msg), $k) !== false) { $should_ai_reply = true; break; } }
-
-                if($should_ai_reply) {
-                    $ai_msg = strip_tags(get_ai_response($msg, "Item: " . ($order_check['item_name'] ?? 'Digital Asset')));
-                    // Wait 2 seconds for "realistic" effect then inject
-                    $stmt = $pdo->prepare("INSERT INTO order_messages (order_id, sender_type, message) VALUES (?, 'admin', ?)");
-                    $stmt->execute([$oid, $ai_msg]);
+                // 🤖 MR. SCOTTY AI PROTOCOL: Advanced Autonomous Intelligence
+                // We no longer use keywords. Scotty analyzes EVERY transmission to provide elite support.
+                if (true) { 
+                    // RICH CONTEXT: Scotty now sees everything about the user and the order!
+                    $rich_context = "Customer: @{$order_check['username']} ({$order_check['full_name']}) | ";
+                    $rich_context .= "Item: " . ($order_check['item_name'] ?? 'Digital Asset') . " | ";
+                    $rich_context .= "Order Status: " . strtoupper($order_check['status']) . " | ";
+                    $rich_context .= "Order ID: #{$oid} | ";
+                    $rich_context .= "Payment: " . ($order_check['payment_method'] ?? 'Not specified') . " | ";
+                    
+                    if (!empty($order_check['user_instruction'])) {
+                        $rich_context .= "Product Setup Steps: " . $order_check['user_instruction'];
+                    }
+                    
+                    $ai_msg = strip_tags(get_ai_response($msg, $rich_context));
+                    
+                    // Inject AI response if it's high quality and meaningful
+                    if (!empty($ai_msg)) {
+                        $stmt = $pdo->prepare("INSERT INTO order_messages (order_id, sender_type, message) VALUES (?, 'admin', ?)");
+                        $stmt->execute([$oid, $ai_msg]);
+                    }
                 }
                 
                 // ⚡️ REAL-TIME TELEGRAM ALERT TO ADMINS
