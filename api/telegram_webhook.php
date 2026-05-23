@@ -45,12 +45,12 @@ try {
                 $total_users = $pdo->query("SELECT COUNT(*) FROM users")->fetchColumn();
                 $revenue = $pdo->query("SELECT SUM(total_price_paid) FROM orders WHERE status = 'active' AND DATE(created_at) = CURDATE()")->fetchColumn() ?: 0;
                 
-                $reply = "📊 <b><u>SYSTEM TELEMETRY</u></b>\n";
+                $reply = "📊 <b><u>STORE STATUS</u></b>\n";
                 $reply .= "━━━━━━━━━━━━━━━━━━━━\n";
-                $reply .= "🟢 <b>Matrix:</b> Online\n";
-                $reply .= "👤 <b>Total Nodes:</b> $total_users\n";
+                $reply .= "🟢 <b>Server:</b> Online\n";
+                $reply .= "👤 <b>Total Users:</b> $total_users\n";
                 $reply .= "🕒 <b>Pending Orders:</b> $pending\n";
-                $reply .= "💰 <b>Daily Volume:</b> " . number_format($revenue) . " Ks\n";
+                $reply .= "💰 <b>Today's Sales:</b> " . number_format($revenue) . " Ks\n";
                 $reply .= "━━━━━━━━━━━━━━━━━━━━";
             }
             break;
@@ -69,27 +69,25 @@ try {
                 $res = $stmt->fetch();
 
                 if ($res) {
-                    $reply = "🔍 <b><u>NODE LOCATED</u></b>\n\n";
+                    $reply = "🔍 <b><u>USER LOCATED</u></b>\n\n";
                     $reply .= "🆔 <b>ID:</b> <code>#{$res['id']}</code>\n";
                     $reply .= "👤 <b>User:</b> @{$res['username']}\n";
                     $reply .= "📧 <b>Email:</b> {$res['email']}\n";
                     $reply .= "📦 <b>Item:</b> {$res['item_name']}\n";
                     $reply .= "🚥 <b>Status:</b> " . strtoupper($res['status']);
                 } else {
-                    $reply = "❌ <b>Node Not Found:</b> No record matching <code>$arg</code>.";
+                    $reply = "❌ <b>Not Found:</b> No record matching <code>$arg</code>.";
                 }
             }
             break;
 
         case '/broadcast':
             if ($isAdmin && !empty($argsStr)) {
-                // In a real scenario, you'd fetch all chat_ids from a 'telegram_users' table
-                // For now, we alert the active admin group
-                $reply = "📡 <b>BROADCAST INITIATED</b>\n\nComms sent to authorized admin nodes.";
+                $reply = "📡 <b>ANNOUNCEMENT SENT</b>\n\nMessage sent to all active admins.";
                 $admin_ids = array_map('trim', explode(',', TG_ADMIN_CHAT_ID));
                 foreach ($admin_ids as $adid) {
                     if ($adid == $chat_id) continue;
-                    send_reply($adid, "📣 <b><u>GLOBAL ANNOUNCEMENT</u></b>\n\n" . $argsStr);
+                    send_reply($adid, "📣 <b><u>STORE ANNOUNCEMENT</u></b>\n\n" . $argsStr);
                 }
             }
             break;
@@ -97,20 +95,20 @@ try {
         case '/ping':
             $start = microtime(true);
             $reply = "🏓 <b>PONG</b>\n\n";
-            $reply .= "🛰 <b>Latency:</b> " . round((microtime(true) - $start) * 1000, 2) . "ms\n";
+            $reply .= "🛰 <b>Speed:</b> " . round((microtime(true) - $start) * 1000, 2) . "ms\n";
             $reply .= "⏲ <b>Server Time:</b> " . date('H:i:s');
             break;
 
         case '/aistatus':
             if ($isAdmin) {
-                $reply = "🤖 <b><u>AI DIAGNOSTICS</u></b>\n\n";
-                $test_reply = call_matrix_llm("Are you online?", "Internal Health Check");
+                $reply = "🤖 <b><u>AI HEALTH CHECK</u></b>\n\n";
+                $test_reply = call_matrix_llm("Are you online?", "Health Check");
                 if ($test_reply) {
-                    $reply .= "🟢 <b>Gemini Core:</b> Online\n";
+                    $reply .= "🟢 <b>AI Status:</b> Online & Working\n";
                     $reply .= "💬 <b>Sample Reply:</b> <i>" . h($test_reply) . "</i>";
                 } else {
-                    $reply .= "🔴 <b>Gemini Core:</b> Offline / No Response\n";
-                    $reply .= "⚠️ Check <code>error_log</code> for HTTP/Curl details.";
+                    $reply .= "🔴 <b>AI Status:</b> Offline\n";
+                    $reply .= "⚠️ <b>Action:</b> Check your Gemini API Key in config.php.";
                 }
             }
             break;
@@ -126,16 +124,16 @@ try {
                 $orders = $stmt->fetchAll();
                 
                 if ($orders) {
-                    $reply = "🕒 <b><u>AWAITING AUTHORIZATION</u></b>\n\n";
+                    $reply = "🕒 <b><u>PENDING ORDERS</u></b>\n\n";
                     foreach ($orders as $o) {
                         $reply .= "🔹 <b>Order:</b> <code>{$o['id']}</code> | 👤 @{$o['username']}\n";
                         $reply .= "📦 {$o['item_name']}\n";
                         $reply .= "💰 " . number_format($o['total_price_paid']) . " Ks\n";
                         $reply .= "━━━━━━━━━━━━━━━━\n";
                     }
-                    $reply .= "\n<i>Execute: /approve [ID], /reject [ID], or /reply [ID] [Msg]</i>";
+                    $reply .= "\n<i>Type: /approve [ID], /reject [ID], or /reply [ID] [Msg]</i>";
                 } else {
-                    $reply = "✅ <b>Matrix Clear:</b> Zero pending orders.";
+                    $reply = "✅ <b>All Clear:</b> No pending orders.";
                 }
             }
             break;
@@ -151,15 +149,15 @@ try {
                     $pdo->prepare("INSERT INTO order_messages (order_id, sender_type, message) VALUES (?, 'admin', '✅ Payment verified! Your order has been approved.')")->execute([$arg]);
                     
                     // 🤖 MR. SCOTTY AUTOMATIC DELIVERY MSG (Extra effort)
-                    $delivery_msg = "Operative! Your deployment for <b>{$ord['item_name']}</b> is now active in the matrix. Check your orders tab!";
+                    $delivery_msg = "Hello! Your order for <b>{$ord['item_name']}</b> is now active. You can check your items in the orders tab!";
                     $pdo->prepare("INSERT INTO order_messages (order_id, sender_type, message) VALUES (?, 'admin', ?)")->execute([$arg, $delivery_msg]);
 
                     invalidate_user_cache($ord['user_id']);
-                    trigger_push_alert($pdo, $ord['user_id'], "Order Complete ✅", "Order #$arg has been verified and activated.", $arg);
+                    trigger_push_alert($pdo, $ord['user_id'], "Order Complete ✅", "Order #$arg has been checked and activated.", $arg);
                     
-                    $reply = "✅ <b>AUTHORIZATION GRANTED</b>\n\nOrder <code>#$arg</code> Active. Cache cleared. Delivery protocols initialized.";
+                    $reply = "✅ <b>ORDER APPROVED</b>\n\nOrder <code>#$arg</code> is now Active.";
                 } else {
-                    $reply = "⚠️ Order <code>#$arg</code> not found or processed.";
+                    $reply = "⚠️ Order <code>#$arg</code> not found.";
                 }
             }
             break;
@@ -172,12 +170,12 @@ try {
 
                 if ($ord && $ord['status'] === 'pending') {
                     $pdo->prepare("UPDATE orders SET status = 'rejected' WHERE id = ?")->execute([$arg]);
-                    $pdo->prepare("INSERT INTO order_messages (order_id, sender_type, message) VALUES (?, 'admin', '❌ Order Rejected. Please contact support.')")->execute([$arg]);
+                    $pdo->prepare("INSERT INTO order_messages (order_id, sender_type, message) VALUES (?, 'admin', '❌ Order Rejected. Please contact support for more information.')")->execute([$arg]);
                     
                     invalidate_user_cache($ord['user_id']);
                     
-                    trigger_push_alert($pdo, $ord['user_id'], "Order Rejected ❌", "Issue with Order #$arg.", $arg);
-                    $reply = "🚫 <b>DEPLOYMENT TERMINATED</b>\n\nOrder <code>#$arg</code> Rejected.";
+                    trigger_push_alert($pdo, $ord['user_id'], "Order Rejected ❌", "There was an issue with Order #$arg.", $arg);
+                    $reply = "🚫 <b>ORDER REJECTED</b>\n\nOrder <code>#$arg</code> Rejected.";
                 }
             }
             break;
@@ -193,8 +191,8 @@ try {
                     
                     invalidate_user_cache($ord['user_id']);
                     
-                    trigger_push_alert($pdo, $ord['user_id'], "New Transmission 💬", "Admin replied to Order #$arg", $arg);
-                    $reply = "✉️ <b>COMMS DISPATCHED</b>\n\nMessage injected into Order <code>#$arg</code> matrix.";
+                    trigger_push_alert($pdo, $ord['user_id'], "New Message 💬", "The admin replied to your Order #$arg", $arg);
+                    $reply = "✉️ <b>MESSAGE SENT</b>\n\nYour message was sent to Order <code>#$arg</code>.";
                 }
             }
             break;
@@ -205,8 +203,8 @@ try {
             if ($isAdmin) {
                 // If it's a command starting with /, show help
                 if (strpos($text, '/') === 0) {
-                    $reply = "⚡️ <b>DigitalMarketplaceMM Matrix</b> ⚡️\n\n Operative <b>@$username</b> identified.\n\n";
-                    $reply .= "🛠 <b><u>ADMIN PROTOCOLS</u></b>\n";
+                    $reply = "⚡️ <b>DigitalMarketplaceMM Store</b> ⚡️\n\n Hello <b>@$username</b>!\n\n";
+                    $reply .= "🛠 <b><u>ADMIN COMMANDS</u></b>\n";
                     $reply .= "🔹 <code>/stats</code> | <code>/pending</code> | <code>/find [ID]</code>\n";
                     $reply .= "🔹 <code>/approve [ID]</code> | <code>/reject [ID]</code>\n";
                     $reply .= "🔹 <code>/reply [ID] [Msg]</code>\n";
@@ -220,14 +218,14 @@ try {
             } else {
                 // IT IS A USER (Non-Admin) - Mr. Scotty takes over for normal messages!
                 if (strpos($text, '/') === 0) {
-                    $reply = "⚡️ <b>DigitalMarketplaceMM Matrix</b> ⚡️\n\n Operative <b>@$username</b> identified.\n\n";
-                    $reply .= "🆔 <b>Node:</b> <code>$chat_id</code>\nAccess Restricted.";
+                    $reply = "⚡️ <b>DigitalMarketplaceMM Store</b> ⚡️\n\n Hello <b>@$username</b>!\n\n";
+                    $reply .= "🆔 <b>Your ID:</b> <code>$chat_id</code>\nAccess Restricted.";
                 } else {
                     // Normal message from user -> AUTO REPLY BY MR. SCOTTY
                     $reply = get_ai_response($text, "User: @{$username}");
                     
                     // Also notify admins that a user is talking to Scotty
-                    $admin_notify = "🤖 <b>Mr. Scotty</b> is handling 👤 @{$username}\n💬 <i>{$text}</i>";
+                    $admin_notify = "🤖 <b>Mr. Scotty</b> is helping 👤 @{$username}\n💬 <i>{$text}</i>";
                     $admin_ids = array_map('trim', explode(',', TG_ADMIN_CHAT_ID));
                     foreach ($admin_ids as $adid) {
                         if ($adid == $chat_id) continue;
