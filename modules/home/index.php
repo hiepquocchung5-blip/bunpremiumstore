@@ -51,15 +51,39 @@ $stmt = $pdo->query("
 ");
 $recent_reviews = $stmt->fetchAll();
 
-// 7. Fetch Active Payment Methods for Display
-$stmt = $pdo->query("SELECT bank_name, logo_class FROM payment_methods WHERE is_active = 1");
-$active_payments = $stmt->fetchAll();
+// 7. Fetch Active Staff (Human Nodes)
+$stmt = $pdo->query("SELECT id, username, role, last_login FROM adm_user WHERE role != 'bot' ORDER BY last_login DESC LIMIT 4");
+$staff_nodes = $stmt->fetchAll();
 
-// 8. Get Current User Discount & Name
-$discount = is_logged_in() ? get_user_discount($_SESSION['user_id']) : 0;
+// 8. Fetch Recent User Activity (Pseudonymized)
+$stmt = $pdo->query("
+    SELECT o.id, u.username, COALESCE(p.name, ps.name) as item_name, o.created_at
+    FROM orders o 
+    JOIN users u ON o.user_id = u.id
+    LEFT JOIN products p ON o.product_id = p.id 
+    LEFT JOIN passes ps ON o.pass_id = ps.id
+    WHERE o.status = 'active'
+    ORDER BY o.id DESC LIMIT 10
+");
+$recent_activity = $stmt->fetchAll();
+
+// 9. Get Current User Discount & Stats
+$user_id = $_SESSION['user_id'] ?? 0;
+$discount = is_logged_in() ? get_user_discount($user_id) : 0;
 $first_name = is_logged_in() ? explode(' ', $_SESSION['user_name'])[0] : 'Operative';
 
-// 9. Fetch Real Stats for Telemetry
+$user_stats = ['balance' => 0, 'active_missions' => 0];
+if(is_logged_in()) {
+    $user_stats['balance'] = $pdo->prepare("SELECT balance FROM users WHERE id = ?");
+    $user_stats['balance']->execute([$user_id]);
+    $user_stats['balance'] = $user_stats['balance']->fetchColumn() ?: 0;
+    
+    $user_stats['active_missions'] = $pdo->prepare("SELECT COUNT(*) FROM orders WHERE user_id = ? AND status = 'pending'");
+    $user_stats['active_missions']->execute([$user_id]);
+    $user_stats['active_missions'] = $user_stats['active_missions']->fetchColumn() ?: 0;
+}
+
+// 10. Fetch Real Stats for Telemetry
 $total_users_count = $pdo->query("SELECT COUNT(*) FROM users")->fetchColumn();
 $total_orders_count = $pdo->query("SELECT COUNT(*) FROM orders WHERE status = 'active'")->fetchColumn();
 $display_users = max($total_users_count, 1250); 
@@ -68,14 +92,14 @@ $display_orders = max($total_orders_count, 8500);
 // Generate an initial random seed for the live online user counter (10 to 1000)
 $live_online = rand(120, 850); 
 
-// 10. Check Push Subscription Status (Failsafe for Admin Errors)
+// 11. Check Push Subscription Status
 $is_subscribed = false;
 if (is_logged_in()) {
     try {
         $sub_check = $pdo->prepare("SELECT id FROM push_subscriptions WHERE user_id = ?");
-        $sub_check->execute([$_SESSION['user_id']]);
+        $sub_check->execute([$user_id]);
         $is_subscribed = $sub_check->rowCount() > 0;
-    } catch (Exception $e) {} // Ignore if table doesn't exist yet
+    } catch (Exception $e) {}
 }
 ?>
 
@@ -99,57 +123,81 @@ if (is_logged_in()) {
         box-shadow: 0 10px 25px -5px rgba(0, 240, 255, 0.15);
     }
     
-    .animate-marquee { animation: marquee 30s linear infinite; }
-    .animate-marquee-slow { animation: marquee 45s linear infinite; }
+    .animate-marquee { animation: marquee 35s linear infinite; }
     @keyframes marquee { 0% { transform: translateX(100%); } 100% { transform: translateX(-100%); } }
-
-    /* Slider Scroll Snapping */
-    .snap-x-mandatory { scroll-snap-type: x mandatory; -webkit-overflow-scrolling: touch; }
-    .snap-start { scroll-snap-align: start; }
-    .snap-center { scroll-snap-align: center; }
 
     /* Progress Bar Animation */
     @keyframes loadProgress { 0% { width: 0%; } 100% { width: 100%; } }
     
-    /* Cinematic Image Pan (Slide Show effect) */
+    /* Cinematic Image Pan */
     @keyframes panImage {
         0% { transform: scale(1.05) translate(0, 0); }
         50% { transform: scale(1.15) translate(-1%, -1%); }
         100% { transform: scale(1.05) translate(0, 0); }
     }
-    .animate-pan-image {
-        animation: panImage 20s ease-in-out infinite;
-    }
+    .animate-pan-image { animation: panImage 20s ease-in-out infinite; }
 
-    /* Smooth Infinite Marquee */
-    @keyframes marquee-infinite {
-        0% { transform: translateX(0); }
-        100% { transform: translateX(-50%); }
+    /* New: Matrix Data Stream */
+    @keyframes dataStream {
+        0% { transform: translateY(-100%); opacity: 0; }
+        50% { opacity: 0.5; }
+        100% { transform: translateY(100%); opacity: 0; }
     }
-    .animate-marquee-infinite {
-        animation: marquee-infinite 35s linear infinite;
-        width: max-content;
+    .data-stream-pixel {
+        position: absolute; width: 1px; height: 10px;
+        background: linear-gradient(to bottom, transparent, #00f0ff);
+        animation: dataStream 2s linear infinite;
     }
 </style>
 
 <!-- SECTION 0: News Ticker -->
-<div class="w-full bg-slate-950 border-b border-[#00f0ff]/20 overflow-hidden py-1.5 mb-6 relative shadow-[0_4px_20px_rgba(0,240,255,0.05)]">
+<div class="w-full bg-slate-950 border-b border-[#00f0ff]/20 overflow-hidden py-2 mb-6 relative shadow-[0_4px_20px_rgba(0,240,255,0.05)]">
     <div class="absolute inset-y-0 left-0 w-16 bg-gradient-to-r from-slate-950 to-transparent z-10 pointer-events-none"></div>
     <div class="absolute inset-y-0 right-0 w-16 bg-gradient-to-l from-slate-950 to-transparent z-10 pointer-events-none"></div>
-    <div class="whitespace-nowrap animate-marquee text-[10px] sm:text-xs text-[#00f0ff] font-mono tracking-[0.2em] uppercase font-bold">
-        🚀 System Online • Encrypted Connections Active • Global Game Keys & Premium Deployments Available 24/7 • Instant Delivery Matrix 
+    <div class="whitespace-nowrap animate-marquee text-[10px] sm:text-xs text-[#00f0ff] font-mono tracking-[0.2em] uppercase font-black">
+        🚀 [SYSTEM_LOG]: Matrix Synchronized • Real-time Deliveries Enabled • AI Co-Pilot 'Mr. Scotty' Online • 24/7 Human Verified Support Active 
     </div>
 </div>
 
 <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pb-12">
     
-    <!-- User Greeting -->
-    <div class="mb-6 flex items-center justify-between animate-fade-in-down">
-        <h2 class="text-xl md:text-2xl font-black text-white tracking-tight">
-            Welcome, <span class="text-transparent bg-clip-text bg-gradient-to-r from-blue-400 to-[#00f0ff]"><?php echo htmlspecialchars($first_name); ?></span>
-        </h2>
-        <div class="flex items-center gap-2 text-xs font-mono text-green-400 bg-green-500/10 px-3 py-1 rounded-full border border-green-500/20 shadow-[0_0_10px_rgba(34,197,94,0.2)] hidden sm:flex">
-            <span class="w-2 h-2 rounded-full bg-green-500 animate-pulse shadow-[0_0_8px_#22c55e]"></span> Network Stable
+    <!-- User Greeting & Personal Briefing -->
+    <div class="mb-10 animate-fade-in-down">
+        <div class="flex flex-col md:flex-row md:items-end justify-between gap-6">
+            <div class="flex-1">
+                <div class="flex items-center gap-3 mb-2">
+                    <span class="text-[10px] font-black text-slate-500 uppercase tracking-[0.3em] bg-slate-900/50 px-2.5 py-1 rounded-md border border-slate-800">Mission Briefing</span>
+                    <div class="h-px bg-slate-800 flex-1 hidden md:block"></div>
+                </div>
+                <h2 class="text-3xl md:text-5xl font-black text-white tracking-tight leading-none">
+                    Welcome back, <span class="text-transparent bg-clip-text bg-gradient-to-r from-blue-400 to-[#00f0ff]"><?php echo htmlspecialchars($first_name); ?></span>
+                </h2>
+                <p class="text-slate-400 text-sm mt-3 font-medium max-w-2xl leading-relaxed">
+                    Operative node active. Your secure terminal is ready for digital asset deployments and matrix management.
+                </p>
+            </div>
+
+            <?php if(is_logged_in()): ?>
+            <!-- Personal Stats Bar -->
+            <div class="flex items-center gap-4 bg-slate-900/50 backdrop-blur-xl border border-slate-700/50 p-2 rounded-2xl shadow-xl">
+                <div class="px-4 py-2 border-r border-slate-800">
+                    <p class="text-[9px] text-slate-500 font-black uppercase tracking-widest mb-0.5">Matrix Credits</p>
+                    <p class="text-lg font-mono font-black text-white"><?php echo number_format($user_stats['balance']); ?> <span class="text-[#00f0ff] text-xs">Ks</span></p>
+                </div>
+                <div class="px-4 py-2 border-r border-slate-800">
+                    <p class="text-[9px] text-slate-500 font-black uppercase tracking-widest mb-0.5">Active Missions</p>
+                    <p class="text-lg font-mono font-black text-yellow-500"><?php echo str_pad($user_stats['active_missions'], 2, '0', STR_PAD_LEFT); ?></p>
+                </div>
+                <div class="px-4 py-2">
+                    <p class="text-[9px] text-slate-500 font-black uppercase tracking-widest mb-0.5">Agent Clearance</p>
+                    <p class="text-lg font-mono font-black text-green-400"><?php echo $discount; ?><span class="text-xs">%</span></p>
+                </div>
+            </div>
+            <?php else: ?>
+            <div class="flex items-center gap-2 text-xs font-mono text-green-400 bg-green-500/10 px-4 py-2 rounded-xl border border-green-500/20 shadow-[0_0_15px_rgba(34,197,94,0.1)]">
+                <span class="w-2 h-2 rounded-full bg-green-500 animate-pulse shadow-[0_0_8px_#22c55e]"></span> Matrix Stable • Online
+            </div>
+            <?php endif; ?>
         </div>
     </div>
 
@@ -233,48 +281,85 @@ if (is_logged_in()) {
     </div>
     <?php endif; ?>
 
-    <!-- SECTION 1.5: System Telemetry (Dynamic Social Proof Matrix) -->
-    <div class="grid grid-cols-2 md:grid-cols-4 gap-4 md:gap-6 mb-14 relative z-10">
+    <!-- SECTION 1.5: Matrix Telemetry & Live Comms (Humanized) -->
+    <div class="grid grid-cols-1 lg:grid-cols-3 gap-8 mb-16 relative z-10">
         
-        <!-- Uptime -->
-        <div class="bg-slate-900/80 backdrop-blur-xl border border-blue-500/20 rounded-3xl p-5 text-center group hover:border-[#00f0ff]/50 transition-all duration-300 shadow-[0_0_15px_rgba(0,0,0,0.5)] hover:shadow-[0_0_25px_rgba(0,240,255,0.15)] relative overflow-hidden">
-            <div class="absolute -left-6 -top-6 w-20 h-20 bg-blue-500/10 rounded-full blur-2xl group-hover:bg-[#00f0ff]/20 transition-colors"></div>
-            <i class="fas fa-server text-2xl text-slate-500 group-hover:text-[#00f0ff] mb-2 transition-colors relative z-10"></i>
-            <div class="text-2xl md:text-3xl font-black text-white tracking-tighter relative z-10"><span class="telemetry-counter" data-target="99.99" data-suffix="%">0</span></div>
-            <div class="text-[9px] md:text-[10px] text-slate-400 uppercase tracking-widest font-bold mt-1 relative z-10">Server Uptime</div>
-        </div>
-        
-        <!-- Live Connections (Dynamic Fluctuation) -->
-        <div class="bg-slate-900/80 backdrop-blur-xl border border-purple-500/20 rounded-3xl p-5 text-center group hover:border-purple-500/50 transition-all duration-300 shadow-[0_0_15px_rgba(0,0,0,0.5)] hover:shadow-[0_0_25px_rgba(168,85,247,0.15)] relative overflow-hidden">
-            <div class="absolute -right-6 -bottom-6 w-20 h-20 bg-purple-500/10 rounded-full blur-2xl group-hover:bg-purple-500/20 transition-colors"></div>
-            <div class="absolute top-4 right-4 flex items-center gap-1.5">
-                <span class="w-1.5 h-1.5 rounded-full bg-green-500 animate-pulse shadow-[0_0_5px_#22c55e]"></span>
-                <span class="text-[8px] text-green-400 font-bold uppercase tracking-widest">Live</span>
+        <!-- Live Matrix Feed (Social Proof) -->
+        <div class="lg:col-span-2 bg-slate-900/60 backdrop-blur-xl border border-slate-700/50 rounded-3xl p-6 md:p-8 shadow-2xl relative overflow-hidden group">
+            <div class="absolute -right-20 -top-20 w-64 h-64 bg-[#00f0ff]/5 rounded-full blur-3xl pointer-events-none group-hover:bg-[#00f0ff]/10 transition-colors"></div>
+            
+            <div class="flex items-center justify-between mb-6">
+                <h3 class="text-lg font-black text-white flex items-center gap-3 uppercase tracking-wider relative z-10">
+                    <i class="fas fa-satellite-dish text-[#00f0ff] animate-pulse"></i> Live Matrix Feed
+                </h3>
+                <span class="text-[10px] text-green-400 font-mono font-bold bg-green-500/10 px-3 py-1 rounded-full border border-green-500/20">REAL-TIME</span>
             </div>
-            <i class="fas fa-network-wired text-2xl text-slate-500 group-hover:text-purple-400 mb-2 transition-colors relative z-10"></i>
-            <div class="text-2xl md:text-3xl font-black text-white tracking-tighter relative z-10"><span id="liveUsersCounter" class="text-purple-300 drop-shadow-[0_0_8px_rgba(168,85,247,0.5)] transition-colors duration-300"><?php echo number_format($live_online); ?></span></div>
-            <div class="text-[9px] md:text-[10px] text-slate-400 uppercase tracking-widest font-bold mt-1 relative z-10">Active Connections</div>
+
+            <div class="space-y-4 relative z-10 no-scrollbar overflow-y-auto max-h-[300px]">
+                <?php foreach($recent_activity as $act): 
+                    $u_safe = substr($act['username'], 0, 1) . '***' . substr($act['username'], -1);
+                ?>
+                <div class="flex items-center justify-between gap-4 p-4 bg-slate-800/40 rounded-2xl border border-slate-700/50 hover:border-[#00f0ff]/30 transition-all duration-300">
+                    <div class="flex items-center gap-4">
+                        <div class="w-10 h-10 rounded-full bg-slate-900 flex items-center justify-center border border-slate-700 text-[#00f0ff]">
+                            <i class="fas fa-user-shield text-sm"></i>
+                        </div>
+                        <div>
+                            <p class="text-xs font-bold text-slate-200">Operative <span class="text-[#00f0ff]">@<?php echo $u_safe; ?></span></p>
+                            <p class="text-[10px] text-slate-500 mt-0.5">Successfully secured <b><?php echo htmlspecialchars($act['item_name']); ?></b></p>
+                        </div>
+                    </div>
+                    <div class="text-right">
+                        <span class="text-[9px] text-slate-600 font-mono"><?php echo date('H:i', strtotime($act['created_at'])); ?></span>
+                        <div class="flex text-[8px] text-green-500 mt-1"><i class="fas fa-check-circle"></i></div>
+                    </div>
+                </div>
+                <?php endforeach; ?>
+            </div>
         </div>
 
-        <!-- Deliveries (Live Ticker) -->
-        <div class="bg-slate-900/80 backdrop-blur-xl border border-green-500/20 rounded-3xl p-5 text-center group hover:border-green-500/50 transition-all duration-300 shadow-[0_0_15px_rgba(0,0,0,0.5)] hover:shadow-[0_0_25px_rgba(34,197,94,0.15)] relative overflow-hidden" id="deliveriesCard">
-            <div class="absolute -left-6 -bottom-6 w-20 h-20 bg-green-500/10 rounded-full blur-2xl group-hover:bg-green-500/20 transition-colors"></div>
-            <i class="fas fa-parachute-box text-2xl text-slate-500 group-hover:text-green-400 mb-2 transition-colors relative z-10"></i>
-            <div class="text-2xl md:text-3xl font-black text-white tracking-tighter relative z-10"><span id="liveDeliveriesCounter" class="telemetry-counter text-green-300 transition-colors duration-300" data-target="<?php echo $display_orders; ?>" data-suffix="+">0</span></div>
-            <div class="text-[9px] md:text-[10px] text-slate-400 uppercase tracking-widest font-bold mt-1 relative z-10">Assets Deployed</div>
-        </div>
+        <!-- Human Command Center (Trust) -->
+        <div class="lg:col-span-1 bg-slate-900/60 backdrop-blur-xl border border-slate-700/50 rounded-3xl p-6 md:p-8 shadow-2xl relative overflow-hidden group">
+            <div class="absolute -left-20 -bottom-20 w-64 h-64 bg-blue-600/5 rounded-full blur-3xl pointer-events-none group-hover:bg-blue-600/10 transition-colors"></div>
+            
+            <h3 class="text-lg font-black text-white flex items-center gap-3 mb-8 uppercase tracking-wider relative z-10">
+                <i class="fas fa-headset text-blue-500"></i> Support Command
+            </h3>
 
-        <!-- System Status -->
-        <div class="bg-slate-900/80 backdrop-blur-xl border border-yellow-500/20 rounded-3xl p-5 text-center group hover:border-yellow-500/50 transition-all duration-300 shadow-[0_0_15px_rgba(0,0,0,0.5)] hover:shadow-[0_0_25px_rgba(234,179,8,0.15)] relative overflow-hidden">
-            <div class="absolute -right-6 -top-6 w-20 h-20 bg-yellow-500/10 rounded-full blur-2xl group-hover:bg-yellow-500/20 transition-colors"></div>
-            <i class="fas fa-shield-check text-2xl text-slate-500 group-hover:text-yellow-400 mb-2 transition-colors relative z-10"></i>
-            <div class="text-2xl md:text-3xl font-black text-white tracking-tighter relative z-10"><span class="telemetry-counter text-yellow-300" data-target="24" data-suffix="/7">0</span></div>
-            <div class="text-[9px] md:text-[10px] text-slate-400 uppercase tracking-widest font-bold mt-1 relative z-10">Automated Protocol</div>
+            <div class="space-y-6 relative z-10">
+                <?php foreach($staff_nodes as $staff): 
+                    $is_active = (strtotime($staff['last_login']) > strtotime('-24 hours'));
+                ?>
+                <div class="flex items-center gap-4 group/staff">
+                    <div class="relative">
+                        <div class="w-12 h-12 rounded-2xl bg-slate-800 border <?php echo $is_active ? 'border-green-500/50' : 'border-slate-700'; ?> flex items-center justify-center text-[#00f0ff] shadow-inner transform group-hover/staff:rotate-12 transition-transform">
+                            <?php echo strtoupper(substr($staff['username'], 0, 2)); ?>
+                        </div>
+                        <?php if($is_active): ?>
+                        <div class="absolute -bottom-1 -right-1 w-3.5 h-3.5 bg-green-500 border-2 border-slate-900 rounded-full animate-pulse shadow-[0_0_8px_#22c55e]"></div>
+                        <?php endif; ?>
+                    </div>
+                    <div class="flex-1 min-w-0">
+                        <div class="flex items-center justify-between">
+                            <h4 class="text-sm font-bold text-white truncate"><?php echo htmlspecialchars($staff['username']); ?></h4>
+                            <span class="text-[8px] font-black uppercase tracking-widest px-2 py-0.5 rounded-md bg-slate-800 border border-slate-700 text-slate-400">
+                                <?php echo $staff['role'] === 'super_admin' ? 'SYSTEM CMD' : 'SUPPORT'; ?>
+                            </span>
+                        </div>
+                        <p class="text-[10px] text-slate-500 mt-1"><?php echo $is_active ? 'Currently monitoring transmissions' : 'Last sync: ' . date('M d', strtotime($staff['last_login'])); ?></p>
+                    </div>
+                </div>
+                <?php endforeach; ?>
+                
+                <a href="index.php?module=info&page=support" class="block w-full py-4 mt-4 bg-[#00f0ff]/5 hover:bg-[#00f0ff] border border-[#00f0ff]/20 text-[#00f0ff] hover:text-slate-900 text-center rounded-2xl text-[10px] font-black uppercase tracking-[0.2em] transition-all">
+                    Initiate Contact <i class="fas fa-comment-alt ml-2"></i>
+                </a>
+            </div>
         </div>
     </div>
 
     <!-- SECTION 2: Interactive Category Slider -->
-    <div class="mb-14 relative">
+    <div class="mb-16 relative">
         <div class="flex items-end justify-between mb-6">
             <h2 class="text-2xl md:text-3xl font-black text-white tracking-tight flex items-center gap-3">
                 <i class="fas fa-network-wired text-[#00f0ff]"></i> Sector Directory
@@ -310,7 +395,6 @@ if (is_logged_in()) {
                                 <?php echo htmlspecialchars($cat['type']); ?>
                             </span>
                             <h3 class="text-base sm:text-lg font-black text-white uppercase tracking-wider drop-shadow-lg leading-tight"><?php echo htmlspecialchars($cat['name']); ?></h3>
-                            <!-- Hover Reveal Text -->
                             <div class="h-0 overflow-hidden group-hover/cat:h-auto group-hover/cat:mt-3 transition-all duration-300">
                                 <p class="text-[10px] text-slate-300 line-clamp-2 leading-relaxed font-bold uppercase tracking-widest">Enter Sector &rarr;</p>
                             </div>
@@ -318,10 +402,63 @@ if (is_logged_in()) {
                     </a>
                 <?php endforeach; ?>
             </div>
-
-            <!-- Horizontal Scroll Progress Line -->
             <div class="absolute -bottom-2 left-0 w-full h-1.5 bg-slate-800/50 rounded-full overflow-hidden backdrop-blur">
                 <div id="catScrollProgress" class="h-full bg-gradient-to-r from-blue-600 to-[#00f0ff] rounded-full w-0 transition-all duration-150 shadow-[0_0_10px_#00f0ff]"></div>
+            </div>
+        </div>
+    </div>
+
+    <!-- NEW SECTION: Human Staff Picks (Asymmetric) -->
+    <div class="mb-16">
+        <div class="flex items-center gap-4 mb-8">
+            <h2 class="text-2xl md:text-3xl font-black text-white tracking-tight">Staff Curation</h2>
+            <div class="h-px bg-slate-800 flex-1"></div>
+            <span class="text-[10px] font-bold text-[#00f0ff] uppercase tracking-widest border border-[#00f0ff]/30 px-3 py-1 rounded-full">Human Choice</span>
+        </div>
+        
+        <div class="flex flex-col lg:flex-row gap-8">
+            <!-- Featured Large Item -->
+            <?php if(!empty($best_sellers[0])): 
+                $f = $best_sellers[0];
+            ?>
+            <div class="lg:w-2/3 relative group rounded-3xl overflow-hidden border border-slate-700/50 shadow-2xl bg-slate-900">
+                <div class="aspect-[16/9] md:aspect-auto md:h-[400px] relative">
+                    <img src="<?php echo BASE_URL . ($f['image_path'] ?: $f['cat_image']); ?>" class="w-full h-full object-cover transition-transform duration-1000 group-hover:scale-105">
+                    <div class="absolute inset-0 bg-gradient-to-r from-slate-950 via-slate-950/40 to-transparent"></div>
+                    
+                    <div class="absolute inset-0 p-8 md:p-12 flex flex-col justify-center max-w-lg">
+                        <div class="flex items-center gap-2 mb-4">
+                            <span class="w-8 h-8 rounded-full bg-[#00f0ff] flex items-center justify-center text-slate-900"><i class="fas fa-crown text-xs"></i></span>
+                            <span class="text-xs font-black text-[#00f0ff] uppercase tracking-widest">Editor's Choice</span>
+                        </div>
+                        <h3 class="text-3xl md:text-5xl font-black text-white mb-4 tracking-tight leading-none"><?php echo htmlspecialchars($f['name']); ?></h3>
+                        <p class="text-slate-400 text-sm md:text-base mb-8 line-clamp-2">"This node offers the highest stability and immediate deployment. Highly recommended for elite operatives."</p>
+                        <a href="index.php?module=shop&page=product&id=<?php echo $f['id']; ?>" class="w-fit px-8 py-4 bg-[#00f0ff] hover:bg-white text-slate-950 font-black rounded-2xl transition-all uppercase tracking-widest text-xs shadow-[0_0_30px_rgba(0,240,255,0.4)] hover:shadow-white/20">
+                            Secure Now <i class="fas fa-arrow-right ml-2"></i>
+                        </a>
+                    </div>
+                </div>
+            </div>
+            <?php endif; ?>
+
+            <!-- Sidebar Curation -->
+            <div class="lg:w-1/3 flex flex-col gap-6">
+                <?php for($i=1; $i<min(3, count($best_sellers)); $i++): 
+                    $p = $best_sellers[$i];
+                ?>
+                <a href="index.php?module=shop&page=product&id=<?php echo $p['id']; ?>" class="flex-1 bg-slate-900/80 backdrop-blur-xl border border-slate-700/50 rounded-3xl p-6 group hover:border-[#00f0ff]/50 transition-all relative overflow-hidden">
+                    <div class="absolute top-0 right-0 w-24 h-24 bg-[#00f0ff]/5 rounded-full blur-2xl pointer-events-none group-hover:bg-[#00f0ff]/10"></div>
+                    <div class="flex items-center gap-4">
+                        <div class="w-16 h-16 rounded-2xl bg-slate-800 border border-slate-700 overflow-hidden shrink-0">
+                            <img src="<?php echo BASE_URL . ($p['image_path'] ?: $p['cat_image']); ?>" class="w-full h-full object-cover grayscale group-hover:grayscale-0 transition-all duration-500">
+                        </div>
+                        <div>
+                            <h4 class="text-sm font-bold text-white mb-1 group-hover:text-[#00f0ff] transition-colors"><?php echo htmlspecialchars($p['name']); ?></h4>
+                            <p class="text-[10px] text-slate-500 font-medium">Verified by Node Admin</p>
+                        </div>
+                    </div>
+                </a>
+                <?php endfor; ?>
             </div>
         </div>
     </div>
@@ -660,43 +797,65 @@ document.addEventListener('DOMContentLoaded', () => {
     if (liveUsersEl) {
         let currentUsers = parseInt(liveUsersEl.innerText.replace(/,/g, '')) || 342;
         setInterval(() => {
-            // Fluctuate by -3 to +5
             const change = Math.floor(Math.random() * 9) - 3;
             currentUsers += change;
-            
-            // Keep bounds realistic (10 to 1000)
-            if (currentUsers < 10) currentUsers = 10 + Math.floor(Math.random() * 10);
-            if (currentUsers > 1000) currentUsers = 1000 - Math.floor(Math.random() * 20);
-            
+            if (currentUsers < 10) currentUsers = 120;
+            if (currentUsers > 1000) currentUsers = 850;
             liveUsersEl.innerText = currentUsers.toLocaleString();
-            
-            // Pulse effect
             liveUsersEl.classList.add('text-white', 'scale-110');
             setTimeout(() => liveUsersEl.classList.remove('text-white', 'scale-110'), 300);
-        }, 3500); // Every 3.5 seconds
+        }, 4000);
     }
 
-    // Live Delivery Ticker
-    const deliveriesCard = document.getElementById('deliveriesCard');
-    const deliveriesEl = document.getElementById('liveDeliveriesCounter');
-    if (deliveriesEl && deliveriesCard) {
+    // ⚡️ NEW: MATRIX DATA STREAM (Micro-Interactions)
+    function createStreamPixel(container) {
+        const pixel = document.createElement('div');
+        pixel.className = 'data-stream-pixel';
+        pixel.style.left = Math.random() * 100 + '%';
+        pixel.style.top = '-10%';
+        pixel.style.animationDuration = (Math.random() * 1 + 1) + 's';
+        container.appendChild(pixel);
+        setTimeout(() => pixel.remove(), 2000);
+    }
+
+    document.querySelectorAll('.glass-card, .group\\/cat').forEach(card => {
+        card.addEventListener('mousemove', (e) => {
+            if(Math.random() > 0.8) createStreamPixel(card);
+        });
+    });
+
+    // ⚡️ NEW: LIVE ACTIVITY SIMULATOR (Makes site feel busy)
+    const feedContainer = document.querySelector('.space-y-4.relative.z-10.no-scrollbar');
+    if(feedContainer) {
+        const simulationItems = [
+            { user: 'o***7', item: 'Steam Wallet Card' },
+            { user: 'm***a', item: 'ChatGPT Plus' },
+            { user: 'k***n', item: 'Netflix Ultra HD' },
+            { user: 'z***1', item: 'KBZPay Verification' }
+        ];
+
         setInterval(() => {
-            // Randomly increment to simulate live purchases
-            if(Math.random() > 0.5) {
-                let currentDel = parseInt(deliveriesEl.innerText.replace(/[^0-9]/g, '')) || 8500;
-                currentDel += 1;
-                deliveriesEl.innerText = currentDel.toLocaleString() + '+';
-                
-                // Neon Flash effect on the whole card
-                deliveriesCard.classList.remove('border-green-500/20');
-                deliveriesCard.classList.add('border-green-400', 'shadow-[0_0_30px_rgba(34,197,94,0.4)]');
-                
-                setTimeout(() => {
-                    deliveriesCard.classList.add('border-green-500/20');
-                    deliveriesCard.classList.remove('border-green-400', 'shadow-[0_0_30px_rgba(34,197,94,0.4)]');
-                }, 800);
+            if(Math.random() > 0.7) {
+                const item = simulationItems[Math.floor(Math.random() * simulationItems.length)];
+                const html = `
+                <div class="flex items-center justify-between gap-4 p-4 bg-slate-800/40 rounded-2xl border border-[#00f0ff]/20 animate-fade-in-up">
+                    <div class="flex items-center gap-4">
+                        <div class="w-10 h-10 rounded-full bg-slate-900 flex items-center justify-center border border-[#00f0ff]/30 text-[#00f0ff]">
+                            <i class="fas fa-bolt text-sm"></i>
+                        </div>
+                        <div>
+                            <p class="text-xs font-bold text-white">Operative <span class="text-[#00f0ff]">@${item.user}</span></p>
+                            <p class="text-[10px] text-slate-400 mt-0.5">Just secured <b>${item.item}</b></p>
+                        </div>
+                    </div>
+                    <div class="text-right">
+                        <span class="text-[9px] text-[#00f0ff] font-mono">NOW</span>
+                    </div>
+                </div>`;
+                feedContainer.insertAdjacentHTML('afterbegin', html);
+                if(feedContainer.children.length > 8) feedContainer.lastElementChild.remove();
             }
-        }, 6000); // Check every 6 seconds
+        }, 12000); // New "Live" action every 12 seconds
     }
 });
 </script>
