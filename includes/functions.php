@@ -299,12 +299,6 @@ function matrix_cache_delete($key) {
     }
 }
 
-// ⚡️ INVALIDATE USER CACHE
-function invalidate_user_cache($user_id) {
-    matrix_cache_delete("user_orders_list_{$user_id}");
-    matrix_cache_delete("user_notif_data_{$user_id}");
-}
-
 // ⚡️ HUMAN SUPPORT PIPELINE
 
 function detect_intent($message) {
