@@ -100,7 +100,7 @@ CREATE TABLE orders (
 CREATE TABLE order_messages (
     id INT AUTO_INCREMENT PRIMARY KEY,
     order_id INT NOT NULL,
-    sender_type ENUM('user', 'admin') NOT NULL,
+    sender_type ENUM('user', 'admin', 'admin_ai') NOT NULL,
     message TEXT NOT NULL,
     is_credential TINYINT DEFAULT 0,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
