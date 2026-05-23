@@ -191,19 +191,30 @@ if (isset($_GET['ajax']) && $_GET['ajax'] == 1) {
                   </div>";
         } else {
             foreach($messages as $msg) {
-                $is_admin = $msg['sender_type'] === 'admin';
+                $is_ai = $msg['sender_type'] === 'admin_ai';
+                $is_admin = $msg['sender_type'] === 'admin' || $is_ai;
+                
                 $align = $is_admin ? 'justify-end' : 'justify-start';
                 $item_align = $is_admin ? 'items-end' : 'items-start';
                 
-                $bubble_bg = $is_admin 
-                    ? 'bg-gradient-to-br from-blue-600 to-[#00f0ff] text-slate-900 rounded-2xl rounded-br-sm shadow-[0_4px_15px_rgba(0,240,255,0.2)]' 
-                    : 'bg-slate-800 text-slate-200 border border-slate-700 rounded-2xl rounded-bl-sm shadow-md';
+                if ($is_ai) {
+                    $bubble_bg = 'bg-gradient-to-br from-purple-600 to-indigo-700 text-white rounded-2xl rounded-br-sm shadow-[0_4px_15px_rgba(139,92,246,0.3)] border border-purple-400/20';
+                } elseif ($is_admin) {
+                    $bubble_bg = 'bg-gradient-to-br from-blue-600 to-[#00f0ff] text-slate-900 rounded-2xl rounded-br-sm shadow-[0_4px_15px_rgba(0,240,255,0.2)]';
+                } else {
+                    $bubble_bg = 'bg-slate-800 text-slate-200 border border-slate-700 rounded-2xl rounded-bl-sm shadow-md';
+                }
                     
                 $time = date('H:i', strtotime($msg['created_at']));
                 $safe_msg = htmlspecialchars($msg['message']);
 
                 echo "<div class='flex w-full {$align} mb-4 animate-fade-in-up group'>";
                 echo "<div class='max-w-[85%] sm:max-w-[75%] flex flex-col {$item_align}'>";
+                
+                if ($is_ai) {
+                    echo "<div class='flex items-center gap-1.5 mb-1 px-1 opacity-70'><i class='fas fa-robot text-[10px] text-purple-400'></i> <span class='text-[9px] font-black uppercase tracking-widest text-purple-400'>Matrix Core (AI)</span></div>";
+                }
+
                 echo "<div class='px-4 py-3 text-[13px] md:text-sm relative {$bubble_bg}'>";
                 
                 if ($msg['is_credential']) {
@@ -215,7 +226,10 @@ if (isset($_GET['ajax']) && $_GET['ajax'] == 1) {
                 
                 echo "</div>";
                 echo "<div class='flex items-center gap-1.5 mt-1 px-1 opacity-60 group-hover:opacity-100 transition-opacity'>";
-                if($is_admin) echo "<i class='fas fa-check-double text-[8px] text-[#00f0ff]'></i>";
+                if($is_admin) {
+                    $check_color = $is_ai ? "text-purple-400" : "text-[#00f0ff]";
+                    echo "<i class='fas fa-check-double text-[8px] {$check_color}'></i>";
+                }
                 echo "<span class='text-[9px] text-slate-400 font-medium tracking-wide'>{$time}</span>";
                 echo "</div>";
                 echo "</div></div>";

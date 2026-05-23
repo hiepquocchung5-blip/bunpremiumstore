@@ -160,7 +160,7 @@ try {
                     
                     // 🤖 MR. SCOTTY AUTOMATIC DELIVERY MSG (Extra effort)
                     $delivery_msg = "Hello! Your order for <b>{$ord['item_name']}</b> is now active. You can check your items in the orders tab!";
-                    $pdo->prepare("INSERT INTO order_messages (order_id, sender_type, message) VALUES (?, 'admin', ?)")->execute([$arg, $delivery_msg]);
+                    $pdo->prepare("INSERT INTO order_messages (order_id, sender_type, message) VALUES (?, 'admin_ai', ?)")->execute([$arg, $delivery_msg]);
 
                     invalidate_user_cache($ord['user_id']);
                     trigger_push_alert($pdo, $ord['user_id'], "Order Complete ✅", "Order #$arg has been checked and activated.", $arg);

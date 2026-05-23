@@ -92,7 +92,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['ajax_msg'])) {
                         $agent_names = ['Ko Scotty', 'Support Team', 'Digital Support', 'Ryan', 'Nora', 'Alex', 'Customer Care'];
                         $agent_name = $agent_names[$oid % count($agent_names)];
 
-                        $stmt = $pdo->prepare("INSERT INTO order_messages (order_id, sender_type, message) VALUES (?, 'admin', ?)");
+                        $stmt = $pdo->prepare("INSERT INTO order_messages (order_id, sender_type, message) VALUES (?, 'admin_ai', ?)");
                         $stmt->execute([$oid, $ai_msg]);
                         $ai_responded = true;
 
@@ -170,8 +170,8 @@ if (isset($_GET['ajax']) && $_GET['ajax'] == 1 && $active_chat_id > 0) {
         exit;
     }
 
-    // Determine "Seen" status by finding the latest Admin reply ID
-    $stmt_seen = $pdo->prepare("SELECT MAX(id) FROM order_messages WHERE order_id = ? AND sender_type = 'admin'");
+    // Determine "Seen" status by finding the latest Admin/AI reply ID
+    $stmt_seen = $pdo->prepare("SELECT MAX(id) FROM order_messages WHERE order_id = ? AND sender_type IN ('admin', 'admin_ai')");
     $stmt_seen->execute([$active_chat_id]);
     $latest_admin_id = $stmt_seen->fetchColumn() ?: 0;
 
@@ -182,6 +182,9 @@ if (isset($_GET['ajax']) && $_GET['ajax'] == 1 && $active_chat_id > 0) {
     
     foreach($messages as $msg) {
         $is_user = $msg['sender_type'] === 'user';
+        $is_ai = $msg['sender_type'] === 'admin_ai';
+        $is_admin = $msg['sender_type'] === 'admin' || $is_ai;
+        
         $align = $is_user ? 'justify-end' : 'justify-start';
         $item_align = $is_user ? 'items-end' : 'items-start';
         $time = date('h:i A', strtotime($msg['created_at']));
@@ -191,25 +194,27 @@ if (isset($_GET['ajax']) && $_GET['ajax'] == 1 && $active_chat_id > 0) {
         echo "<div class='max-w-[85%] md:max-w-[70%] flex gap-3 " . ($is_user ? "flex-row-reverse" : "flex-row") . "'>";
         
         // Agent Avatar (Support Style)
-        if (!$is_user) {
-            $avatar_bg = "from-green-600 to-green-800";
-            $avatar_icon = "fa-user-tie";
-            echo "<div class='w-8 h-8 rounded-full bg-gradient-to-br {$avatar_bg} flex items-center justify-center text-white text-[10px] shrink-0 shadow-lg border border-white/10 mt-1'><i class='fas {$avatar_icon}'></i></div>";
+        if ($is_admin) {
+            $avatar_bg = $is_ai ? "from-purple-600 to-indigo-800" : "from-green-600 to-green-800";
+            $avatar_icon = $is_ai ? "fa-robot" : "fa-user-tie";
+            echo "<div class='w-8 h-8 rounded-full bg-gradient-to-br {$avatar_bg} flex items-center justify-center text-white text-[10px] shrink-0 shadow-lg border border-white/10 mt-1' title='" . ($is_ai ? "AI Assistant" : "Human Support") . "'><i class='fas {$avatar_icon}'></i></div>";
         }
 
         echo "<div class='flex flex-col {$item_align}'>";
-        // Bubble Design (Namecheap Style: Clean, Professional, Elevated)
+        // Bubble Design
         if ($is_user) {
             $bubble_css = "bg-blue-600 text-white rounded-2xl rounded-tr-sm shadow-md px-4 py-3";
         } else {
-            $bubble_css = "bg-slate-800 text-slate-200 border border-slate-700 rounded-2xl rounded-tl-sm shadow-sm px-4 py-3";
+            $border = $is_ai ? "border-purple-500/30" : "border-slate-700";
+            $bubble_css = "bg-slate-800 text-slate-200 border {$border} rounded-2xl rounded-tl-sm shadow-sm px-4 py-3";
         }
 
         echo "<div class='relative {$bubble_css}'>";
-        if (!$is_user) {
+        if ($is_admin) {
             $agent_names = ['Ko Scotty', 'Support Team', 'Digital Support', 'Ryan', 'Nora', 'Alex', 'Customer Care'];
-            $agent_name = $agent_names[$active_chat_id % count($agent_names)];
-            echo "<div class='text-[9px] font-black uppercase tracking-widest text-[#00f0ff] mb-1 opacity-70'>{$agent_name}</div>";
+            $agent_name = $is_ai ? "Matrix Core (AI)" : $agent_names[$active_chat_id % count($agent_names)];
+            $name_color = $is_ai ? "text-purple-400" : "text-[#00f0ff]";
+            echo "<div class='text-[9px] font-black uppercase tracking-widest {$name_color} mb-1 opacity-70'>{$agent_name}</div>";
         }
         echo "<div class='text-sm leading-relaxed whitespace-pre-wrap break-words'>{$safe_msg}</div>";
         echo "</div>";
@@ -350,7 +355,7 @@ if ($active_chat_id) {
                             <?php if($isPass): ?>
                                 <span class="text-[8px] bg-yellow-500/20 text-yellow-500 px-1.5 py-0.5 rounded border border-yellow-500/30 uppercase font-black tracking-widest"><i class="fas fa-crown"></i> Pass</span>
                             <?php endif; ?>
-                            <?php if(!$isActive && ($ord['last_sender'] ?? '') === 'admin'): ?>
+                            <?php if(!$isActive && in_array($ord['last_sender'] ?? '', ['admin', 'admin_ai'])): ?>
                                 <span class="flex h-2 w-2 rounded-full bg-blue-500 animate-pulse shadow-[0_0_8px_#3b82f6]" title="New message"></span>
                             <?php endif; ?>
                         </div>
