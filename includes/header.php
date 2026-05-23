@@ -134,9 +134,9 @@ if (isset($_SESSION['user_id'])) {
         window.AppConfig = {
             vapidPublicKey: "<?php echo $_ENV['VAPID_PUBLIC_KEY'] ?? ''; ?>",
             baseUrl: "<?php echo defined('BASE_URL') ? BASE_URL : '/'; ?>",
-            // Explicitly routing API endpoints to the API Subdomain
-            pushApiUrl: "https://api.digitalmarketplacemm.com/push_subscribe.php",
-            notificationsApiUrl: "https://api.digitalmarketplacemm.com/notifications.php"
+            // Explicitly routing API endpoints to the API Subdomain (Environment driven)
+            pushApiUrl: "<?php echo $_ENV['PUSH_API_URL'] ?? 'https://api.digitalmarketplacemm.com/push_subscribe.php'; ?>",
+            notificationsApiUrl: "<?php echo $_ENV['NOTIF_API_URL'] ?? 'https://api.digitalmarketplacemm.com/notifications.php'; ?>"
         };
     </script>
 </head>
