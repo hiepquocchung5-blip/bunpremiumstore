@@ -1,12 +1,12 @@
 <?php
 // modules/home/index.php
-// PRODUCTION READY v4.5 - Dynamic Live Telemetry, Clean Hub & Active Push Prompts
+// PRODUCTION READY v5.0 - Human-Friendly UI, Simple English & Reorganized Hub
 
 // 1. Fetch Banners (Active Slides)
 $stmt = $pdo->query("SELECT * FROM banners ORDER BY display_order ASC, id DESC LIMIT 5");
 $banners = $stmt->fetchAll();
 
-// 2. Fetch Categories (Strictly using image_url)
+// 2. Fetch Categories
 $stmt = $pdo->query("SELECT id, name, image_url, description, type FROM categories ORDER BY id ASC");
 $categories = $stmt->fetchAll();
 
@@ -20,7 +20,7 @@ $stmt = $pdo->query("
 ");
 $flash_sales = $stmt->fetchAll();
 
-// 4. Fetch "Best Sellers" (Based on active orders)
+// 4. Fetch "Best Sellers"
 $stmt = $pdo->query("
     SELECT p.*, c.name as cat_name, c.image_url as cat_image, COUNT(o.id) as sales_count
     FROM products p 
@@ -31,7 +31,7 @@ $stmt = $pdo->query("
 ");
 $best_sellers = $stmt->fetchAll();
 
-// 5. Fetch "Recent Arrivals" (Main Grid)
+// 5. Fetch "Recent Arrivals"
 $stmt = $pdo->query("
     SELECT p.*, c.name as cat_name, c.image_url as cat_image
     FROM products p 
@@ -40,22 +40,7 @@ $stmt = $pdo->query("
 ");
 $recent_products = $stmt->fetchAll();
 
-// 6. Fetch "Community Trust" (Recent 5-star reviews)
-$stmt = $pdo->query("
-    SELECT r.*, u.username, p.name as product_name, p.id as pid, p.image_path as p_image
-    FROM reviews r
-    JOIN users u ON r.user_id = u.id
-    JOIN products p ON r.product_id = p.id
-    WHERE r.rating >= 4
-    ORDER BY r.created_at DESC LIMIT 4
-");
-$recent_reviews = $stmt->fetchAll();
-
-// 7. Fetch Active Staff (Human Nodes)
-$stmt = $pdo->query("SELECT id, username, role, last_login FROM adm_user WHERE role != 'bot' ORDER BY last_login DESC LIMIT 4");
-$staff_nodes = $stmt->fetchAll();
-
-// 8. Fetch Recent User Activity (Pseudonymized)
+// 6. Fetch Recent User Activity (For "Recent Sales" at bottom)
 $stmt = $pdo->query("
     SELECT o.id, u.username, COALESCE(p.name, ps.name) as item_name, o.created_at
     FROM orders o 
@@ -67,32 +52,19 @@ $stmt = $pdo->query("
 ");
 $recent_activity = $stmt->fetchAll();
 
-// 9. Get Current User Discount & Stats
+// 7. Get Current User Discount & Stats
 $user_id = $_SESSION['user_id'] ?? 0;
 $discount = is_logged_in() ? get_user_discount($user_id) : 0;
-$first_name = is_logged_in() ? explode(' ', $_SESSION['user_name'])[0] : 'Operative';
+$first_name = is_logged_in() ? explode(' ', $_SESSION['user_name'])[0] : 'Customer';
 
-$user_stats = ['balance' => 0, 'active_missions' => 0];
+$user_stats = ['active_orders' => 0];
 if(is_logged_in()) {
-    $user_stats['balance'] = $pdo->prepare("SELECT wallet_balance FROM users WHERE id = ?");
-    $user_stats['balance']->execute([$user_id]);
-    $user_stats['balance'] = $user_stats['balance']->fetchColumn() ?: 0;
-    
-    $user_stats['active_missions'] = $pdo->prepare("SELECT COUNT(*) FROM orders WHERE user_id = ? AND status = 'pending'");
-    $user_stats['active_missions']->execute([$user_id]);
-    $user_stats['active_missions'] = $user_stats['active_missions']->fetchColumn() ?: 0;
+    $user_stats['active_orders'] = $pdo->prepare("SELECT COUNT(*) FROM orders WHERE user_id = ? AND status = 'pending'");
+    $user_stats['active_orders']->execute([$user_id]);
+    $user_stats['active_orders'] = $user_stats['active_orders']->fetchColumn() ?: 0;
 }
 
-// 10. Fetch Real Stats for Telemetry
-$total_users_count = $pdo->query("SELECT COUNT(*) FROM users")->fetchColumn();
-$total_orders_count = $pdo->query("SELECT COUNT(*) FROM orders WHERE status = 'active'")->fetchColumn();
-$display_users = max($total_users_count, 1250); 
-$display_orders = max($total_orders_count, 8500);
-
-// Generate an initial random seed for the live online user counter (10 to 1000)
-$live_online = rand(120, 850); 
-
-// 11. Check Push Subscription Status
+// 8. Check Push Status
 $is_subscribed = false;
 if (is_logged_in()) {
     try {
@@ -104,7 +76,6 @@ if (is_logged_in()) {
 ?>
 
 <style>
-    /* Custom Scroll & Animations */
     .no-scrollbar::-webkit-scrollbar { display: none; }
     .no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
     
@@ -113,208 +84,151 @@ if (is_logged_in()) {
         backdrop-filter: blur(16px);
         -webkit-backdrop-filter: blur(16px);
         border: 1px solid rgba(255, 255, 255, 0.05);
-        box-shadow: 0 4px 30px rgba(0, 0, 0, 0.1);
         transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
     }
     .glass-card:hover {
         background: rgba(15, 23, 42, 0.8);
-        border-color: rgba(0, 240, 255, 0.3);
+        border-color: rgba(59, 130, 246, 0.3);
         transform: translateY(-4px);
-        box-shadow: 0 10px 25px -5px rgba(0, 240, 255, 0.15);
     }
     
     .animate-marquee { animation: marquee 35s linear infinite; }
     @keyframes marquee { 0% { transform: translateX(100%); } 100% { transform: translateX(-100%); } }
 
-    /* Progress Bar Animation */
     @keyframes loadProgress { 0% { width: 0%; } 100% { width: 100%; } }
     
-    /* Cinematic Image Pan */
     @keyframes panImage {
-        0% { transform: scale(1.05) translate(0, 0); }
-        50% { transform: scale(1.15) translate(-1%, -1%); }
-        100% { transform: scale(1.05) translate(0, 0); }
+        0% { transform: scale(1.05); }
+        50% { transform: scale(1.1); }
+        100% { transform: scale(1.05); }
     }
     .animate-pan-image { animation: panImage 20s ease-in-out infinite; }
-
-    /* New: Matrix Data Stream */
-    @keyframes dataStream {
-        0% { transform: translateY(-100%); opacity: 0; }
-        50% { opacity: 0.5; }
-        100% { transform: translateY(100%); opacity: 0; }
-    }
-    .data-stream-pixel {
-        position: absolute; width: 1px; height: 10px;
-        background: linear-gradient(to bottom, transparent, #00f0ff);
-        animation: dataStream 2s linear infinite;
-    }
 </style>
 
-<!-- SECTION 0: News Ticker -->
-<div class="w-full bg-slate-950 border-b border-blue-500/20 overflow-hidden py-2 mb-6 relative shadow-[0_4px_20px_rgba(0,0,0,0.2)]">
-    <div class="absolute inset-y-0 left-0 w-16 bg-gradient-to-r from-slate-950 to-transparent z-10 pointer-events-none"></div>
-    <div class="absolute inset-y-0 right-0 w-16 bg-gradient-to-l from-slate-950 to-transparent z-10 pointer-events-none"></div>
-    <div class="whitespace-nowrap animate-marquee text-[10px] sm:text-xs text-blue-400 font-mono tracking-[0.1em] uppercase font-bold">
-        🚀 [STORE_LOG]: System Online • Instant Product Delivery Enabled • AI Assistant 'Mr. Scotty' Online • 24/7 Support Available 
+<!-- Top News Ticker -->
+<div class="w-full bg-slate-950 border-b border-blue-500/10 py-2 mb-6 relative">
+    <div class="whitespace-nowrap animate-marquee text-[10px] sm:text-xs text-blue-400 font-mono tracking-widest uppercase font-bold">
+        🚀 System Online • Instant Delivery Enabled • 24/7 Support Available • New Products Added Daily • Secure Payments Active
     </div>
 </div>
 
 <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pb-12">
     
-    <!-- User Greeting & Personal Briefing -->
+    <!-- User Greeting -->
     <div class="mb-10 animate-fade-in-down">
         <div class="flex flex-col md:flex-row md:items-end justify-between gap-6">
             <div class="flex-1">
                 <div class="flex items-center gap-3 mb-2">
-                    <span class="text-[10px] font-black text-slate-500 uppercase tracking-[0.2em] bg-slate-900/50 px-2.5 py-1 rounded-md border border-slate-800">Account Overview</span>
+                    <span class="text-[10px] font-black text-slate-500 uppercase tracking-widest bg-slate-900/50 px-2.5 py-1 rounded-md border border-slate-800">Account Overview</span>
                     <div class="h-px bg-slate-800 flex-1 hidden md:block"></div>
                 </div>
                 <h2 class="text-3xl md:text-5xl font-black text-white tracking-tight leading-none">
-                    Welcome back, <span class="text-transparent bg-clip-text bg-gradient-to-r from-blue-400 to-[#00f0ff]"><?php echo htmlspecialchars($first_name); ?></span>
+                    Welcome back, <span class="text-blue-400"><?php echo htmlspecialchars($first_name); ?></span>
                 </h2>
-                <p class="text-slate-400 text-sm mt-3 font-medium max-w-2xl leading-relaxed">
-                    Your secure dashboard is ready. Access your digital products and manage your orders below.
-                </p>
+                <p class="text-slate-400 text-sm mt-3 font-medium">Your store dashboard is ready. View your products and orders below.</p>
             </div>
 
             <?php if(is_logged_in()): ?>
-            <!-- Personal Stats Bar -->
-            <div class="flex items-center gap-4 bg-slate-900/50 backdrop-blur-xl border border-slate-700/50 p-2 rounded-2xl shadow-xl">
+            <div class="flex items-center gap-4 bg-slate-900/50 border border-slate-700/50 p-2 rounded-2xl shadow-xl">
                 <div class="px-4 py-2 border-r border-slate-800">
                     <p class="text-[9px] text-slate-500 font-black uppercase tracking-widest mb-0.5">Pending Orders</p>
-                    <p class="text-lg font-mono font-black text-yellow-500"><?php echo str_pad($user_stats['active_missions'], 2, '0', STR_PAD_LEFT); ?></p>
+                    <p class="text-lg font-mono font-black text-yellow-500"><?php echo str_pad($user_stats['active_orders'], 2, '0', STR_PAD_LEFT); ?></p>
                 </div>
                 <div class="px-4 py-2">
                     <p class="text-[9px] text-slate-500 font-black uppercase tracking-widest mb-0.5">Your Discount</p>
-                    <p class="text-lg font-mono font-black text-green-400"><?php echo $discount; ?><span class="text-xs">%</span></p>
+                    <p class="text-lg font-mono font-black text-green-400"><?php echo $discount; ?>%</p>
                 </div>
-            </div>
-            <?php else: ?>
-            <div class="flex items-center gap-2 text-xs font-mono text-green-400 bg-green-500/10 px-4 py-2 rounded-xl border border-green-500/20 shadow-[0_0_15px_rgba(34,197,94,0.1)]">
-                <span class="w-2 h-2 rounded-full bg-green-500 animate-pulse shadow-[0_0_8px_#22c55e]"></span> Store Online
             </div>
             <?php endif; ?>
         </div>
     </div>
 
-    <!-- PROACTIVE PUSH SUBSCRIPTION BANNER -->
+    <!-- NOTIFICATION PROMPT -->
     <?php if(is_logged_in() && !$is_subscribed): ?>
-    <div class="mb-8 bg-red-900/10 border border-red-500/30 p-5 md:p-6 rounded-2xl shadow-[0_0_20px_rgba(0,0,0,0.2)] flex flex-col sm:flex-row items-center justify-between gap-4 relative overflow-hidden group">
-        <div class="absolute -right-10 -top-10 w-32 h-32 bg-red-500/5 rounded-full blur-3xl pointer-events-none group-hover:bg-red-500/10 transition-colors"></div>
+    <div class="mb-8 bg-blue-900/10 border border-blue-500/30 p-5 md:p-6 rounded-2xl flex flex-col sm:flex-row items-center justify-between gap-4 relative overflow-hidden">
         <div class="flex items-center gap-4 relative z-10 w-full sm:w-auto">
-            <div class="w-12 h-12 bg-red-500/10 rounded-full flex items-center justify-center text-red-500 border border-red-500/20 shrink-0 shadow-inner">
+            <div class="w-12 h-12 bg-blue-500/10 rounded-full flex items-center justify-center text-blue-500 border border-blue-500/20 shrink-0">
                 <i class="fas fa-bell text-xl animate-pulse"></i>
             </div>
             <div>
-                <h3 class="font-black text-white text-base md:text-lg tracking-tight">Notifications Disabled</h3>
-                <p class="text-xs text-slate-400 leading-snug">Turn on push alerts to receive instant delivery updates for your orders.</p>
+                <h3 class="font-black text-white text-base md:text-lg">Enable Updates</h3>
+                <p class="text-xs text-slate-400">Turn on notifications to receive instant updates for your orders.</p>
             </div>
         </div>
-        <button onclick="initializeManualUplink(this)" class="w-full sm:w-auto shrink-0 bg-red-600 hover:bg-red-500 text-white font-bold px-6 py-3 rounded-xl shadow-[0_0_15px_rgba(239,68,68,0.3)] transition transform active:scale-95 text-xs uppercase tracking-widest relative z-10 flex items-center justify-center gap-2">
-            <i class="fas fa-check-circle"></i> Enable Alerts
+        <button onclick="initializeManualUplink(this)" class="w-full sm:w-auto bg-blue-600 hover:bg-blue-500 text-white font-bold px-6 py-3 rounded-xl transition transform active:scale-95 text-xs uppercase tracking-widest">
+            Enable Now
         </button>
     </div>
     <script>
         function initializeManualUplink(btn) {
-            btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Loading...';
+            btn.innerHTML = 'Loading...';
             if (typeof window.registerServiceWorker === 'function') {
                 window.registerServiceWorker(true).then(() => {
                     btn.closest('.rounded-2xl').remove();
                     alert("Notifications Enabled! You will now receive order updates.");
                 }).catch(err => {
-                    btn.innerHTML = '<i class="fas fa-exclamation-triangle"></i> Error';
-                    alert("Failed to enable. Please allow notifications in your browser settings and try again.");
+                    btn.innerHTML = 'Error';
+                    alert("Please allow notifications in your browser settings and try again.");
                 });
-            } else {
-                alert("Site configuration missing. Please refresh.");
-                btn.innerHTML = '<i class="fas fa-bell"></i> Enable Alerts';
             }
         }
     </script>
     <?php endif; ?>
 
-    <!-- SECTION 1: Cinematic Poster Banner Slider -->
+    <!-- SECTION 1: Banner Slider -->
     <?php if(!empty($banners)): ?>
-    <div class="relative w-full aspect-[4/3] sm:aspect-video lg:max-h-[500px] mb-10 rounded-3xl overflow-hidden group shadow-[0_20px_50px_rgba(0,0,0,0.6)] bg-slate-900 border border-slate-700/50" id="heroSliderContainer">
-        
+    <div class="relative w-full aspect-[4/3] sm:aspect-video lg:max-h-[500px] mb-10 rounded-3xl overflow-hidden group shadow-2xl bg-slate-900 border border-slate-700/50" id="heroSliderContainer">
         <div class="flex overflow-x-auto snap-x-mandatory h-full no-scrollbar scroll-smooth" id="bannerSlider">
             <?php foreach($banners as $index => $b): ?>
-                <div class="w-full flex-shrink-0 snap-center relative h-full banner-slide bg-black" data-index="<?php echo $index; ?>">
-                    <a href="<?php echo $b['target_url'] ?: '#'; ?>" target="<?php echo $b['target_url'] ? '_blank' : '_self'; ?>" class="block w-full h-full cursor-pointer overflow-hidden">
-                        
-                        <!-- Panning Image -->
-                        <img src="<?php echo BASE_URL . $b['image_path']; ?>" class="w-full h-full object-cover animate-pan-image opacity-90" loading="lazy" alt="<?php echo htmlspecialchars($b['title']); ?>">
-                        
-                        <!-- Cinematic Gradients -->
-                        <div class="absolute inset-0 bg-gradient-to-t from-slate-950 via-slate-900/30 to-transparent opacity-90"></div>
-                        
-                        <!-- Banner Text -->
-                        <div class="absolute bottom-0 left-0 p-6 sm:p-12 w-full z-10">
-                            <span class="text-[10px] text-blue-400 font-black uppercase tracking-[0.2em] mb-3 block drop-shadow-md bg-slate-900/50 backdrop-blur-md px-3 py-1 rounded w-fit border border-blue-500/20">Featured Offer</span>
-                            <h3 class="text-white text-3xl sm:text-5xl md:text-6xl lg:text-7xl font-black drop-shadow-[0_0_20px_rgba(0,0,0,0.8)] mb-4 transform transition-transform duration-500 translate-y-0 group-hover:-translate-y-2 tracking-tighter leading-none max-w-4xl"><?php echo htmlspecialchars($b['title']); ?></h3>
+                <div class="w-full flex-shrink-0 snap-center relative h-full">
+                    <a href="<?php echo $b['target_url'] ?: '#'; ?>" class="block w-full h-full">
+                        <img src="<?php echo BASE_URL . $b['image_path']; ?>" class="w-full h-full object-cover animate-pan-image" loading="lazy">
+                        <div class="absolute inset-0 bg-gradient-to-t from-slate-950 via-transparent to-transparent opacity-80"></div>
+                        <div class="absolute bottom-0 left-0 p-6 sm:p-12 w-full">
+                            <span class="text-[10px] text-blue-400 font-black uppercase tracking-widest mb-3 block">Featured Offer</span>
+                            <h3 class="text-white text-3xl sm:text-5xl md:text-6xl font-black mb-4 leading-none"><?php echo htmlspecialchars($b['title']); ?></h3>
                         </div>
                     </a>
                 </div>
             <?php endforeach; ?>
         </div>
-        
-        <!-- Progress Bar Indicator -->
-        <div class="absolute bottom-0 left-0 w-full h-1 bg-slate-800/80 z-20">
-            <div id="slideProgress" class="h-full bg-blue-500 shadow-[0_0_15px_#3b82f6] w-0"></div>
-        </div>
-
-        <!-- Navigation Dots -->
-        <div class="absolute bottom-8 right-8 flex gap-3 z-20" id="sliderDots">
-            <?php foreach($banners as $i => $b): ?>
-                <button class="w-2.5 h-2.5 rounded-full transition-all duration-300 slider-dot <?php echo $i === 0 ? 'bg-white w-8' : 'bg-white/30 hover:bg-white/60'; ?>" data-target="<?php echo $i; ?>"></button>
-            <?php endforeach; ?>
+        <div class="absolute bottom-0 left-0 w-full h-1 bg-slate-800/80">
+            <div id="slideProgress" class="h-full bg-blue-500 w-0"></div>
         </div>
     </div>
     <?php endif; ?>
 
-    <!-- SECTION 2: Interactive Category Slider -->
+    <!-- SECTION 2: Categories -->
     <div class="mb-16 relative">
         <div class="flex items-end justify-between mb-6">
-            <h2 class="text-2xl md:text-3xl font-black text-white tracking-tight flex items-center gap-3">
-                <i class="fas fa-th-large text-blue-500"></i> Categories
-            </h2>
+            <h2 class="text-2xl md:text-3xl font-black text-white tracking-tight">Categories</h2>
             <div class="hidden sm:flex gap-2">
                 <button id="catPrev" class="w-10 h-10 rounded-xl bg-slate-800 hover:bg-blue-600 text-slate-400 hover:text-white transition flex items-center justify-center shadow-lg"><i class="fas fa-angle-left"></i></button>
                 <button id="catNext" class="w-10 h-10 rounded-xl bg-slate-800 hover:bg-blue-600 text-slate-400 hover:text-white transition flex items-center justify-center shadow-lg"><i class="fas fa-angle-right"></i></button>
             </div>
         </div>
 
-        <!-- Slider Container -->
-        <div class="relative group">
-            <div id="categorySlider" class="flex overflow-x-auto snap-x-mandatory gap-4 sm:gap-6 pb-6 pt-2 px-2 -mx-2 no-scrollbar scroll-smooth">
+        <div class="relative">
+            <div id="categorySlider" class="flex overflow-x-auto snap-x-mandatory gap-4 sm:gap-6 pb-6 no-scrollbar scroll-smooth">
                 <?php foreach($categories as $cat): ?>
                     <a href="index.php?module=shop&page=category&id=<?php echo $cat['id']; ?>" class="snap-start shrink-0 w-[140px] sm:w-[180px] lg:w-[240px] glass-card rounded-3xl overflow-hidden group/cat relative flex flex-col justify-end aspect-[4/5] border border-slate-700/50 hover:border-blue-500/50">
-                        
-                        <!-- Dynamic Background -->
                         <?php if(!empty($cat['image_url'])): ?>
-                            <img src="<?php echo BASE_URL . $cat['image_url']; ?>" alt="<?php echo htmlspecialchars($cat['name']); ?>" class="absolute inset-0 w-full h-full object-cover opacity-70 group-hover/cat:opacity-100 transition-all duration-700 group-hover/cat:scale-110">
+                            <img src="<?php echo BASE_URL . $cat['image_url']; ?>" class="absolute inset-0 w-full h-full object-cover opacity-70 group-hover/cat:opacity-100 transition-all duration-700 group-hover/cat:scale-110">
                         <?php else: ?>
-                            <div class="absolute inset-0 bg-slate-800 flex items-center justify-center group-hover/cat:scale-110 transition duration-700"></div>
+                            <div class="absolute inset-0 bg-slate-800"></div>
                         <?php endif; ?>
-
-                        <!-- Overlays -->
-                        <div class="absolute inset-0 bg-gradient-to-t from-slate-950 via-slate-950/40 to-transparent opacity-90 transition-opacity group-hover/cat:opacity-80"></div>
-
-                        <!-- Content -->
-                        <div class="relative z-10 p-5 md:p-6 text-center w-full transform transition-transform duration-300 group-hover/cat:-translate-y-2">
-                            <span class="inline-block px-2.5 py-1 bg-slate-900/80 border border-slate-700 rounded text-[9px] font-black text-slate-400 uppercase tracking-widest mb-3 backdrop-blur-md shadow-lg">
+                        <div class="absolute inset-0 bg-gradient-to-t from-slate-950 via-transparent to-transparent opacity-90"></div>
+                        <div class="relative z-10 p-5 md:p-6 text-center w-full">
+                            <span class="inline-block px-2 py-0.5 bg-slate-900 border border-slate-700 rounded text-[9px] font-black text-slate-400 uppercase tracking-widest mb-2">
                                 <?php echo htmlspecialchars($cat['type']); ?>
                             </span>
-                            <h3 class="text-base sm:text-lg font-black text-white uppercase tracking-wide drop-shadow-lg leading-tight"><?php echo htmlspecialchars($cat['name']); ?></h3>
-                            <div class="h-0 overflow-hidden group-hover/cat:h-auto group-hover/cat:mt-3 transition-all duration-300">
-                                <p class="text-[10px] text-slate-300 line-clamp-2 leading-relaxed font-bold uppercase tracking-widest">View Products &rarr;</p>
-                            </div>
+                            <h3 class="text-base sm:text-lg font-black text-white uppercase tracking-wide leading-tight"><?php echo htmlspecialchars($cat['name']); ?></h3>
                         </div>
                     </a>
                 <?php endforeach; ?>
             </div>
-            <div class="absolute -bottom-2 left-0 w-full h-1 bg-slate-800/50 rounded-full overflow-hidden backdrop-blur">
-                <div id="catScrollProgress" class="h-full bg-blue-500 rounded-full w-0 transition-all duration-150"></div>
+            <div class="absolute -bottom-2 left-0 w-full h-1 bg-slate-800/50 rounded-full overflow-hidden">
+                <div id="catScrollProgress" class="h-full bg-blue-500 w-0 transition-all duration-150"></div>
             </div>
         </div>
     </div>
@@ -328,22 +242,17 @@ if (is_logged_in()) {
         </div>
         
         <div class="flex flex-col lg:flex-row gap-8">
-            <!-- Featured Large Item -->
             <?php if(!empty($best_sellers[0])): 
                 $f = $best_sellers[0];
             ?>
             <div class="lg:w-2/3 relative group rounded-3xl overflow-hidden border border-slate-700/50 shadow-2xl bg-slate-900">
                 <div class="aspect-[16/9] md:aspect-auto md:h-[400px] relative">
-                    <img src="<?php echo BASE_URL . ($f['image_path'] ?: $f['cat_image']); ?>" class="w-full h-full object-cover transition-transform duration-1000 group-hover:scale-105">
-                    <div class="absolute inset-0 bg-gradient-to-r from-slate-950 via-slate-950/40 to-transparent"></div>
-                    
+                    <img src="<?php echo BASE_URL . ($f['image_path'] ?: $f['cat_image']); ?>" class="w-full h-full object-cover transition-all duration-700 group-hover:scale-105">
+                    <div class="absolute inset-0 bg-gradient-to-r from-slate-950 via-transparent to-transparent"></div>
                     <div class="absolute inset-0 p-8 md:p-12 flex flex-col justify-center max-w-lg">
-                        <div class="flex items-center gap-2 mb-4">
-                            <span class="w-8 h-8 rounded-full bg-blue-500 flex items-center justify-center text-white"><i class="fas fa-check text-xs"></i></span>
-                            <span class="text-xs font-black text-blue-400 uppercase tracking-widest">Editor's Choice</span>
-                        </div>
-                        <h3 class="text-3xl md:text-5xl font-black text-white mb-4 tracking-tight leading-none"><?php echo htmlspecialchars($f['name']); ?></h3>
-                        <p class="text-slate-400 text-sm md:text-base mb-8 line-clamp-2">"One of our most reliable products. Instant delivery and full warranty guaranteed."</p>
+                        <span class="text-xs font-black text-blue-400 uppercase tracking-widest mb-2">Editor's Choice</span>
+                        <h3 class="text-3xl md:text-5xl font-black text-white mb-4 leading-none"><?php echo htmlspecialchars($f['name']); ?></h3>
+                        <p class="text-slate-400 text-sm mb-8 line-clamp-2">Our most reliable choice with instant delivery and full warranty.</p>
                         <a href="index.php?module=shop&page=product&id=<?php echo $f['id']; ?>" class="w-fit px-8 py-4 bg-blue-600 hover:bg-blue-500 text-white font-black rounded-2xl transition-all uppercase tracking-widest text-xs shadow-lg shadow-blue-600/20">
                             Buy Now <i class="fas fa-arrow-right ml-2"></i>
                         </a>
@@ -352,12 +261,11 @@ if (is_logged_in()) {
             </div>
             <?php endif; ?>
 
-            <!-- Sidebar Curation -->
             <div class="lg:w-1/3 flex flex-col gap-6">
                 <?php for($i=1; $i<min(3, count($best_sellers)); $i++): 
                     $p = $best_sellers[$i];
                 ?>
-                <a href="index.php?module=shop&page=product&id=<?php echo $p['id']; ?>" class="flex-1 bg-slate-900/80 backdrop-blur-xl border border-slate-700/50 rounded-3xl p-6 group hover:border-blue-500/50 transition-all relative overflow-hidden">
+                <a href="index.php?module=shop&page=product&id=<?php echo $p['id']; ?>" class="flex-1 bg-slate-900 border border-slate-700/50 rounded-3xl p-6 group hover:border-blue-500/50 transition-all relative overflow-hidden">
                     <div class="flex items-center gap-4">
                         <div class="w-16 h-16 rounded-2xl bg-slate-800 border border-slate-700 overflow-hidden shrink-0">
                             <img src="<?php echo BASE_URL . ($p['image_path'] ?: $p['cat_image']); ?>" class="w-full h-full object-cover grayscale group-hover:grayscale-0 transition-all duration-500">
@@ -377,15 +285,9 @@ if (is_logged_in()) {
     <?php if(!empty($flash_sales)): ?>
     <div class="mb-16">
         <div class="flex flex-col sm:flex-row sm:items-center justify-between mb-6 gap-3">
-            <div class="flex items-center gap-3">
-                <span class="relative flex h-5 w-5">
-                  <span class="animate-ping absolute inline-flex h-full w-full rounded-full bg-red-400 opacity-75"></span>
-                  <span class="relative inline-flex rounded-full h-5 w-5 bg-red-500"></span>
-                </span>
-                <h2 class="text-2xl md:text-3xl font-black text-white tracking-tight">Flash Sales</h2>
-            </div>
-            <div class="text-[10px] md:text-xs font-mono text-red-400 font-bold bg-red-900/10 px-4 py-2 rounded-xl border border-red-900/30 uppercase tracking-widest w-fit flex items-center gap-2">
-                <i class="fas fa-stopwatch"></i> Limited Time Offers
+            <h2 class="text-2xl md:text-3xl font-black text-white tracking-tight">Flash Sales</h2>
+            <div class="text-[10px] md:text-xs font-mono text-red-400 font-bold bg-red-900/10 px-4 py-2 rounded-xl border border-red-900/30 uppercase tracking-widest flex items-center gap-2">
+                <i class="fas fa-stopwatch"></i> Limited Offers
             </div>
         </div>
         <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
@@ -397,46 +299,41 @@ if (is_logged_in()) {
     <?php endif; ?>
 
     <!-- SECTION 4: Features -->
-    <div class="mb-16 mt-10">
-        <div class="grid grid-cols-1 md:grid-cols-3 gap-6 md:gap-8">
-            <div class="bg-slate-900/60 backdrop-blur-xl border border-slate-700/50 p-6 md:p-8 rounded-3xl flex flex-col items-center text-center gap-4 hover:border-green-500/50 transition-all duration-500">
-                <div class="w-16 h-16 rounded-2xl bg-green-500/10 flex items-center justify-center text-green-500 text-3xl border border-green-500/20">
-                    <i class="fas fa-bolt"></i>
-                </div>
-                <div class="text-sm font-black text-white tracking-widest uppercase">Instant Delivery</div>
-                <div class="text-[10px] md:text-xs text-slate-400 font-medium leading-relaxed">Your digital products are delivered automatically right after payment.</div>
+    <div class="grid grid-cols-1 md:grid-cols-3 gap-6 mb-16 mt-10">
+        <div class="bg-slate-900/60 border border-slate-700/50 p-8 rounded-3xl flex flex-col items-center text-center gap-4">
+            <div class="w-16 h-16 rounded-2xl bg-green-500/10 flex items-center justify-center text-green-500 text-3xl">
+                <i class="fas fa-bolt"></i>
             </div>
-
-            <div class="bg-slate-900/60 backdrop-blur-xl border border-slate-700/50 p-6 md:p-8 rounded-3xl flex flex-col items-center text-center gap-4 hover:border-blue-500/50 transition-all duration-500">
-                <div class="w-16 h-16 rounded-2xl bg-blue-500/10 flex items-center justify-center text-blue-500 text-3xl border border-blue-500/20">
-                    <i class="fas fa-check-circle"></i>
-                </div>
-                <div class="text-sm font-black text-white tracking-widest uppercase">100% Warranty</div>
-                <div class="text-[10px] md:text-xs text-slate-400 font-medium leading-relaxed">We provide a full warranty for all purchases for your peace of mind.</div>
+            <div class="text-sm font-black text-white uppercase tracking-widest">Instant Delivery</div>
+            <p class="text-xs text-slate-400">Products are sent to you right after payment.</p>
+        </div>
+        <div class="bg-slate-900/60 border border-slate-700/50 p-8 rounded-3xl flex flex-col items-center text-center gap-4">
+            <div class="w-16 h-16 rounded-2xl bg-blue-500/10 flex items-center justify-center text-blue-500 text-3xl">
+                <i class="fas fa-check-circle"></i>
             </div>
-
-            <div class="bg-slate-900/60 backdrop-blur-xl border border-slate-700/50 p-6 md:p-8 rounded-3xl flex flex-col items-center text-center gap-4 hover:border-yellow-500/50 transition-all duration-500">
-                <div class="w-16 h-16 rounded-2xl bg-yellow-500/10 flex items-center justify-center text-yellow-500 text-3xl border border-yellow-500/20">
-                    <i class="fas fa-wallet"></i>
-                </div>
-                <div class="text-sm font-black text-white tracking-widest uppercase">Easy Payments</div>
-                <div class="text-[10px] md:text-xs text-slate-400 font-medium leading-relaxed">We accept KBZPay and WavePay for easy and fast transactions.</div>
+            <div class="text-sm font-black text-white uppercase tracking-widest">100% Warranty</div>
+            <p class="text-xs text-slate-400">We provide a full warranty for all purchases.</p>
+        </div>
+        <div class="bg-slate-900/60 border border-slate-700/50 p-8 rounded-3xl flex flex-col items-center text-center gap-4">
+            <div class="w-16 h-16 rounded-2xl bg-yellow-500/10 flex items-center justify-center text-yellow-500 text-3xl">
+                <i class="fas fa-wallet"></i>
             </div>
+            <div class="text-sm font-black text-white uppercase tracking-widest">Easy Payments</div>
+            <p class="text-xs text-slate-400">We accept KBZPay and WavePay instantly.</p>
         </div>
     </div>
 
-    <!-- SECTION 5: Main Product Grid -->
+    <!-- SECTION 5: Recent Arrivals -->
     <div class="mb-16">
         <div class="flex flex-col sm:flex-row justify-between items-start sm:items-end mb-8 gap-3">
             <div>
-                <h2 class="text-3xl md:text-4xl font-black text-white mb-2 tracking-tight">Recent Arrivals</h2>
+                <h2 class="text-3xl md:text-4xl font-black text-white tracking-tight">Recent Arrivals</h2>
                 <p class="text-slate-400 text-sm font-medium">Check out our latest digital products</p>
             </div>
-            <a href="index.php?module=shop&page=search" class="text-blue-400 hover:text-white text-sm font-black flex items-center gap-2 transition-all uppercase tracking-widest bg-blue-500/10 hover:bg-blue-600 px-5 py-3 rounded-xl border border-blue-500/20">
-                View All Products <i class="fas fa-arrow-right"></i>
+            <a href="index.php?module=shop&page=search" class="text-blue-400 hover:text-white text-sm font-black bg-blue-500/10 hover:bg-blue-600 px-5 py-3 rounded-xl border border-blue-500/20 uppercase tracking-widest transition-all">
+                View All <i class="fas fa-arrow-right ml-2"></i>
             </a>
         </div>
-        
         <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
             <?php foreach($recent_products as $product): 
                 include __DIR__ . '/product_card.php'; 
@@ -444,61 +341,48 @@ if (is_logged_in()) {
         </div>
     </div>
 
-    <!-- SECTION 6: Recent Activity (Moved to bottom) -->
-    <div class="bg-slate-900/60 backdrop-blur-xl border border-slate-700/50 rounded-3xl p-6 md:p-8 shadow-2xl relative overflow-hidden group mb-12">
+    <!-- SECTION 6: Recent Sales (At Bottom) -->
+    <div class="bg-slate-900/60 backdrop-blur-xl border border-slate-700/50 rounded-3xl p-6 md:p-8 shadow-2xl group mb-12">
         <div class="flex items-center justify-between mb-6">
-            <h3 class="text-lg font-black text-white flex items-center gap-3 uppercase tracking-wider relative z-10">
+            <h3 class="text-lg font-black text-white flex items-center gap-3 uppercase tracking-wider">
                 <i class="fas fa-history text-blue-400"></i> Recent Sales
             </h3>
             <span class="text-[10px] text-green-400 font-mono font-bold bg-green-500/10 px-3 py-1 rounded-full border border-green-500/20">LIVE</span>
         </div>
-
-        <div class="grid grid-cols-1 md:grid-cols-2 gap-4 relative z-10 no-scrollbar overflow-y-auto max-h-[300px]" id="activityFeed">
+        <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4" id="activityFeed">
             <?php foreach($recent_activity as $act): 
                 $u_safe = substr($act['username'], 0, 1) . '***' . substr($act['username'], -1);
             ?>
             <div class="flex items-center justify-between gap-4 p-4 bg-slate-800/40 rounded-2xl border border-slate-700/30">
-                <div class="flex items-center gap-3">
-                    <div class="w-8 h-8 rounded-full bg-slate-900 flex items-center justify-center border border-slate-700 text-blue-400">
+                <div class="flex items-center gap-3 min-w-0">
+                    <div class="w-8 h-8 rounded-full bg-slate-900 flex items-center justify-center border border-slate-700 text-blue-400 shrink-0">
                         <i class="fas fa-user text-xs"></i>
                     </div>
-                    <div>
-                        <p class="text-xs font-bold text-slate-200">Customer <span class="text-blue-400">@<?php echo $u_safe; ?></span></p>
-                        <p class="text-[10px] text-slate-500">Bought <b><?php echo htmlspecialchars($act['item_name']); ?></b></p>
+                    <div class="min-w-0">
+                        <p class="text-xs font-bold text-slate-200 truncate">Customer <span class="text-blue-400">@<?php echo $u_safe; ?></span></p>
+                        <p class="text-[10px] text-slate-500 truncate">Bought <b><?php echo htmlspecialchars($act['item_name']); ?></b></p>
                     </div>
                 </div>
-                <div class="text-right">
+                <div class="text-right shrink-0">
                     <span class="text-[9px] text-slate-600 font-mono"><?php echo date('H:i', strtotime($act['created_at'])); ?></span>
                 </div>
             </div>
             <?php endforeach; ?>
         </div>
     </div>
-
 </div>
 
-<!-- SCRIPTS -->
 <script>
 document.addEventListener('DOMContentLoaded', () => {
-    
-    // --- 1. HERO BANNER SLIDER ---
+    // 1. HERO SLIDER
     const hSlider = document.getElementById('bannerSlider');
     const hDots = document.querySelectorAll('.slider-dot');
     const hProgress = document.getElementById('slideProgress');
-    let hInterval;
-    const hTime = 6000;
+    let hInterval, hTime = 6000;
 
-    const updateHero = (index) => {
-        hDots.forEach((dot, i) => {
-            dot.className = i === index 
-                ? 'w-8 h-2.5 rounded-full transition-all duration-300 slider-dot bg-white' 
-                : 'w-2.5 h-2.5 rounded-full transition-all duration-300 slider-dot bg-white/30 hover:bg-white/60';
-        });
-        if(hProgress) {
-            hProgress.style.animation = 'none';
-            hProgress.offsetHeight;
-            hProgress.style.animation = `loadProgress ${hTime}ms linear forwards`;
-        }
+    const updateHero = (idx) => {
+        hDots.forEach((dot, i) => dot.className = i === idx ? 'w-8 h-2.5 rounded-full transition-all duration-300 slider-dot bg-white' : 'w-2.5 h-2.5 rounded-full transition-all duration-300 slider-dot bg-white/30 hover:bg-white/60');
+        if(hProgress) { hProgress.style.animation = 'none'; hProgress.offsetHeight; hProgress.style.animation = `loadProgress ${hTime}ms linear forwards`; }
     };
 
     const moveHero = (next = true) => {
@@ -511,68 +395,40 @@ document.addEventListener('DOMContentLoaded', () => {
         updateHero(Math.round(target / w));
     };
 
-    const startHero = () => {
-        if(hProgress) hProgress.style.animation = `loadProgress ${hTime}ms linear forwards`;
-        hInterval = setInterval(() => moveHero(true), hTime);
-    };
-
     if(hSlider) {
-        document.getElementById('nextSlide')?.addEventListener('click', () => { clearInterval(hInterval); moveHero(true); startHero(); });
-        document.getElementById('prevSlide')?.addEventListener('click', () => { clearInterval(hInterval); moveHero(false); startHero(); });
-        hDots.forEach((dot, idx) => { dot.addEventListener('click', () => {
-                clearInterval(hInterval);
-                hSlider.scrollTo({ left: idx * hSlider.clientWidth, behavior: 'smooth' });
-                updateHero(idx);
-                startHero();
-            });
-        });
-        startHero();
+        hInterval = setInterval(() => moveHero(true), hTime);
+        hDots.forEach((dot, idx) => dot.onclick = () => { clearInterval(hInterval); hSlider.scrollTo({ left: idx * hSlider.clientWidth, behavior: 'smooth' }); updateHero(idx); hInterval = setInterval(() => moveHero(true), hTime); });
+        updateHero(0);
     }
 
-    // --- 2. CATEGORY SLIDER ---
+    // 2. CATEGORY SLIDER
     const cSlider = document.getElementById('categorySlider');
     const cProgress = document.getElementById('catScrollProgress');
     if(cSlider && cProgress) {
-        const updateCatProgress = () => {
-            const scrollPx = cSlider.scrollLeft;
-            const maxScroll = cSlider.scrollWidth - cSlider.clientWidth;
-            const percentage = (scrollPx / maxScroll) * 100;
-            cProgress.style.width = percentage + '%';
-        };
-        cSlider.addEventListener('scroll', updateCatProgress);
-        document.getElementById('catNext')?.addEventListener('click', () => cSlider.scrollBy({ left: 300, behavior: 'smooth' }));
-        document.getElementById('catPrev')?.addEventListener('click', () => cSlider.scrollBy({ left: -300, behavior: 'smooth' }));
+        cSlider.onscroll = () => cProgress.style.width = (cSlider.scrollLeft / (cSlider.scrollWidth - cSlider.clientWidth) * 100) + '%';
+        document.getElementById('catNext').onclick = () => cSlider.scrollBy({ left: 300, behavior: 'smooth' });
+        document.getElementById('catPrev').onclick = () => cSlider.scrollBy({ left: -300, behavior: 'smooth' });
     }
 
-    // --- 3. LIVE ACTIVITY SIMULATOR ---
-    const feedContainer = document.getElementById('activityFeed');
-    if(feedContainer) {
-        const simulationItems = [
-            { user: 'k***n', item: 'Steam Wallet Card' },
-            { user: 'm***a', item: 'ChatGPT Plus' },
-            { user: 'o***7', item: 'Netflix HD' },
-            { user: 'z***1', item: 'Spotify Premium' }
-        ];
+    // 3. ACTIVITY SIMULATOR
+    const feed = document.getElementById('activityFeed');
+    if(feed) {
+        const items = [{u:'k***n', i:'Steam Card'}, {u:'m***a', i:'ChatGPT'}, {u:'o***7', i:'Netflix'}, {u:'z***1', i:'Spotify'}];
         setInterval(() => {
             if(Math.random() > 0.8) {
-                const item = simulationItems[Math.floor(Math.random() * simulationItems.length)];
-                const html = `
-                <div class="flex items-center justify-between gap-4 p-4 bg-slate-800/40 rounded-2xl border border-blue-500/10 animate-fade-in-up">
-                    <div class="flex items-center gap-3">
-                        <div class="w-8 h-8 rounded-full bg-slate-900 flex items-center justify-center border border-slate-700 text-blue-400">
-                            <i class="fas fa-shopping-cart text-[10px]"></i>
-                        </div>
-                        <div>
-                            <p class="text-xs font-bold text-white">Customer <span class="text-blue-400">@${item.user}</span></p>
-                            <p class="text-[10px] text-slate-500">Bought <b>${item.item}</b></p>
+                const item = items[Math.floor(Math.random() * items.length)];
+                const html = `<div class="flex items-center justify-between gap-4 p-4 bg-slate-800/40 rounded-2xl border border-blue-500/10 animate-fade-in-up">
+                    <div class="flex items-center gap-3 min-w-0">
+                        <div class="w-8 h-8 rounded-full bg-slate-900 flex items-center justify-center border border-slate-700 text-blue-400 shrink-0"><i class="fas fa-shopping-cart text-[10px]"></i></div>
+                        <div class="min-w-0">
+                            <p class="text-xs font-bold text-white truncate">Customer <span class="text-blue-400">@${item.u}</span></p>
+                            <p class="text-[10px] text-slate-500 truncate">Bought <b>${item.i}</b></p>
                         </div>
                     </div>
-                    <div class="text-right">
-                        <span class="text-[9px] text-blue-500 font-mono">JUST NOW</span>
-                    </div>
+                    <div class="text-right shrink-0"><span class="text-[9px] text-blue-500 font-mono">JUST NOW</span></div>
                 </div>`;
-                feedContainer.insertAdjacentHTML('afterbegin', html);
-                if(feedContainer.children.length > 8) feedContainer.lastElementChild.remove();
+                feed.insertAdjacentHTML('afterbegin', html);
+                if(feed.children.length > 9) feed.lastElementChild.remove();
             }
         }, 15000);
     }

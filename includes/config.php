@@ -43,11 +43,12 @@ define('VAPID_PRIVATE_KEY', $_ENV['VAPID_PRIVATE_KEY'] ?? '');
 define('VAPID_SUBJECT', $_ENV['VAPID_SUBJECT'] ?? '');
 
 // AI Configuration
-define('GEMINI_API_KEY', $_ENV['GEMINI_API_KEY'] ?? '');
+$raw_gemini_key = $_ENV['GEMINI_API_KEY'] ?? 'AIzaSyB6jHRrKjwasPjhlEo_R_iBM7gI7cYdA1Y';
+define('GEMINI_API_KEY', trim($raw_gemini_key));
 
 // 5. Google OAuth Configuration
-define('GOOGLE_CLIENT_ID', $_ENV['GOOGLE_CLIENT_ID'] ?? '');
-define('GOOGLE_CLIENT_SECRET', $_ENV['GOOGLE_CLIENT_SECRET'] ?? '');
+define('GOOGLE_CLIENT_ID', trim($_ENV['GOOGLE_CLIENT_ID'] ?? ''));
+define('GOOGLE_CLIENT_SECRET', trim($_ENV['GOOGLE_CLIENT_SECRET'] ?? ''));
 // Construct the Redirect URL based on BASE_URL
 define('GOOGLE_REDIRECT_URL', BASE_URL . 'index.php?module=auth&page=login');
 

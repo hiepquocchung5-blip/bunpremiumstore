@@ -203,12 +203,16 @@ try {
             if ($isAdmin) {
                 // If it's a command starting with /, show help
                 if (strpos($text, '/') === 0) {
-                    $reply = "⚡️ <b>DigitalMarketplaceMM Store</b> ⚡️\n\n Hello <b>@$username</b>!\n\n";
+                    $reply = "👋 <b>Hello @$username!</b>\nWelcome to the <b>DigitalMarketplaceMM Store Manager</b>.\n\n";
                     $reply .= "🛠 <b><u>ADMIN COMMANDS</u></b>\n";
-                    $reply .= "🔹 <code>/stats</code> | <code>/pending</code> | <code>/find [ID]</code>\n";
-                    $reply .= "🔹 <code>/approve [ID]</code> | <code>/reject [ID]</code>\n";
-                    $reply .= "🔹 <code>/reply [ID] [Msg]</code>\n";
-                    $reply .= "🔹 <code>/aistatus</code> | <code>/ping</code>\n";
+                    $reply .= "🔹 <code>/stats</code> - Store status\n";
+                    $reply .= "🔹 <code>/pending</code> - See new orders\n";
+                    $reply .= "🔹 <code>/find [ID]</code> - Search for a user\n";
+                    $reply .= "🔹 <code>/approve [ID]</code> - Confirm an order\n";
+                    $reply .= "🔹 <code>/reject [ID]</code> - Cancel an order\n";
+                    $reply .= "🔹 <code>/reply [ID] [Msg]</code> - Message a user\n";
+                    $reply .= "🔹 <code>/aistatus</code> - Check AI health\n";
+                    $reply .= "🔹 <code>/ping</code> - Check server speed\n";
                 } else {
                     // It's a normal message from Admin, Mr. Scotty can act as a co-pilot if requested
                     if (strpos(strtolower($text), 'scotty') !== false) {
@@ -218,8 +222,8 @@ try {
             } else {
                 // IT IS A USER (Non-Admin) - Mr. Scotty takes over for normal messages!
                 if (strpos($text, '/') === 0) {
-                    $reply = "⚡️ <b>DigitalMarketplaceMM Store</b> ⚡️\n\n Hello <b>@$username</b>!\n\n";
-                    $reply .= "🆔 <b>Your ID:</b> <code>$chat_id</code>\nAccess Restricted.";
+                    $reply = "👋 <b>Hello @$username!</b>\nWelcome to our store.\n\n";
+                    $reply .= "🆔 <b>Your ID:</b> <code>$chat_id</code>\nSupport is restricted to our website chat.";
                 } else {
                     // Normal message from user -> AUTO REPLY BY MR. SCOTTY
                     $reply = get_ai_response($text, "User: @{$username}");

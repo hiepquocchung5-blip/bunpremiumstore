@@ -339,7 +339,7 @@ function get_ai_response($message, $context = "") {
  */
 function call_matrix_llm($user_input, $context = "") {
     // ⚡️ Authenticate with Support Core Credentials
-    $api_key = defined('GEMINI_API_KEY') ? GEMINI_API_KEY : ($_ENV['GEMINI_API_KEY'] ?? ''); 
+    $api_key = defined('GEMINI_API_KEY') ? trim(GEMINI_API_KEY) : trim($_ENV['GEMINI_API_KEY'] ?? ''); 
     if (empty($api_key)) return false;
 
     // ⚡️ STABLE PRODUCTION URL (v1)
