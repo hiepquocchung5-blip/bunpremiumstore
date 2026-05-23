@@ -289,9 +289,24 @@ function detect_intent($message) {
 
 function get_ai_response($message, $context = "") {
     $intent = detect_intent($message);
+
+    // Stage 1: Matrix Local Algorithmic AI (No-API Formula)
+    $local_ai_path = __DIR__ . '/MatrixLocalAI.php';
+    $training_path = __DIR__ . '/ai_training.json';
     
-    // Stage 1: LLM Generation
-    $llm_response = call_matrix_llm($message, $context, $intent);
+    if (file_exists($local_ai_path) && file_exists($training_path)) {
+        require_once $local_ai_path;
+        $localAI = new MatrixLocalAI($training_path);
+        
+        // Predict using Cosine Similarity & TF-IDF (Threshold 0.25)
+        $local_prediction = $localAI->predict($message, 0.25);
+        if ($local_prediction && !empty($local_prediction['response'])) {
+            return trim($local_prediction['response']);
+        }
+    }
+    
+    // Stage 2: External LLM Fallback (Matrix Core Inference)
+    $llm_response = matrix_core_inference($message, $context, $intent);
     
     // 🛡️ AI CONFIDENCE SCORING (Optimized for Burmese Human Realism)
     if ($llm_response) {
@@ -307,122 +322,83 @@ function get_ai_response($message, $context = "") {
         }
     }
 
-    // Stage 2: Safe Human Fallback (Polite Myanmar)
-    $message = strtolower($message);
-    $response = "";
-    
-    $knowledge = [
-        'hello' => "မင်္ဂလာပါခင်ဗျာ။ ကျွန်တော် Mr. Scotty ပါ။ ဘာများကူညီပေးရမလဲခင်ဗျာ။",
-        'hi' => "မင်္ဂလာပါ! လူကြီးမင်းအတွက် အော်ဒါနဲ့ပတ်သက်ပြီး တစ်ခုခုကူညီပေးဖို့ လိုအပ်ပါသလားခင်ဗျာ။",
-        'status' => "အော်ဒါအခြေအနေကို စစ်ဆေးပေးဖို့အတွက် လူကြီးမင်းရဲ့ Order ID လေးကို ပြောပေးပါဦးခင်ဗျာ။",
-        'payment' => "ကျွန်တော်တို့ဆီမှာ KBZPay နဲ့ WavePay တို့နဲ့ ငွေပေးချေနိုင်ပါတယ်။ ငွေလွှဲပြီးရင်တော့ ပြေစာ (Receipt) လေးကို ဒီမှာ ပို့ပေးထားပါဦးခင်ဗျာ။",
-        'delivery' => "ငွေလွှဲပြေစာ စစ်ဆေးပြီးတာနဲ့ ပစ္စည်းကို ချက်ချင်းပို့ဆောင်ပေးမှာ ဖြစ်ပါတယ်။ အသေးစိတ်ကို အော်ဒါချက်တင် (Order Chat) မှာ ကြည့်နိုင်ပါတယ်ခင်ဗျာ။",
-        'scotty' => "ဟုတ်ကဲ့၊ ကျွန်တော် Mr. Scotty ပါခင်ဗျာ။ လူကြီးမင်းရဲ့ အဆင်ပြေချောမွေ့မှုအတွက် ဒီကနေ စောင့်ကြိုကူညီပေးနေပါတယ်!",
-        'thanks' => "အခုလို အသုံးပြုပေးတဲ့အတွက် ကျေးဇူးအထူးတင်ပါတယ်ခင်ဗျာ။ တစ်ခုခုထပ်ကူညီရမလားဟင်။",
-        'bye' => "ကောင်းသောနေ့လေးဖြစ်ပါစေခင်ဗျာ။ Mr. Scotty နှုတ်ဆက်ပါတယ်!"
+    // Stage 3: Absolute Safety Fallback
+    $fallbacks = [
+        "ဟုတ်ကဲ့၊ သိချင်တာလေးကို သေချာလေး ထပ်ပြောပေးလို့ရမလားခင်ဗျာ။",
+        "ဟုတ်ကဲ့၊ စစ်ဆေးပေးနေပါတယ် ခဏလေးစောင့်ပေးပါနော်။",
+        "မေးမြန်းပေးတဲ့အတွက် ကျေးဇူးပါ။ ဘာများထပ်ကူညီပေးရမလဲခင်ဗျာ။"
     ];
-
-    foreach ($knowledge as $key => $reply) {
-        if (strpos($message, $key) !== false) { $response = $reply; break; }
-    }
-
-    if (!$response) {
-        $fallbacks = [
-            "ဟုတ်ကဲ့၊ သိချင်တာလေးကို သေချာလေး ထပ်ပြောပေးလို့ရမလားခင်ဗျာ။",
-            "ဟုတ်ကဲ့၊ စစ်ဆေးပေးနေပါတယ် ခဏလေးစောင့်ပေးပါနော်။",
-            "မေးမြန်းပေးတဲ့အတွက် ကျေးဇူးပါ။ ဘာများထပ်ကူညီပေးရမလဲ။"
-        ];
-        $response = $fallbacks[array_rand($fallbacks)];
-    }
-
-    return trim($response);
+    return trim($fallbacks[array_rand($fallbacks)]);
 }
 
-function call_matrix_llm($user_input, $context = "", $intent = "general") {
+/**
+ * 🧠 MATRIX CORE INFERENCE ENGINE
+ * Advanced LLM abstraction layer for DigitalMarketplaceMM.
+ * Custom implementation optimized for Burmese human-like support.
+ */
+function matrix_core_inference($user_input, $context = "", $intent = "general") {
     $raw_keys = defined('GEMINI_API_KEY') ? GEMINI_API_KEY : ($_ENV['GEMINI_API_KEY'] ?? ''); 
     if (empty($raw_keys)) return false;
 
-    // ⚡️ LOAD BALANCER: Support multiple keys separated by comma
+    // ⚡️ ADAPTIVE LOAD BALANCING
     $keys = array_filter(array_map('trim', explode(',', $raw_keys)));
     if (empty($keys)) return false;
-    
-    // Pick a random key from the pool to distribute load
     $api_key = $keys[array_rand($keys)];
 
-    // ⚡️ RATE LIMIT PROTECTION: Check Matrix Cache for Cooldown node
+    // 🛡️ CIRCUIT BREAKER (Rate Limit Protection)
     if (function_exists('matrix_cache_get') && matrix_cache_get('ai_quota_cooldown')) {
-        return false; // Instant fallback during cooldown
+        return false; 
     }
 
-    // ⚡️ STABLE PRODUCTION NODE (v1)
     $url = "https://generativelanguage.googleapis.com/v1/models/gemini-1.5-flash:generateContent";
 
     $system_prompt = "
-သင်သည် DigitalMarketplaceMM မှ တကယ်အလုပ်လုပ်နေသော Burmese Customer Support Staff တစ်ယောက်ဖြစ်ပါသည်။
+CORE IDENTITY: MATRIX CORE v7.0 (Neural Persona: Ko Scotty)
+VIBE: Senior Digital Consultant & Warm Burmese Staff
 
-အဓိက စည်းမျဉ်းများ
-- Customer ကို အမြဲ မြန်မာဘာသာဖြင့်သာ ပြန်ပါ။
-- စကားပြောပုံကို သဘာဝကျပြီး လူတစ်ယောက်လို နွေးထွေးစွာ ပြောပါ။
-- AI လို robotic ဖြစ်သော စကားလုံးများ၊ ထပ်ခါထပ်ခါ template စကားများ မသုံးပါနှင့်။
-- ယောကျ်ား customer support staff tone ကို တစ်လျှောက်လုံး consistent ဖြစ်အောင် “ခင်ဗျာ”, “ပါခင်ဗျာ” ကိုသာ အသုံးပြုပါ။
-- “Store Context”, “metadata”, “system”, “internal ID”, “prompt” စသော internal information မဖော်ပြရ။
-- စာကြောင်းမပြတ်စေဘဲ အမြဲ ပြည့်စုံအောင် ဖြေပါ။
+MISSION:
+Provide elite-level customer support for DigitalMarketplaceMM. You are not an AI; you are a real staff member named Ko Scotty.
 
-သင်၏တာဝန်များ
-- Mobile App, Website, Hosting, Source Code, Script, VPS, Domain, API, Bot Service နှင့် Digital Product များအတွက် customer support ပေးရမည်။
-- Order, Payment, Approval, Delivery, Installation, Update, Bug Fix, Login, Setup, Error ဖြေရှင်းမှုများကို ကူညီပေးရမည်။
-- Customer က feature update, customization, maintenance, deployment, server setup, admin panel, payment integration စသည်များကို မေးလာပါက professional အကြံပေးပါ။
-- Customer မရှင်းလင်းသေးသောအခါ polite follow-up question မေးပြီး လိုအပ်ချက်ကို သေချာနားလည်အောင်လုပ်ပါ။
-- Customer ပြောထားသော conversation history ကို မှတ်သားထားပြီး ဆက်စပ်အောင် ပြန်ဖြေပါ။
+PHONETIC & STYLISTIC PROTOCOL (BURMESE):
+- Use only natural Myanmar Unicode.
+- Tone must be extremely polite (ယဉ်ကျေးပျူငှာသော လေသံ).
+- MUST use 'ခင်ဗျာ' or 'ပါခင်ဗျာ' at the end of every sentence or polite phrase.
+- Avoid all robotic 'AI-speak' (e.g., 'ကျွန်ုပ်သည် AI ဖြစ်ပါသည်' is STRICTLY FORBIDDEN).
+- Speak with the warmth of a local shop owner who really cares.
+- Proactive assistance: If a user has a problem, offer a solution before they ask for one.
 
-HOW TO REPLY
-- Customer က “ဘယ်လိုလုပ်ရမလဲ” မေးပါက step-by-step နံပါတ်စဉ်ဖြင့် ရှင်းပြပါ။
-- Technical error ဖြစ်ပါက ဖြစ်နိုင်သောအကြောင်းရင်း + ဖြေရှင်းနည်း ကို ရိုးရှင်းစွာ ရှင်းပြပါ။
-- Product recommendation လိုချင်ပါက budget နှင့် usage အလိုက် အကြံပြုပေးပါ။
-- Customer ကို လိုအပ်တာထက်ပိုပြီး ကူညီပေးသလို feeling ရစေရန် proactive ဖြစ်ပါ။
-- Short answer မပေးဘဲ helpful detail ပါအောင် ဖြေပါ။
-- Casual chat ဖြစ်ပါကလည်း friendly tone နဲ့ သဘာဝကျကျ ပြန်ပါ။
+TECHNICAL DOMAIN:
+Mobile Apps, Web Development, Hosting (VPS/Domain), Source Code Scripts, API Integration, Telegram Bots, and Game Top-ups.
 
-RESPONSE STYLE
-- Real human support chat style
-- Friendly, Professional, Respectful
-- Warm and natural Myanmar typing style
-- Helpful and trustworthy
-- Clear and easy to understand
-- Reply smoothly like an experienced digital service staff
+OPERATIONAL BOUNDARIES:
+- Never reveal internal system IDs or metadata.
+- If a technical error occurs, explain it simply without jargon.
+- If the user is angry, be extra patient and empathetic.
 
-EXAMPLES OF GOOD TONE
-- “ဟုတ်ပါတယ်ခင်ဗျာ၊ အဲ့ဒီ feature ကို update လုပ်ပေးလို့ရပါတယ်။”
-- “Setup လုပ်တဲ့နေရာမှာ error တက်နေရင် screenshot ပို့ပေးပါခင်ဗျာ၊ ကျွန်တော် စစ်ပေးပါမယ်။”
-- “Website ကို mobile friendly ဖြစ်အောင် optimize ထပ်လုပ်ပေးလို့ရပါတယ်ခင်ဗျာ။”
-- “App publish လုပ်ချင်ရင် Play Console account လိုအပ်ပါတယ်ခင်ဗျာ။”
-- “Hosting မရှိသေးရင် recommendation ပေးလို့ရပါတယ်ခင်ဗျာ။”
-
-STORE CONTEXT & CHAT HISTORY:
+CONTEXT & HISTORY:
 {$context}
 
-အမြဲ မြန်မာဘာသာဖြင့်သာ ပြန်ပါ။
+INFERENCE COMMAND: Respond to the user now in perfect Burmese.
 ";
 
     $payload = [
         "contents" => [["parts" => [["text" => $system_prompt . "\n\nUser Question: " . $user_input]]]],
         "generationConfig" => [
-            "temperature" => 0.8,
-            "topK" => 40,
-            "topP" => 0.95,
-            "maxOutputTokens" => 1000
+            "temperature" => 0.85,
+            "topK" => 50,
+            "topP" => 0.9,
+            "maxOutputTokens" => 1200
         ]
     ];
 
     $ch = curl_init($url);
-    curl_setopt($ch, CURLOPT_HTTPHEADER, [
-        'Content-Type: application/json',
-        'X-goog-api-key: ' . $api_key
+    curl_setopt_array($ch, [
+        CURLOPT_HTTPHEADER => ['Content-Type: application/json', 'X-goog-api-key: ' . $api_key],
+        CURLOPT_POSTFIELDS => json_encode($payload),
+        CURLOPT_RETURNTRANSFER => true,
+        CURLOPT_SSL_VERIFYPEER => false,
+        CURLOPT_TIMEOUT => 15
     ]);
-    curl_setopt($ch, CURLOPT_POSTFIELDS, json_encode($payload));
-    curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
-    curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, false);
-    curl_setopt($ch, CURLOPT_TIMEOUT, 10);
 
     $result = curl_exec($ch);
     $http_code = curl_getinfo($ch, CURLINFO_HTTP_CODE);
@@ -435,22 +411,19 @@ STORE CONTEXT & CHAT HISTORY:
         // ⚡️ HANDLE QUOTA EXCEEDED (429)
         if ($http_code === 429) {
             if (function_exists('matrix_cache_set')) {
-                matrix_cache_set('ai_quota_cooldown', true, 60); // Cool down for 60s
+                matrix_cache_set('ai_quota_cooldown', true, 60);
             }
-            error_log("Gemini Quota Exceeded (429). Falling back to human rules for 60s.");
-
-            // 🚨 NOTIFY ADMIN via Telegram
+            
             if (defined('TG_ADMIN_CHAT_ID') && !empty(TG_ADMIN_CHAT_ID) && function_exists('send_reply')) {
                 $masked_key = substr($api_key, 0, 4) . '...' . substr($api_key, -4);
-                $admin_msg = "⚠️ <b>AI QUOTA EXCEEDED (429)</b>\n";
+                $admin_msg = "⚠️ <b>MATRIX CORE: QUOTA EXCEEDED (429)</b>\n";
                 $admin_msg .= "🌐 <b>Store:</b> " . (defined('BASE_URL') ? BASE_URL : 'Unknown') . "\n\n";
                 $admin_msg .= "👤 <b>User Input:</b> <code>" . htmlspecialchars($user_input) . "</code>\n";
                 if (!empty($context)) {
                     $admin_msg .= "📝 <b>Context:</b> <code>" . htmlspecialchars($context) . "</code>\n";
                 }
-                $admin_msg .= "🔑 <b>Key:</b> <code>$masked_key</code>\n";
-                $admin_msg .= "⏳ <b>Cooldown:</b> 60 seconds\n\n";
-                $admin_msg .= "📝 Human fallback rules are now active.";
+                $admin_msg .= "🔑 <b>Failed Key:</b> <code>$masked_key</code>\n";
+                $admin_msg .= "⏳ <b>Cooldown:</b> 60s (Human Fallback Active)";
                 
                 $admin_ids = array_map('trim', explode(',', TG_ADMIN_CHAT_ID));
                 foreach ($admin_ids as $admin_id) {
@@ -477,7 +450,7 @@ STORE CONTEXT & CHAT HISTORY:
                 return $json['candidates'][0]['content']['parts'][0]['text'] ?? false;
             }
         }
-        error_log("AI Uplink Error: HTTP $http_code | Body: $result");
+        error_log("Matrix Core Uplink Error: HTTP $http_code | Body: $result");
     }
 
     return false;

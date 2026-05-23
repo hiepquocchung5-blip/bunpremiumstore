@@ -110,7 +110,7 @@ try {
                     $reply .= "⚠️ <b>Mode:</b> Manual Human Rules Active\n";
                     $reply .= "📝 <b>Details:</b> Google free tier quota reached. System is resting for 60 seconds to reset uplink.";
                 } else {
-                    $test_reply = call_matrix_llm("Are you online?", "Health Check");
+                    $test_reply = matrix_core_inference("Are you online?", "Health Check");
                     if ($test_reply) {
                         $reply .= "🟢 <b>Status:</b> Online & Optimal\n";
                         $reply .= "🧠 <b>Model:</b> Gemini Flash Latest\n";
