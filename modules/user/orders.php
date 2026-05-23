@@ -54,35 +54,47 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['ajax_msg'])) {
                 $wants_human = false;
                 foreach($human_keywords as $hk) { if(strpos(strtolower($msg), $hk) !== false) { $wants_human = true; break; } }
 
-                // 🤖 MR. SCOTTY AI PROTOCOL: Advanced Autonomous Intelligence
+                // 🤖 AI SUPPORT PROTOCOL: Advanced Autonomous Intelligence
                 $ai_responded = false;
                 
-                // RICH CONTEXT: Scotty now sees everything about the user and the order!
-                $rich_context = "Customer: @{$order_check['username']} ({$order_check['full_name']}) | ";
-                $rich_context .= "Item: " . ($order_check['item_name'] ?? 'Digital Asset') . " | ";
-                $rich_context .= "Order Status: " . strtoupper($order_check['status']) . " | ";
-                $rich_context .= "Order ID: #{$oid} | ";
-                $rich_context .= "Payment: " . ($order_check['payment_method'] ?? 'Not specified') . " | ";
-                
-                if (!empty($order_check['user_instruction'])) {
-                    $rich_context .= "Product Setup Steps: " . $order_check['user_instruction'];
-                }
+                // ⏱ ANTI-SPAM GUARD: Prevent hammering free API quota (Max 1 call per 6s)
+                $last_ai_time = $_SESSION['last_ai_call_time'] ?? 0;
+                $can_call_ai = (time() - $last_ai_time) > 6;
 
-                // 🧠 DEEP CONVERSATIONAL MEMORY: Fetch last 10 messages for full context
-                $stmt_mem = $pdo->prepare("SELECT sender_type, message FROM order_messages WHERE order_id = ? ORDER BY id DESC LIMIT 10");
-                $stmt_mem->execute([$oid]);
-                $history = array_reverse($stmt_mem->fetchAll());
-                $history_context = "";
-                foreach($history as $h) {
-                    $role = ($h['sender_type'] === 'user') ? 'Customer' : 'Staff';
-                    $history_context .= "{$role}: {$h['message']}\n";
-                }
+                if ($can_call_ai) {
+                    $_SESSION['last_ai_call_time'] = time();
+                    
+                    // RICH CONTEXT: Scotty now sees everything about the user and the order!
+                    $rich_context = "Customer: @{$order_check['username']} ({$order_check['full_name']}) | ";
+                    $rich_context .= "Item: " . ($order_check['item_name'] ?? 'Digital Asset') . " | ";
+                    $rich_context .= "Order Status: " . strtoupper($order_check['status']) . " | ";
+                    $rich_context .= "Order ID: #{$oid} | ";
+                    $rich_context .= "Payment: " . ($order_check['payment_method'] ?? 'Not specified') . " | ";
+                    
+                    if (!empty($order_check['user_instruction'])) {
+                        $rich_context .= "Product Setup Steps: " . $order_check['user_instruction'];
+                    }
 
-                $ai_msg = strip_tags(get_ai_response($msg, $rich_context . " | FULL CONVERSATION HISTORY:\n" . $history_context));                
-                if (!empty($ai_msg)) {
-                    $stmt = $pdo->prepare("INSERT INTO order_messages (order_id, sender_type, message) VALUES (?, 'admin', ?)");
-                    $stmt->execute([$oid, $ai_msg]);
-                    $ai_responded = true;
+                    // 🧠 DEEP CONVERSATIONAL MEMORY: Fetch last 10 messages for full context
+                    $stmt_mem = $pdo->prepare("SELECT sender_type, message FROM order_messages WHERE order_id = ? ORDER BY id DESC LIMIT 10");
+                    $stmt_mem->execute([$oid]);
+                    $history = array_reverse($stmt_mem->fetchAll());
+                    $history_context = "";
+                    foreach($history as $h) {
+                        $role = ($h['sender_type'] === 'user') ? 'Customer' : 'Staff';
+                        $history_context .= "{$role}: {$h['message']}\n";
+                    }
+
+                    $ai_msg = strip_tags(get_ai_response($msg, $rich_context . " | FULL CONVERSATION HISTORY:\n" . $history_context));                
+                    if (!empty($ai_msg)) {
+                        $stmt = $pdo->prepare("INSERT INTO order_messages (order_id, sender_type, message) VALUES (?, 'admin', ?)");
+                        $stmt->execute([$oid, $ai_msg]);
+                        $ai_responded = true;
+
+                        // ⚡️ REAL-TIME WEB PUSH (Notify User)
+                        $notif_body = mb_substr($ai_msg, 0, 50) . (mb_strlen($ai_msg) > 50 ? '...' : '');
+                        trigger_push_alert($pdo, $user_id, "Support Update 💬", $notif_body, $oid);
+                    }
                 }
                 
                 // ⚡️ REAL-TIME TELEGRAM ALERT (Skip if AI handled it)
@@ -222,7 +234,8 @@ if (!$ordersList) {
     $stmt = $pdo->prepare("
         SELECT o.id, o.status, o.total_price_paid, o.created_at, o.pass_id,
                COALESCE(p.name, ps.name) as name, 
-               p.image_path, c.image_url as cat_image
+               p.image_path, c.image_url as cat_image,
+               (SELECT sender_type FROM order_messages WHERE order_id = o.id ORDER BY id DESC LIMIT 1) as last_sender
         FROM orders o 
         LEFT JOIN products p ON o.product_id = p.id 
         LEFT JOIN categories c ON p.category_id = c.id
@@ -316,6 +329,9 @@ if ($active_chat_id) {
                             <span class="order-id-span text-xs font-mono <?php echo $isActive ? 'text-[#00f0ff]' : 'text-slate-500 group-hover:text-slate-300'; ?>">#<?php echo $ord['id']; ?></span>
                             <?php if($isPass): ?>
                                 <span class="text-[8px] bg-yellow-500/20 text-yellow-500 px-1.5 py-0.5 rounded border border-yellow-500/30 uppercase font-black tracking-widest"><i class="fas fa-crown"></i> Pass</span>
+                            <?php endif; ?>
+                            <?php if(!$isActive && ($ord['last_sender'] ?? '') === 'admin'): ?>
+                                <span class="flex h-2 w-2 rounded-full bg-blue-500 animate-pulse shadow-[0_0_8px_#3b82f6]" title="New message"></span>
                             <?php endif; ?>
                         </div>
                         <span class="text-[9px] font-bold uppercase px-2 py-0.5 rounded border tracking-wider <?php echo $statusColor; ?>"><?php echo $ord['status']; ?></span>

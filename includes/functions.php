@@ -364,16 +364,23 @@ function get_ai_response($message, $context = "") {
 }
 
 function call_matrix_llm($user_input, $context = "", $intent = "general") {
-    $api_key = defined('GEMINI_API_KEY') ? trim(GEMINI_API_KEY) : trim($_ENV['GEMINI_API_KEY'] ?? ''); 
-    if (empty($api_key)) return false;
+    $raw_keys = defined('GEMINI_API_KEY') ? GEMINI_API_KEY : ($_ENV['GEMINI_API_KEY'] ?? ''); 
+    if (empty($raw_keys)) return false;
+
+    // ⚡️ LOAD BALANCER: Support multiple keys separated by comma
+    $keys = array_filter(array_map('trim', explode(',', $raw_keys)));
+    if (empty($keys)) return false;
+    
+    // Pick a random key from the pool to distribute load
+    $api_key = $keys[array_rand($keys)];
 
     // ⚡️ RATE LIMIT PROTECTION: Check Matrix Cache for Cooldown node
     if (function_exists('matrix_cache_get') && matrix_cache_get('ai_quota_cooldown')) {
         return false; // Instant fallback during cooldown
     }
 
-    // Use latest verified node
-    $url = "https://generativelanguage.googleapis.com/v1beta/models/gemini-flash-latest:generateContent";
+    // ⚡️ Standard Model Node (Most compatible with Free Tier)
+    $url = "https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent";
 
     $system_prompt = "
 You are a real Burmese customer support staff member at DigitalMarketplaceMM.
@@ -439,9 +446,9 @@ Reply in Burmese only.
             error_log("Gemini Quota Exceeded (429). Falling back to human rules for 60s.");
         }
         
-        // Fallback to verified gemini-flash-latest if primary endpoint fails
+        // Fallback to verified gemini-1.5-flash if primary endpoint fails
         if ($http_code === 404) {
-            $url = "https://generativelanguage.googleapis.com/v1beta/models/gemini-flash-latest:generateContent";
+            $url = "https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent";
             $ch = curl_init($url);
             curl_setopt($ch, CURLOPT_HTTPHEADER, [
                 'Content-Type: application/json',
@@ -485,5 +492,23 @@ function send_reply($chat_id, $text) {
     $res = curl_exec($ch); 
     curl_close($ch);
     return $res;
+}
+
+/**
+ * ⚡️ PUSH NOTIFICATION DISPATCHER
+ * Sends a real-time web push alert to a user.
+ */
+function trigger_push_alert($pdo, $user_id, $title, $body, $order_id) {
+    $push_file = __DIR__ . '/PushService.php';
+    if (file_exists($push_file)) {
+        require_once $push_file;
+        try {
+            $push = new PushService($pdo);
+            $url = (defined('BASE_URL') ? BASE_URL : 'https://digitalmarketplacemm.com/') . "index.php?module=user&page=orders&view_chat=" . $order_id;
+            $push->sendToUser($user_id, $title, $body, $url);
+        } catch (Exception $e) {
+            error_log("Push Alert Error: " . $e->getMessage());
+        } 
+    }
 }
 ?>

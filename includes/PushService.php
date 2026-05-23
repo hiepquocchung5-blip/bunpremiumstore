@@ -12,19 +12,14 @@ class PushService {
     private $webPush;
     private $pdo;
 
-    // YOUR LIVE CRYPTOGRAPHIC KEYS
-    const VAPID_SUBJECT = 'mailto:noreply-otpsender@digitalmarketplacemm.com';
-    const PUBLIC_KEY    = 'BH9ppIX9b68N76wmcNsrevG4Jl6RRCMuOFptWOgE9C0-0hLTTLhnEB2orPy_POTaM1PJxvH1pW0jyG1x8gnqWh0'; 
-    const PRIVATE_KEY   = 'JBhrzriKcczPYpx8vgC-D-ObrXksntdJBbkut-Xmrwc';
-
     public function __construct($pdo) {
         $this->pdo = $pdo;
         
         $auth = [
             'VAPID' => [
-                'subject' => self::VAPID_SUBJECT,
-                'publicKey' => self::PUBLIC_KEY,
-                'privateKey' => self::PRIVATE_KEY,
+                'subject' => defined('VAPID_SUBJECT') ? VAPID_SUBJECT : ($_ENV['VAPID_SUBJECT'] ?? ''),
+                'publicKey' => defined('VAPID_PUBLIC_KEY') ? VAPID_PUBLIC_KEY : ($_ENV['VAPID_PUBLIC_KEY'] ?? ''),
+                'privateKey' => defined('VAPID_PRIVATE_KEY') ? VAPID_PRIVATE_KEY : ($_ENV['VAPID_PRIVATE_KEY'] ?? ''),
             ],
         ];
 
@@ -70,8 +65,10 @@ class PushService {
         $payload = json_encode([
             'title' => $title,
             'body'  => $body,
-            'icon'  => 'https://digitalmarketplacemm.com/assets/images/logo.png',
-            'url'   => $url ?? 'https://digitalmarketplacemm.com/index.php?module=user&page=dashboard'
+            'icon'  => (defined('BASE_URL') ? BASE_URL : 'https://digitalmarketplacemm.com/') . 'assets/images/logo.png',
+            'url'   => $url ?? (defined('BASE_URL') ? BASE_URL : 'https://digitalmarketplacemm.com/') . 'index.php?module=user&page=dashboard',
+            'tag'   => 'order-update-' . (strpos($url, 'view_chat=') !== false ? explode('view_chat=', $url)[1] : 'general'),
+            'renotify' => true
         ]);
 
         $queued = 0;

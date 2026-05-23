@@ -257,16 +257,4 @@ try {
 } catch (Exception $e) {
     error_log("Telegram Webhook Error: " . $e->getMessage());
 }
-
-function trigger_push_alert($pdo, $user_id, $title, $body, $order_id) {
-    $push_file = __DIR__ . '/../includes/PushService.php';
-    if (file_exists($push_file)) {
-        require_once $push_file;
-        try {
-            $push = new PushService($pdo);
-            $url = "https://digitalmarketplacemm.com/index.php?module=user&page=orders&view_chat=" . $order_id;
-            $push->sendToUser($user_id, $title, $body, $url);
-        } catch (Exception $e) {} 
-    }
-}
 ?>

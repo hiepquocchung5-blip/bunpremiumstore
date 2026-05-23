@@ -137,6 +137,23 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['ajax_msg'])) {
             $stmt = $pdo->prepare("INSERT INTO order_messages (order_id, sender_type, message, is_credential) VALUES (?, 'admin', ?, ?)");
             $stmt->execute([$order_id, $msg, $is_cred]);
 
+            // ⚡️ REAL-TIME SYNC
+            if (function_exists('invalidate_user_cache')) {
+                // We need user_id for this
+                $u_stmt = $pdo->prepare("SELECT user_id FROM orders WHERE id = ?");
+                $u_stmt->execute([$order_id]);
+                $uid = $u_stmt->fetchColumn();
+                if ($uid) {
+                    invalidate_user_cache($uid);
+
+                    // Trigger real web push for the user
+                    if (function_exists('trigger_push_alert')) {
+                        $snippet = mb_substr($msg, 0, 50) . (mb_strlen($msg) > 50 ? '...' : '');
+                        trigger_push_alert($pdo, $uid, "New Message 💬", $snippet, $order_id);
+                    }
+                }
+            }
+
             echo json_encode(['success' => true]);
             exit;
         } catch (PDOException $e) {
