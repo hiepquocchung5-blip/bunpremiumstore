@@ -177,22 +177,45 @@ if (is_logged_in()) {
 
     <!-- SECTION 1: Banner Slider -->
     <?php if(!empty($banners)): ?>
-    <div class="relative w-full aspect-[4/3] sm:aspect-video lg:max-h-[500px] mb-10 rounded-3xl overflow-hidden group shadow-2xl bg-slate-900 border border-slate-700/50" id="heroSliderContainer">
-        <div class="flex overflow-x-auto snap-x-mandatory h-full no-scrollbar scroll-smooth" id="bannerSlider">
+    <div class="relative w-full aspect-video md:aspect-[21/9] lg:max-h-[500px] mb-12 rounded-[2rem] overflow-hidden group shadow-2xl bg-slate-900 border border-slate-700/50" id="heroSliderContainer">
+        <div class="flex h-full overflow-x-auto snap-x snap-mandatory no-scrollbar scroll-smooth" id="bannerSlider">
             <?php foreach($banners as $index => $b): ?>
-                <div class="w-full flex-shrink-0 snap-center relative h-full">
+                <div class="w-full h-full flex-shrink-0 snap-center relative overflow-hidden">
                     <a href="<?php echo $b['target_url'] ?: '#'; ?>" class="block w-full h-full">
-                        <img src="<?php echo BASE_URL . $b['image_path']; ?>" class="w-full h-full object-cover animate-pan-image" loading="lazy">
-                        <div class="absolute inset-0 bg-gradient-to-t from-slate-950 via-transparent to-transparent opacity-80"></div>
-                        <div class="absolute bottom-0 left-0 p-6 sm:p-12 w-full">
-                            <span class="text-[10px] text-blue-400 font-black uppercase tracking-widest mb-3 block">Featured Offer</span>
-                            <h3 class="text-white text-3xl sm:text-5xl md:text-6xl font-black mb-4 leading-none"><?php echo htmlspecialchars($b['title']); ?></h3>
+                        <img src="<?php echo BASE_URL . $b['image_path']; ?>" class="w-full h-full object-cover animate-pan-image" loading="eager">
+                        <div class="absolute inset-0 bg-gradient-to-t from-slate-950 via-slate-950/40 to-transparent opacity-90"></div>
+                        
+                        <div class="absolute inset-0 flex flex-col justify-end p-6 md:p-16">
+                            <div class="animate-fade-in-up">
+                                <div class="flex items-center gap-2 mb-3">
+                                    <span class="w-8 h-0.5 bg-blue-500 rounded-full"></span>
+                                    <span class="text-[10px] md:text-xs text-blue-400 font-black uppercase tracking-[0.2em]"><?php echo $b['subtitle'] ?: 'Exclusive Digital Asset'; ?></span>
+                                </div>
+                                <h3 class="text-white text-3xl md:text-6xl font-black mb-4 leading-[0.9] tracking-tighter max-w-2xl">
+                                    <?php echo htmlspecialchars($b['title']); ?>
+                                </h3>
+                                <div class="flex items-center gap-4 mt-6">
+                                    <span class="px-6 py-3 bg-white text-slate-950 font-black rounded-xl text-[10px] md:text-xs uppercase tracking-widest shadow-xl transform group-hover:scale-105 transition-all">Explore Now</span>
+                                    <span class="hidden md:flex items-center gap-2 text-slate-400 text-[10px] font-bold uppercase tracking-widest">
+                                        <i class="fas fa-shield-alt text-green-500"></i> Instant Delivery
+                                    </span>
+                                </div>
+                            </div>
                         </div>
                     </a>
                 </div>
             <?php endforeach; ?>
         </div>
-        <div class="absolute bottom-0 left-0 w-full h-1 bg-slate-800/80">
+
+        <!-- Navigation Controls -->
+        <div class="absolute bottom-8 right-8 z-20 flex items-center gap-2">
+            <?php foreach($banners as $index => $b): ?>
+                <button class="slider-dot w-2 h-2 rounded-full bg-white/20 transition-all duration-500 hover:bg-white/50" data-index="<?php echo $index; ?>"></button>
+            <?php endforeach; ?>
+        </div>
+
+        <!-- Progress Bar -->
+        <div class="absolute bottom-0 left-0 w-full h-1 bg-white/5">
             <div id="slideProgress" class="h-full bg-blue-500 w-0"></div>
         </div>
     </div>
@@ -374,30 +397,67 @@ if (is_logged_in()) {
 
 <script>
 document.addEventListener('DOMContentLoaded', () => {
-    // 1. HERO SLIDER
+    // 1. HERO SLIDER (Matrix Core Edition)
     const hSlider = document.getElementById('bannerSlider');
     const hDots = document.querySelectorAll('.slider-dot');
     const hProgress = document.getElementById('slideProgress');
     let hInterval, hTime = 6000;
 
     const updateHero = (idx) => {
-        hDots.forEach((dot, i) => dot.className = i === idx ? 'w-8 h-2.5 rounded-full transition-all duration-300 slider-dot bg-white' : 'w-2.5 h-2.5 rounded-full transition-all duration-300 slider-dot bg-white/30 hover:bg-white/60');
-        if(hProgress) { hProgress.style.animation = 'none'; hProgress.offsetHeight; hProgress.style.animation = `loadProgress ${hTime}ms linear forwards`; }
+        hDots.forEach((dot, i) => {
+            if (i === idx) {
+                dot.className = 'slider-dot w-6 h-1.5 rounded-full bg-blue-500 transition-all duration-500 shadow-[0_0_10px_#3b82f6]';
+            } else {
+                dot.className = 'slider-dot w-1.5 h-1.5 rounded-full bg-white/20 transition-all duration-500 hover:bg-white/40';
+            }
+        });
+        if(hProgress) {
+            hProgress.style.transition = 'none';
+            hProgress.style.width = '0%';
+            setTimeout(() => {
+                hProgress.style.transition = `width ${hTime}ms linear`;
+                hProgress.style.width = '100%';
+            }, 50);
+        }
     };
 
     const moveHero = (next = true) => {
         if(!hSlider) return;
         const w = hSlider.clientWidth;
-        let target = hSlider.scrollLeft + (next ? w : -w);
-        if(target >= hSlider.scrollWidth - 10) target = 0;
-        if(target < 0) target = hSlider.scrollWidth - w;
-        hSlider.scrollTo({ left: target, behavior: 'smooth' });
-        updateHero(Math.round(target / w));
+        let nextIdx = Math.round(hSlider.scrollLeft / w) + (next ? 1 : -1);
+        
+        if (nextIdx >= hDots.length) nextIdx = 0;
+        if (nextIdx < 0) nextIdx = hDots.length - 1;
+
+        hSlider.scrollTo({ left: nextIdx * w, behavior: 'smooth' });
+        updateHero(nextIdx);
     };
 
-    if(hSlider) {
+    if(hSlider && hDots.length > 0) {
         hInterval = setInterval(() => moveHero(true), hTime);
-        hDots.forEach((dot, idx) => dot.onclick = () => { clearInterval(hInterval); hSlider.scrollTo({ left: idx * hSlider.clientWidth, behavior: 'smooth' }); updateHero(idx); hInterval = setInterval(() => moveHero(true), hTime); });
+        hDots.forEach((dot, idx) => {
+            dot.onclick = () => {
+                clearInterval(hInterval);
+                hSlider.scrollTo({ left: idx * hSlider.clientWidth, behavior: 'smooth' });
+                updateHero(idx);
+                hInterval = setInterval(() => moveHero(true), hTime);
+            };
+        });
+        
+        // Sync dots on manual scroll
+        hSlider.addEventListener('scroll', () => {
+            const idx = Math.round(hSlider.scrollLeft / hSlider.clientWidth);
+            hDots.forEach((dot, i) => {
+                if (i === idx) {
+                    dot.classList.add('w-6', 'bg-blue-500', 'shadow-[0_0_10px_#3b82f6]');
+                    dot.classList.remove('w-1.5', 'bg-white/20');
+                } else {
+                    dot.classList.remove('w-6', 'bg-blue-500', 'shadow-[0_0_10px_#3b82f6]');
+                    dot.classList.add('w-1.5', 'bg-white/20');
+                }
+            });
+        }, { passive: true });
+
         updateHero(0);
     }
 
