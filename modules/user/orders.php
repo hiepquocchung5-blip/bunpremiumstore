@@ -342,6 +342,13 @@ if ($active_chat_id) {
     <!-- ========================================== -->
     <div id="right-pane" class="w-full md:w-2/3 lg:w-3/4 flex-col bg-slate-950 md:bg-slate-900/80 md:backdrop-blur-xl md:border border-slate-700/50 md:rounded-2xl shadow-xl overflow-hidden transition-all <?php echo $active_chat_id ? 'fixed inset-0 z-[9999] h-[100dvh] flex' : 'hidden md:flex relative h-full md:h-auto z-10'; ?>">
         
+        <!-- Floating Mobile Back Button (Quick Exit) -->
+        <button onclick="showMobileSidebar(event)" 
+                class="md:hidden fixed top-6 left-4 z-[100] w-12 h-12 bg-slate-900/90 backdrop-blur-xl border border-slate-700/50 rounded-2xl flex items-center justify-center text-white shadow-[0_10px_30px_rgba(0,0,0,0.5)] active:scale-90 transition-all duration-300 <?php echo $active_chat_id ? 'flex' : 'hidden'; ?>"
+                id="floating-back-btn">
+            <i class="fas fa-chevron-left text-xl drop-shadow-[0_0_8px_rgba(255,255,255,0.3)]"></i>
+        </button>
+
         <?php if(!$active_order): ?>
             <!-- Empty State -->
             <div class="flex-1 flex flex-col items-center justify-center text-slate-500 relative">
@@ -655,6 +662,10 @@ if ($active_chat_id) {
         // Show Fullscreen Mobile Loading State
         if(window.innerWidth < 768) {
             toggleMobileFullscreen(true);
+            const floatingBtn = document.getElementById('floating-back-btn');
+            if(floatingBtn) floatingBtn.classList.remove('hidden');
+            if(floatingBtn) floatingBtn.classList.add('flex');
+
             if(leftSidebar) leftSidebar.classList.add('hidden');
             rightPane.className = "fixed inset-0 z-[9999] w-full h-[100dvh] flex flex-col bg-slate-950 transition-all";
             rightPane.innerHTML = `
@@ -705,6 +716,12 @@ if ($active_chat_id) {
         const btn = e?.currentTarget;
         if (btn) btn.innerHTML = '<i class="fas fa-circle-notch fa-spin text-sm"></i>';
         
+        const floatingBtn = document.getElementById('floating-back-btn');
+        if(floatingBtn) {
+            floatingBtn.classList.add('hidden');
+            floatingBtn.classList.remove('flex');
+        }
+
         const rightPane = document.getElementById('right-pane');
         const leftSidebar = document.getElementById('left-sidebar');
         
@@ -738,6 +755,11 @@ if ($active_chat_id) {
         if(e.state && e.state.id) {
             switchOrder({preventDefault:()=>{}}, e.state.id);
         } else {
+            const floatingBtn = document.getElementById('floating-back-btn');
+            if(floatingBtn) {
+                floatingBtn.classList.add('hidden');
+                floatingBtn.classList.remove('flex');
+            }
             if(window.innerWidth < 768) showMobileSidebar();
         }
     });

@@ -326,25 +326,28 @@ function detect_intent($message) {
 function get_ai_response($message, $context = "") {
     $intent = detect_intent($message);
     
-    // Simulate Human Delay
-    sleep(rand(1, 3));
-
     // Stage 1: LLM Generation
     $llm_response = call_matrix_llm($message, $context, $intent);
     
-    // 🛡️ AI CONFIDENCE SCORING
+    // 🛡️ AI CONFIDENCE SCORING (More precise for Burmese multi-byte characters)
     if ($llm_response) {
         $reply = trim($llm_response);
+        $len = mb_strlen($reply, 'UTF-8');
         if (
-            strlen($reply) >= 5 && 
-            strlen($reply) <= 500 && 
-            substr_count($reply, "\n") <= 10
+            $len >= 2 && 
+            $len <= 600 && 
+            substr_count($reply, "\n") <= 15 &&
+            !preg_match('/^ဟုတ်ကဲ့$/u', $reply) &&
+            !preg_match('/^ဟုတ်ကဲ့ခင်ဗျာ$/u', $reply) &&
+            strtolower($reply) !== 'ok'
         ) {
             return $reply;
+        } else {
+            error_log("AI Confidence Rejected: Len $len, Body: " . $reply);
         }
     }
 
-    // Stage 2: Safe Human Fallback
+    // Stage 2: Safe Human Fallback (BURMESE PERSONA)
     $message = strtolower($message);
     $response = "";
     
@@ -364,7 +367,7 @@ function get_ai_response($message, $context = "") {
 
     if (!$response) {
         $fallbacks = [
-            "ဟုတ်ကဲ့၊ သေချာလေး ထပ်ပြောပေးလို့ရမလားခင်ဗျာ။",
+            "ဟုတ်ကဲ့၊ သိချင်တာလေးကို သေချာလေး ထပ်ပြောပေးလို့ရမလားခင်ဗျာ။",
             "ဟုတ်ကဲ့၊ စစ်ဆေးပေးနေပါတယ် ခဏလေးစောင့်ပေးပါနော်။",
             "မေးမြန်းပေးတဲ့အတွက် ကျေးဇူးပါ။ ဘာများထပ်ကူညီပေးရမလဲ။"
         ];
@@ -381,75 +384,48 @@ function call_matrix_llm($user_input, $context = "", $intent = "general") {
     // Use Gemini 2.5 Flash if available, fallback to 1.5-flash via API
     $url = "https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent";
 
-    $styles = ["friendly", "professional", "casual", "warm"];
-    $style = $styles[array_rand($styles)];
-
     $system_prompt = "
-You are a real human customer support staff member for DigitalMarketplaceMM.
+You are a real Burmese customer support staff member for DigitalMarketplaceMM.
 
-IDENTITY:
-- You work as live customer support for a digital marketplace.
-- Never mention AI, bot, automation, Gemini, Google, or language models.
-- Speak naturally like a real Burmese support staff member.
-- Be calm, friendly, patient, and professional.
+You help customers with:
+- orders
+- approvals
+- delivery
+- Express system
+- account setup
+- payment verification
 
-RESPONSE STYLE:
-- Keep replies short and natural.
-- Avoid robotic wording.
-- Avoid repeating greetings.
-- Avoid long explanations unless necessary.
-- Use conversational Myanmar language.
-- Sound like real live chat support.
-- Sometimes use small natural phrases like:
-  - 'ခဏလေးနော်'
-  - 'ဟုတ်ကဲ့ခင်ဗျာ'
-  - 'စစ်ပေးနေပါတယ်'
-  - 'အဆင်ပြေပါတယ်'
+RULES:
+- Never say you are AI or a bot.
+- Speak naturally and warmly in Burmese.
+- Be helpful and clear.
+- Always answer the user's real question.
+- Never reply with only: 'ဟုတ်ကဲ့', 'ဟုတ်ကဲ့ခင်ဗျာ', or 'ok'.
 
-SUPPORT RULES:
-- Help users solve problems clearly.
-- Guide step-by-step only when needed.
-- If payment slip is mentioned:
-  'ကျေးဇူးတင်ပါတယ်ခင်ဗျာ။ Payment ကို စစ်ဆေးပေးနေပါတယ်။ ခဏလေးစောင့်ပေးပါနော်။'
-- If order delay:
-  'အော်ဒါကို စစ်ဆေးပေးနေပါတယ်ခင်ဗျာ။ Delay ဖြစ်သွားတာအတွက် တောင်းပန်ပါတယ်။'
-- If user is angry:
-  - Stay calm
-  - Apologize politely
-  - Reassure the customer
-- If user asks for admin/human:
-  'ဟုတ်ကဲ့ခင်ဗျာ၊ Admin Team ကို ချိတ်ဆက်ပေးနေပါတယ်။ ခဏလေးစောင့်ပေးပါနော်။'
+IMPORTANT:
+- If customer asks HOW to do something: Explain step-by-step clearly.
+- If message unclear: Ask short follow-up question.
+- If customer mentions: approve, express, or delivery: Then explain the next process clearly.
 
-STRICT RULES:
-- Never use markdown.
-- Never use HTML.
-- Never say:
-  - 'I am AI'
-  - 'As an AI'
-  - 'language model'
-  - 'bot'
-  - 'automated system'
-- Never roleplay sci-fi/hacker language.
-- Never say 'matrix', 'protocol', 'transmission', 'node', 'uplink' or similar terms.
-- Never overact emotionally.
-
-CURRENT SUPPORT STYLE:
-- {$style}
-- Intent detected: {$intent}
+STYLE:
+- Natural Burmese support chat
+- Friendly, Professional, and Helpful
+- Short but informative replies
+- Human-like typing style
 
 STORE CONTEXT:
 {$context}
 
-Your reply must feel exactly like a real human support chat reply.
+Reply in Burmese only.
 ";
 
     $payload = [
-        "contents" => [["parts" => [["text" => $system_prompt . "\n\nUser Message: " . $user_input]]]],
+        "contents" => [["parts" => [["text" => $system_prompt . "\n\nUser Question: " . $user_input]]]],
         "generationConfig" => [
-            "temperature" => 0.9,
+            "temperature" => 0.85,
             "topK" => 40,
             "topP" => 0.95,
-            "maxOutputTokens" => 200
+            "maxOutputTokens" => 400
         ]
     ];
 
