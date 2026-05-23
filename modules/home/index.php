@@ -151,11 +151,11 @@ if (is_logged_in()) {
 </style>
 
 <!-- SECTION 0: News Ticker -->
-<div class="w-full bg-slate-950 border-b border-[#00f0ff]/20 overflow-hidden py-2 mb-6 relative shadow-[0_4px_20px_rgba(0,240,255,0.05)]">
+<div class="w-full bg-slate-950 border-b border-blue-500/20 overflow-hidden py-2 mb-6 relative shadow-[0_4px_20px_rgba(0,0,0,0.2)]">
     <div class="absolute inset-y-0 left-0 w-16 bg-gradient-to-r from-slate-950 to-transparent z-10 pointer-events-none"></div>
     <div class="absolute inset-y-0 right-0 w-16 bg-gradient-to-l from-slate-950 to-transparent z-10 pointer-events-none"></div>
-    <div class="whitespace-nowrap animate-marquee text-[10px] sm:text-xs text-[#00f0ff] font-mono tracking-[0.2em] uppercase font-black">
-        🚀 [SYSTEM_LOG]: Matrix Synchronized • Real-time Deliveries Enabled • AI Co-Pilot 'Mr. Scotty' Online • 24/7 Human Verified Support Active 
+    <div class="whitespace-nowrap animate-marquee text-[10px] sm:text-xs text-blue-400 font-mono tracking-[0.1em] uppercase font-bold">
+        🚀 [STORE_LOG]: System Online • Instant Product Delivery Enabled • AI Assistant 'Mr. Scotty' Online • 24/7 Support Available 
     </div>
 </div>
 
@@ -166,14 +166,14 @@ if (is_logged_in()) {
         <div class="flex flex-col md:flex-row md:items-end justify-between gap-6">
             <div class="flex-1">
                 <div class="flex items-center gap-3 mb-2">
-                    <span class="text-[10px] font-black text-slate-500 uppercase tracking-[0.3em] bg-slate-900/50 px-2.5 py-1 rounded-md border border-slate-800">Mission Briefing</span>
+                    <span class="text-[10px] font-black text-slate-500 uppercase tracking-[0.2em] bg-slate-900/50 px-2.5 py-1 rounded-md border border-slate-800">Account Overview</span>
                     <div class="h-px bg-slate-800 flex-1 hidden md:block"></div>
                 </div>
                 <h2 class="text-3xl md:text-5xl font-black text-white tracking-tight leading-none">
                     Welcome back, <span class="text-transparent bg-clip-text bg-gradient-to-r from-blue-400 to-[#00f0ff]"><?php echo htmlspecialchars($first_name); ?></span>
                 </h2>
                 <p class="text-slate-400 text-sm mt-3 font-medium max-w-2xl leading-relaxed">
-                    Operative node active. Your secure terminal is ready for digital asset deployments and matrix management.
+                    Your secure dashboard is ready. Access your digital products and manage your orders below.
                 </p>
             </div>
 
@@ -181,17 +181,17 @@ if (is_logged_in()) {
             <!-- Personal Stats Bar -->
             <div class="flex items-center gap-4 bg-slate-900/50 backdrop-blur-xl border border-slate-700/50 p-2 rounded-2xl shadow-xl">
                 <div class="px-4 py-2 border-r border-slate-800">
-                    <p class="text-[9px] text-slate-500 font-black uppercase tracking-widest mb-0.5">Active Missions</p>
+                    <p class="text-[9px] text-slate-500 font-black uppercase tracking-widest mb-0.5">Pending Orders</p>
                     <p class="text-lg font-mono font-black text-yellow-500"><?php echo str_pad($user_stats['active_missions'], 2, '0', STR_PAD_LEFT); ?></p>
                 </div>
                 <div class="px-4 py-2">
-                    <p class="text-[9px] text-slate-500 font-black uppercase tracking-widest mb-0.5">Agent Clearance</p>
+                    <p class="text-[9px] text-slate-500 font-black uppercase tracking-widest mb-0.5">Your Discount</p>
                     <p class="text-lg font-mono font-black text-green-400"><?php echo $discount; ?><span class="text-xs">%</span></p>
                 </div>
             </div>
             <?php else: ?>
             <div class="flex items-center gap-2 text-xs font-mono text-green-400 bg-green-500/10 px-4 py-2 rounded-xl border border-green-500/20 shadow-[0_0_15px_rgba(34,197,94,0.1)]">
-                <span class="w-2 h-2 rounded-full bg-green-500 animate-pulse shadow-[0_0_8px_#22c55e]"></span> Matrix Stable • Online
+                <span class="w-2 h-2 rounded-full bg-green-500 animate-pulse shadow-[0_0_8px_#22c55e]"></span> Store Online
             </div>
             <?php endif; ?>
         </div>
@@ -199,35 +199,35 @@ if (is_logged_in()) {
 
     <!-- PROACTIVE PUSH SUBSCRIPTION BANNER -->
     <?php if(is_logged_in() && !$is_subscribed): ?>
-    <div class="mb-8 bg-red-900/20 border border-red-500/50 p-5 md:p-6 rounded-2xl shadow-[0_0_20px_rgba(239,68,68,0.2)] flex flex-col sm:flex-row items-center justify-between gap-4 relative overflow-hidden group">
-        <div class="absolute -right-10 -top-10 w-32 h-32 bg-red-500/10 rounded-full blur-3xl pointer-events-none group-hover:bg-red-500/20 transition-colors"></div>
+    <div class="mb-8 bg-red-900/10 border border-red-500/30 p-5 md:p-6 rounded-2xl shadow-[0_0_20px_rgba(0,0,0,0.2)] flex flex-col sm:flex-row items-center justify-between gap-4 relative overflow-hidden group">
+        <div class="absolute -right-10 -top-10 w-32 h-32 bg-red-500/5 rounded-full blur-3xl pointer-events-none group-hover:bg-red-500/10 transition-colors"></div>
         <div class="flex items-center gap-4 relative z-10 w-full sm:w-auto">
-            <div class="w-12 h-12 bg-red-500/20 rounded-full flex items-center justify-center text-red-500 border border-red-500/30 shrink-0 shadow-inner">
-                <i class="fas fa-satellite-dish text-xl animate-pulse"></i>
+            <div class="w-12 h-12 bg-red-500/10 rounded-full flex items-center justify-center text-red-500 border border-red-500/20 shrink-0 shadow-inner">
+                <i class="fas fa-bell text-xl animate-pulse"></i>
             </div>
             <div>
-                <h3 class="font-black text-white text-base md:text-lg tracking-tight">Comms Uplink Disconnected</h3>
-                <p class="text-xs text-slate-400 leading-snug">Your device is not receiving Matrix Push Alerts. Enable them to receive instant delivery notifications.</p>
+                <h3 class="font-black text-white text-base md:text-lg tracking-tight">Notifications Disabled</h3>
+                <p class="text-xs text-slate-400 leading-snug">Turn on push alerts to receive instant delivery updates for your orders.</p>
             </div>
         </div>
-        <button onclick="initializeManualUplink(this)" class="w-full sm:w-auto shrink-0 bg-red-600 hover:bg-red-500 text-white font-bold px-6 py-3 rounded-xl shadow-[0_0_15px_rgba(239,68,68,0.4)] transition transform active:scale-95 text-xs uppercase tracking-widest relative z-10 flex items-center justify-center gap-2">
-            <i class="fas fa-plug"></i> Establish Uplink
+        <button onclick="initializeManualUplink(this)" class="w-full sm:w-auto shrink-0 bg-red-600 hover:bg-red-500 text-white font-bold px-6 py-3 rounded-xl shadow-[0_0_15px_rgba(239,68,68,0.3)] transition transform active:scale-95 text-xs uppercase tracking-widest relative z-10 flex items-center justify-center gap-2">
+            <i class="fas fa-check-circle"></i> Enable Alerts
         </button>
     </div>
     <script>
         function initializeManualUplink(btn) {
-            btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Securing...';
+            btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Loading...';
             if (typeof window.registerServiceWorker === 'function') {
                 window.registerServiceWorker(true).then(() => {
-                    btn.closest('.bg-red-900\\/20').remove();
-                    alert("Uplink Established. You will now receive secure transmissions.");
+                    btn.closest('.rounded-2xl').remove();
+                    alert("Notifications Enabled! You will now receive order updates.");
                 }).catch(err => {
-                    btn.innerHTML = '<i class="fas fa-exclamation-triangle"></i> Failed';
-                    alert("Connection failed. Please click the padlock icon near your URL bar and allow Notifications, then try again.");
+                    btn.innerHTML = '<i class="fas fa-exclamation-triangle"></i> Error';
+                    alert("Failed to enable. Please allow notifications in your browser settings and try again.");
                 });
             } else {
-                alert("Matrix core script missing. Please refresh the page.");
-                btn.innerHTML = '<i class="fas fa-plug"></i> Establish Uplink';
+                alert("Site configuration missing. Please refresh.");
+                btn.innerHTML = '<i class="fas fa-bell"></i> Enable Alerts';
             }
         }
     </script>
@@ -235,7 +235,7 @@ if (is_logged_in()) {
 
     <!-- SECTION 1: Cinematic Poster Banner Slider -->
     <?php if(!empty($banners)): ?>
-    <div class="relative w-full aspect-[4/3] sm:aspect-video lg:max-h-[500px] mb-10 rounded-3xl overflow-hidden group shadow-[0_20px_50px_rgba(0,0,0,0.6)] bg-slate-900 border border-[#00f0ff]/30" id="heroSliderContainer">
+    <div class="relative w-full aspect-[4/3] sm:aspect-video lg:max-h-[500px] mb-10 rounded-3xl overflow-hidden group shadow-[0_20px_50px_rgba(0,0,0,0.6)] bg-slate-900 border border-slate-700/50" id="heroSliderContainer">
         
         <div class="flex overflow-x-auto snap-x-mandatory h-full no-scrollbar scroll-smooth" id="bannerSlider">
             <?php foreach($banners as $index => $b): ?>
@@ -243,16 +243,15 @@ if (is_logged_in()) {
                     <a href="<?php echo $b['target_url'] ?: '#'; ?>" target="<?php echo $b['target_url'] ? '_blank' : '_self'; ?>" class="block w-full h-full cursor-pointer overflow-hidden">
                         
                         <!-- Panning Image -->
-                        <img src="<?php echo BASE_URL . $b['image_path']; ?>" class="w-full h-full object-cover animate-pan-image opacity-90 mix-blend-lighten" loading="lazy" alt="<?php echo htmlspecialchars($b['title']); ?>">
+                        <img src="<?php echo BASE_URL . $b['image_path']; ?>" class="w-full h-full object-cover animate-pan-image opacity-90" loading="lazy" alt="<?php echo htmlspecialchars($b['title']); ?>">
                         
                         <!-- Cinematic Gradients -->
                         <div class="absolute inset-0 bg-gradient-to-t from-slate-950 via-slate-900/30 to-transparent opacity-90"></div>
-                        <div class="absolute inset-0 bg-blue-900/20 mix-blend-color-burn pointer-events-none"></div>
                         
                         <!-- Banner Text -->
                         <div class="absolute bottom-0 left-0 p-6 sm:p-12 w-full z-10">
-                            <span class="text-[10px] text-[#00f0ff] font-black uppercase tracking-[0.3em] mb-3 block drop-shadow-md bg-slate-900/50 backdrop-blur-md px-3 py-1 rounded w-fit border border-[#00f0ff]/30">Featured Node</span>
-                            <h3 class="text-white text-3xl sm:text-5xl md:text-6xl lg:text-7xl font-black drop-shadow-[0_0_20px_rgba(0,240,255,0.6)] mb-4 transform transition-transform duration-500 translate-y-0 group-hover:-translate-y-2 tracking-tighter leading-none max-w-4xl"><?php echo htmlspecialchars($b['title']); ?></h3>
+                            <span class="text-[10px] text-blue-400 font-black uppercase tracking-[0.2em] mb-3 block drop-shadow-md bg-slate-900/50 backdrop-blur-md px-3 py-1 rounded w-fit border border-blue-500/20">Featured Offer</span>
+                            <h3 class="text-white text-3xl sm:text-5xl md:text-6xl lg:text-7xl font-black drop-shadow-[0_0_20px_rgba(0,0,0,0.8)] mb-4 transform transition-transform duration-500 translate-y-0 group-hover:-translate-y-2 tracking-tighter leading-none max-w-4xl"><?php echo htmlspecialchars($b['title']); ?></h3>
                         </div>
                     </a>
                 </div>
@@ -260,109 +259,28 @@ if (is_logged_in()) {
         </div>
         
         <!-- Progress Bar Indicator -->
-        <div class="absolute bottom-0 left-0 w-full h-1.5 bg-slate-800/80 z-20">
-            <div id="slideProgress" class="h-full bg-gradient-to-r from-blue-600 via-[#00f0ff] to-white shadow-[0_0_15px_#00f0ff] w-0"></div>
+        <div class="absolute bottom-0 left-0 w-full h-1 bg-slate-800/80 z-20">
+            <div id="slideProgress" class="h-full bg-blue-500 shadow-[0_0_15px_#3b82f6] w-0"></div>
         </div>
 
         <!-- Navigation Dots -->
         <div class="absolute bottom-8 right-8 flex gap-3 z-20" id="sliderDots">
             <?php foreach($banners as $i => $b): ?>
-                <button class="w-3 h-3 rounded-full transition-all duration-300 slider-dot <?php echo $i === 0 ? 'bg-[#00f0ff] shadow-[0_0_15px_rgba(0,240,255,1)] w-10' : 'bg-white/40 hover:bg-white/80'; ?>" data-target="<?php echo $i; ?>"></button>
+                <button class="w-2.5 h-2.5 rounded-full transition-all duration-300 slider-dot <?php echo $i === 0 ? 'bg-white w-8' : 'bg-white/30 hover:bg-white/60'; ?>" data-target="<?php echo $i; ?>"></button>
             <?php endforeach; ?>
         </div>
-        
-        <!-- Arrow Controls -->
-        <button id="prevSlide" class="absolute left-6 top-1/2 -translate-y-1/2 w-14 h-14 rounded-2xl bg-slate-900/60 backdrop-blur-xl border border-white/10 text-white flex items-center justify-center opacity-0 group-hover:opacity-100 transition-all duration-300 hover:bg-[#00f0ff] hover:text-slate-900 hover:scale-110 shadow-[0_0_30px_rgba(0,0,0,0.5)]"><i class="fas fa-chevron-left text-xl"></i></button>
-        <button id="nextSlide" class="absolute right-6 top-1/2 -translate-y-1/2 w-14 h-14 rounded-2xl bg-slate-900/60 backdrop-blur-xl border border-white/10 text-white flex items-center justify-center opacity-0 group-hover:opacity-100 transition-all duration-300 hover:bg-[#00f0ff] hover:text-slate-900 hover:scale-110 shadow-[0_0_30px_rgba(0,0,0,0.5)]"><i class="fas fa-chevron-right text-xl"></i></button>
     </div>
     <?php endif; ?>
-
-    <!-- SECTION 1.5: Matrix Telemetry & Live Comms (Humanized) -->
-    <div class="grid grid-cols-1 lg:grid-cols-3 gap-8 mb-16 relative z-10">
-        
-        <!-- Live Matrix Feed (Social Proof) -->
-        <div class="lg:col-span-2 bg-slate-900/60 backdrop-blur-xl border border-slate-700/50 rounded-3xl p-6 md:p-8 shadow-2xl relative overflow-hidden group">
-            <div class="absolute -right-20 -top-20 w-64 h-64 bg-[#00f0ff]/5 rounded-full blur-3xl pointer-events-none group-hover:bg-[#00f0ff]/10 transition-colors"></div>
-            
-            <div class="flex items-center justify-between mb-6">
-                <h3 class="text-lg font-black text-white flex items-center gap-3 uppercase tracking-wider relative z-10">
-                    <i class="fas fa-satellite-dish text-[#00f0ff] animate-pulse"></i> Live Matrix Feed
-                </h3>
-                <span class="text-[10px] text-green-400 font-mono font-bold bg-green-500/10 px-3 py-1 rounded-full border border-green-500/20">REAL-TIME</span>
-            </div>
-
-            <div class="space-y-4 relative z-10 no-scrollbar overflow-y-auto max-h-[300px]">
-                <?php foreach($recent_activity as $act): 
-                    $u_safe = substr($act['username'], 0, 1) . '***' . substr($act['username'], -1);
-                ?>
-                <div class="flex items-center justify-between gap-4 p-4 bg-slate-800/40 rounded-2xl border border-slate-700/50 hover:border-[#00f0ff]/30 transition-all duration-300">
-                    <div class="flex items-center gap-4">
-                        <div class="w-10 h-10 rounded-full bg-slate-900 flex items-center justify-center border border-slate-700 text-[#00f0ff]">
-                            <i class="fas fa-user-shield text-sm"></i>
-                        </div>
-                        <div>
-                            <p class="text-xs font-bold text-slate-200">Operative <span class="text-[#00f0ff]">@<?php echo $u_safe; ?></span></p>
-                            <p class="text-[10px] text-slate-500 mt-0.5">Successfully secured <b><?php echo htmlspecialchars($act['item_name']); ?></b></p>
-                        </div>
-                    </div>
-                    <div class="text-right">
-                        <span class="text-[9px] text-slate-600 font-mono"><?php echo date('H:i', strtotime($act['created_at'])); ?></span>
-                        <div class="flex text-[8px] text-green-500 mt-1"><i class="fas fa-check-circle"></i></div>
-                    </div>
-                </div>
-                <?php endforeach; ?>
-            </div>
-        </div>
-
-        <!-- Human Command Center (Trust) -->
-        <div class="lg:col-span-1 bg-slate-900/60 backdrop-blur-xl border border-slate-700/50 rounded-3xl p-6 md:p-8 shadow-2xl relative overflow-hidden group">
-            <div class="absolute -left-20 -bottom-20 w-64 h-64 bg-blue-600/5 rounded-full blur-3xl pointer-events-none group-hover:bg-blue-600/10 transition-colors"></div>
-            
-            <h3 class="text-lg font-black text-white flex items-center gap-3 mb-8 uppercase tracking-wider relative z-10">
-                <i class="fas fa-headset text-blue-500"></i> Support Command
-            </h3>
-
-            <div class="space-y-6 relative z-10">
-                <?php foreach($staff_nodes as $staff): 
-                    $is_active = (strtotime($staff['last_login']) > strtotime('-24 hours'));
-                ?>
-                <div class="flex items-center gap-4 group/staff">
-                    <div class="relative">
-                        <div class="w-12 h-12 rounded-2xl bg-slate-800 border <?php echo $is_active ? 'border-green-500/50' : 'border-slate-700'; ?> flex items-center justify-center text-[#00f0ff] shadow-inner transform group-hover/staff:rotate-12 transition-transform">
-                            <?php echo strtoupper(substr($staff['username'], 0, 2)); ?>
-                        </div>
-                        <?php if($is_active): ?>
-                        <div class="absolute -bottom-1 -right-1 w-3.5 h-3.5 bg-green-500 border-2 border-slate-900 rounded-full animate-pulse shadow-[0_0_8px_#22c55e]"></div>
-                        <?php endif; ?>
-                    </div>
-                    <div class="flex-1 min-w-0">
-                        <div class="flex items-center justify-between">
-                            <h4 class="text-sm font-bold text-white truncate"><?php echo htmlspecialchars($staff['username']); ?></h4>
-                            <span class="text-[8px] font-black uppercase tracking-widest px-2 py-0.5 rounded-md bg-slate-800 border border-slate-700 text-slate-400">
-                                <?php echo $staff['role'] === 'super_admin' ? 'SYSTEM CMD' : 'SUPPORT'; ?>
-                            </span>
-                        </div>
-                        <p class="text-[10px] text-slate-500 mt-1"><?php echo $is_active ? 'Currently monitoring transmissions' : 'Last sync: ' . date('M d', strtotime($staff['last_login'])); ?></p>
-                    </div>
-                </div>
-                <?php endforeach; ?>
-                
-                <a href="index.php?module=info&page=support" class="block w-full py-4 mt-4 bg-[#00f0ff]/5 hover:bg-[#00f0ff] border border-[#00f0ff]/20 text-[#00f0ff] hover:text-slate-900 text-center rounded-2xl text-[10px] font-black uppercase tracking-[0.2em] transition-all">
-                    Initiate Contact <i class="fas fa-comment-alt ml-2"></i>
-                </a>
-            </div>
-        </div>
-    </div>
 
     <!-- SECTION 2: Interactive Category Slider -->
     <div class="mb-16 relative">
         <div class="flex items-end justify-between mb-6">
             <h2 class="text-2xl md:text-3xl font-black text-white tracking-tight flex items-center gap-3">
-                <i class="fas fa-network-wired text-[#00f0ff]"></i> Sector Directory
+                <i class="fas fa-th-large text-blue-500"></i> Categories
             </h2>
             <div class="hidden sm:flex gap-2">
-                <button id="catPrev" class="w-10 h-10 rounded-xl bg-slate-800 hover:bg-[#00f0ff] text-slate-400 hover:text-slate-900 transition flex items-center justify-center shadow-lg"><i class="fas fa-angle-left"></i></button>
-                <button id="catNext" class="w-10 h-10 rounded-xl bg-slate-800 hover:bg-[#00f0ff] text-slate-400 hover:text-slate-900 transition flex items-center justify-center shadow-lg"><i class="fas fa-angle-right"></i></button>
+                <button id="catPrev" class="w-10 h-10 rounded-xl bg-slate-800 hover:bg-blue-600 text-slate-400 hover:text-white transition flex items-center justify-center shadow-lg"><i class="fas fa-angle-left"></i></button>
+                <button id="catNext" class="w-10 h-10 rounded-xl bg-slate-800 hover:bg-blue-600 text-slate-400 hover:text-white transition flex items-center justify-center shadow-lg"><i class="fas fa-angle-right"></i></button>
             </div>
         </div>
 
@@ -370,46 +288,43 @@ if (is_logged_in()) {
         <div class="relative group">
             <div id="categorySlider" class="flex overflow-x-auto snap-x-mandatory gap-4 sm:gap-6 pb-6 pt-2 px-2 -mx-2 no-scrollbar scroll-smooth">
                 <?php foreach($categories as $cat): ?>
-                    <a href="index.php?module=shop&page=category&id=<?php echo $cat['id']; ?>" class="snap-start shrink-0 w-[140px] sm:w-[180px] lg:w-[240px] glass-card rounded-3xl overflow-hidden group/cat relative flex flex-col justify-end aspect-[4/5] border border-slate-700/50 hover:border-[#00f0ff]/50">
+                    <a href="index.php?module=shop&page=category&id=<?php echo $cat['id']; ?>" class="snap-start shrink-0 w-[140px] sm:w-[180px] lg:w-[240px] glass-card rounded-3xl overflow-hidden group/cat relative flex flex-col justify-end aspect-[4/5] border border-slate-700/50 hover:border-blue-500/50">
                         
                         <!-- Dynamic Background -->
                         <?php if(!empty($cat['image_url'])): ?>
-                            <img src="<?php echo BASE_URL . $cat['image_url']; ?>" alt="<?php echo htmlspecialchars($cat['name']); ?>" class="absolute inset-0 w-full h-full object-cover opacity-60 group-hover/cat:opacity-100 transition-all duration-700 group-hover/cat:scale-110">
+                            <img src="<?php echo BASE_URL . $cat['image_url']; ?>" alt="<?php echo htmlspecialchars($cat['name']); ?>" class="absolute inset-0 w-full h-full object-cover opacity-70 group-hover/cat:opacity-100 transition-all duration-700 group-hover/cat:scale-110">
                         <?php else: ?>
-                            <div class="absolute inset-0 bg-slate-800 flex items-center justify-center group-hover/cat:scale-110 transition duration-700 bg-[url('data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMjAiIGhlaWdodD0iMjAiIHhtbG5zPSJodHRwOi8vd3d3LnczLm9yZy8yMDAwL3N2ZyI+PGNpcmNsZSBjeD0iMiIgY3k9IjIiIHI9IjEiIGZpbGw9InJnYmEoMCwgMjQwLCAyNTUsIDAuMikiLz48L3N2Zz4=')] opacity-50"></div>
+                            <div class="absolute inset-0 bg-slate-800 flex items-center justify-center group-hover/cat:scale-110 transition duration-700"></div>
                         <?php endif; ?>
 
                         <!-- Overlays -->
-                        <div class="absolute inset-0 bg-gradient-to-t from-slate-950 via-slate-900/60 to-transparent opacity-90 group-hover/cat:opacity-70 transition-opacity"></div>
-                        
-                        <!-- Hover Glow -->
-                        <div class="absolute -bottom-10 left-1/2 -translate-x-1/2 w-32 h-32 bg-[#00f0ff]/40 rounded-full blur-3xl opacity-0 group-hover/cat:opacity-100 transition-opacity duration-500 pointer-events-none"></div>
+                        <div class="absolute inset-0 bg-gradient-to-t from-slate-950 via-slate-950/40 to-transparent opacity-90 transition-opacity group-hover/cat:opacity-80"></div>
 
                         <!-- Content -->
                         <div class="relative z-10 p-5 md:p-6 text-center w-full transform transition-transform duration-300 group-hover/cat:-translate-y-2">
                             <span class="inline-block px-2.5 py-1 bg-slate-900/80 border border-slate-700 rounded text-[9px] font-black text-slate-400 uppercase tracking-widest mb-3 backdrop-blur-md shadow-lg">
                                 <?php echo htmlspecialchars($cat['type']); ?>
                             </span>
-                            <h3 class="text-base sm:text-lg font-black text-white uppercase tracking-wider drop-shadow-lg leading-tight"><?php echo htmlspecialchars($cat['name']); ?></h3>
+                            <h3 class="text-base sm:text-lg font-black text-white uppercase tracking-wide drop-shadow-lg leading-tight"><?php echo htmlspecialchars($cat['name']); ?></h3>
                             <div class="h-0 overflow-hidden group-hover/cat:h-auto group-hover/cat:mt-3 transition-all duration-300">
-                                <p class="text-[10px] text-slate-300 line-clamp-2 leading-relaxed font-bold uppercase tracking-widest">Enter Sector &rarr;</p>
+                                <p class="text-[10px] text-slate-300 line-clamp-2 leading-relaxed font-bold uppercase tracking-widest">View Products &rarr;</p>
                             </div>
                         </div>
                     </a>
                 <?php endforeach; ?>
             </div>
-            <div class="absolute -bottom-2 left-0 w-full h-1.5 bg-slate-800/50 rounded-full overflow-hidden backdrop-blur">
-                <div id="catScrollProgress" class="h-full bg-gradient-to-r from-blue-600 to-[#00f0ff] rounded-full w-0 transition-all duration-150 shadow-[0_0_10px_#00f0ff]"></div>
+            <div class="absolute -bottom-2 left-0 w-full h-1 bg-slate-800/50 rounded-full overflow-hidden backdrop-blur">
+                <div id="catScrollProgress" class="h-full bg-blue-500 rounded-full w-0 transition-all duration-150"></div>
             </div>
         </div>
     </div>
 
-    <!-- NEW SECTION: Human Staff Picks (Asymmetric) -->
+    <!-- SECTION: Staff Picks -->
     <div class="mb-16">
         <div class="flex items-center gap-4 mb-8">
-            <h2 class="text-2xl md:text-3xl font-black text-white tracking-tight">Staff Curation</h2>
+            <h2 class="text-2xl md:text-3xl font-black text-white tracking-tight">Staff Picks</h2>
             <div class="h-px bg-slate-800 flex-1"></div>
-            <span class="text-[10px] font-bold text-[#00f0ff] uppercase tracking-widest border border-[#00f0ff]/30 px-3 py-1 rounded-full">Human Choice</span>
+            <span class="text-[10px] font-bold text-blue-400 uppercase tracking-widest border border-blue-500/30 px-3 py-1 rounded-full">Recommended</span>
         </div>
         
         <div class="flex flex-col lg:flex-row gap-8">
@@ -424,13 +339,13 @@ if (is_logged_in()) {
                     
                     <div class="absolute inset-0 p-8 md:p-12 flex flex-col justify-center max-w-lg">
                         <div class="flex items-center gap-2 mb-4">
-                            <span class="w-8 h-8 rounded-full bg-[#00f0ff] flex items-center justify-center text-slate-900"><i class="fas fa-crown text-xs"></i></span>
-                            <span class="text-xs font-black text-[#00f0ff] uppercase tracking-widest">Editor's Choice</span>
+                            <span class="w-8 h-8 rounded-full bg-blue-500 flex items-center justify-center text-white"><i class="fas fa-check text-xs"></i></span>
+                            <span class="text-xs font-black text-blue-400 uppercase tracking-widest">Editor's Choice</span>
                         </div>
                         <h3 class="text-3xl md:text-5xl font-black text-white mb-4 tracking-tight leading-none"><?php echo htmlspecialchars($f['name']); ?></h3>
-                        <p class="text-slate-400 text-sm md:text-base mb-8 line-clamp-2">"This node offers the highest stability and immediate deployment. Highly recommended for elite operatives."</p>
-                        <a href="index.php?module=shop&page=product&id=<?php echo $f['id']; ?>" class="w-fit px-8 py-4 bg-[#00f0ff] hover:bg-white text-slate-950 font-black rounded-2xl transition-all uppercase tracking-widest text-xs shadow-[0_0_30px_rgba(0,240,255,0.4)] hover:shadow-white/20">
-                            Secure Now <i class="fas fa-arrow-right ml-2"></i>
+                        <p class="text-slate-400 text-sm md:text-base mb-8 line-clamp-2">"One of our most reliable products. Instant delivery and full warranty guaranteed."</p>
+                        <a href="index.php?module=shop&page=product&id=<?php echo $f['id']; ?>" class="w-fit px-8 py-4 bg-blue-600 hover:bg-blue-500 text-white font-black rounded-2xl transition-all uppercase tracking-widest text-xs shadow-lg shadow-blue-600/20">
+                            Buy Now <i class="fas fa-arrow-right ml-2"></i>
                         </a>
                     </div>
                 </div>
@@ -442,15 +357,14 @@ if (is_logged_in()) {
                 <?php for($i=1; $i<min(3, count($best_sellers)); $i++): 
                     $p = $best_sellers[$i];
                 ?>
-                <a href="index.php?module=shop&page=product&id=<?php echo $p['id']; ?>" class="flex-1 bg-slate-900/80 backdrop-blur-xl border border-slate-700/50 rounded-3xl p-6 group hover:border-[#00f0ff]/50 transition-all relative overflow-hidden">
-                    <div class="absolute top-0 right-0 w-24 h-24 bg-[#00f0ff]/5 rounded-full blur-2xl pointer-events-none group-hover:bg-[#00f0ff]/10"></div>
+                <a href="index.php?module=shop&page=product&id=<?php echo $p['id']; ?>" class="flex-1 bg-slate-900/80 backdrop-blur-xl border border-slate-700/50 rounded-3xl p-6 group hover:border-blue-500/50 transition-all relative overflow-hidden">
                     <div class="flex items-center gap-4">
                         <div class="w-16 h-16 rounded-2xl bg-slate-800 border border-slate-700 overflow-hidden shrink-0">
                             <img src="<?php echo BASE_URL . ($p['image_path'] ?: $p['cat_image']); ?>" class="w-full h-full object-cover grayscale group-hover:grayscale-0 transition-all duration-500">
                         </div>
                         <div>
-                            <h4 class="text-sm font-bold text-white mb-1 group-hover:text-[#00f0ff] transition-colors"><?php echo htmlspecialchars($p['name']); ?></h4>
-                            <p class="text-[10px] text-slate-500 font-medium">Verified by Node Admin</p>
+                            <h4 class="text-sm font-bold text-white mb-1 group-hover:text-blue-400 transition-colors"><?php echo htmlspecialchars($p['name']); ?></h4>
+                            <p class="text-[10px] text-slate-500 font-medium">Verified Product</p>
                         </div>
                     </div>
                 </a>
@@ -459,20 +373,19 @@ if (is_logged_in()) {
         </div>
     </div>
 
-    <!-- SECTION 3: Hot Deals (Flash Sales) -->
+    <!-- SECTION 3: Flash Sales -->
     <?php if(!empty($flash_sales)): ?>
     <div class="mb-16">
         <div class="flex flex-col sm:flex-row sm:items-center justify-between mb-6 gap-3">
             <div class="flex items-center gap-3">
                 <span class="relative flex h-5 w-5">
                   <span class="animate-ping absolute inline-flex h-full w-full rounded-full bg-red-400 opacity-75"></span>
-                  <span class="relative inline-flex rounded-full h-5 w-5 bg-red-500 shadow-[0_0_15px_rgba(239,68,68,0.8)]"></span>
+                  <span class="relative inline-flex rounded-full h-5 w-5 bg-red-500"></span>
                 </span>
                 <h2 class="text-2xl md:text-3xl font-black text-white tracking-tight">Flash Sales</h2>
             </div>
-            <!-- Dynamic Countdown visual -->
-            <div class="text-[10px] md:text-xs font-mono text-red-400 font-bold bg-red-900/20 px-4 py-2 rounded-xl border border-red-900/50 uppercase tracking-widest w-fit flex items-center gap-2 shadow-inner">
-                <i class="fas fa-stopwatch animate-pulse"></i> Deals Expiring Soon
+            <div class="text-[10px] md:text-xs font-mono text-red-400 font-bold bg-red-900/10 px-4 py-2 rounded-xl border border-red-900/30 uppercase tracking-widest w-fit flex items-center gap-2">
+                <i class="fas fa-stopwatch"></i> Limited Time Offers
             </div>
         </div>
         <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
@@ -483,192 +396,84 @@ if (is_logged_in()) {
     </div>
     <?php endif; ?>
 
-    <!-- SECTION 4: Feature Strip (Circuit Node Style) -->
-    <div class="mb-16 relative mt-10">
-        <!-- Connecting Circuit Line Background -->
-        <div class="absolute top-1/2 left-10 right-10 h-[2px] bg-slate-800 -translate-y-1/2 hidden md:block overflow-hidden rounded-full z-0">
-            <div class="h-full w-1/3 bg-gradient-to-r from-transparent via-[#00f0ff] to-transparent animate-[marquee_3s_linear_infinite]"></div>
-        </div>
-
-        <div class="grid grid-cols-1 md:grid-cols-3 gap-6 md:gap-8 relative z-10">
-            <!-- 1. Instant Delivery (Focus Node) -->
-            <div class="bg-slate-900/90 backdrop-blur-xl border border-green-500/40 p-6 md:p-8 rounded-3xl flex flex-col items-center text-center gap-4 relative overflow-hidden group shadow-[0_10px_30px_rgba(34,197,94,0.15)] hover:shadow-[0_15px_40px_rgba(34,197,94,0.3)] hover:border-green-400 transition-all duration-500 transform hover:-translate-y-1.5">
-                <!-- Inner Dotted Grid on Hover -->
-                <div class="absolute inset-0 bg-[url('data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMjAiIGhlaWdodD0iMjAiIHhtbG5zPSJodHRwOi8vd3d3LnczLm9yZy8yMDAwL3N2ZyI+PGNpcmNsZSBjeD0iMiIgY3k9IjIiIHI9IjEiIGZpbGw9InJnYmEoMzQsIDE5NywgOTQsIDAuMikiLz48L3N2Zz4=')] opacity-0 group-hover:opacity-100 transition-opacity duration-500 z-0"></div>
-                <div class="absolute -top-10 -right-10 w-32 h-32 bg-green-500/20 rounded-full blur-3xl group-hover:bg-green-500/40 transition-colors duration-500 z-0"></div>
-                
-                <div class="w-20 h-20 rounded-2xl bg-slate-950 flex items-center justify-center text-green-400 text-4xl border border-green-500/50 shadow-[inset_0_0_20px_rgba(34,197,94,0.2),0_0_25px_rgba(34,197,94,0.3)] group-hover:scale-110 transition-transform duration-500 relative z-10">
-                    <i class="fas fa-bolt drop-shadow-[0_0_15px_rgba(34,197,94,0.8)] animate-pulse"></i>
+    <!-- SECTION 4: Features -->
+    <div class="mb-16 mt-10">
+        <div class="grid grid-cols-1 md:grid-cols-3 gap-6 md:gap-8">
+            <div class="bg-slate-900/60 backdrop-blur-xl border border-slate-700/50 p-6 md:p-8 rounded-3xl flex flex-col items-center text-center gap-4 hover:border-green-500/50 transition-all duration-500">
+                <div class="w-16 h-16 rounded-2xl bg-green-500/10 flex items-center justify-center text-green-500 text-3xl border border-green-500/20">
+                    <i class="fas fa-bolt"></i>
                 </div>
-                
-                <div class="relative z-10 w-full">
-                    <div class="text-sm font-black text-white tracking-widest uppercase mb-2 group-hover:text-green-400 transition-colors">Instant Delivery</div>
-                    <div class="text-[10px] md:text-xs text-slate-400 font-medium leading-relaxed bg-slate-950/60 px-4 py-2.5 rounded-xl border border-slate-800 shadow-inner">24/7 Automated Matrix Dispenser.<br>Zero Latency.</div>
-                </div>
+                <div class="text-sm font-black text-white tracking-widest uppercase">Instant Delivery</div>
+                <div class="text-[10px] md:text-xs text-slate-400 font-medium leading-relaxed">Your digital products are delivered automatically right after payment.</div>
             </div>
 
-            <!-- 2. Official Warranty -->
-            <div class="bg-slate-900/90 backdrop-blur-xl border border-[#00f0ff]/30 p-6 md:p-8 rounded-3xl flex flex-col items-center text-center gap-4 relative overflow-hidden group shadow-[0_10px_30px_rgba(0,240,255,0.1)] hover:shadow-[0_15px_40px_rgba(0,240,255,0.2)] hover:border-[#00f0ff] transition-all duration-500 transform hover:-translate-y-1.5">
-                <!-- Inner Dotted Grid on Hover -->
-                <div class="absolute inset-0 bg-[url('data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMjAiIGhlaWdodD0iMjAiIHhtbG5zPSJodHRwOi8vd3d3LnczLm9yZy8yMDAwL3N2ZyI+PGNpcmNsZSBjeD0iMiIgY3k9IjIiIHI9IjEiIGZpbGw9InJnYmEoMCwgMjQwLCAyNTUsIDAuMikiLz48L3N2Zz4=')] opacity-0 group-hover:opacity-100 transition-opacity duration-500 z-0"></div>
-                <div class="absolute -top-10 -right-10 w-32 h-32 bg-[#00f0ff]/20 rounded-full blur-3xl group-hover:bg-[#00f0ff]/30 transition-colors duration-500 z-0"></div>
-                
-                <div class="w-20 h-20 rounded-2xl bg-slate-950 flex items-center justify-center text-[#00f0ff] text-4xl border border-[#00f0ff]/40 shadow-[inset_0_0_15px_rgba(0,240,255,0.2),0_0_20px_rgba(0,240,255,0.2)] group-hover:scale-110 transition-transform duration-500 relative z-10">
-                    <i class="fas fa-check-circle drop-shadow-[0_0_15px_rgba(0,240,255,0.8)]"></i>
+            <div class="bg-slate-900/60 backdrop-blur-xl border border-slate-700/50 p-6 md:p-8 rounded-3xl flex flex-col items-center text-center gap-4 hover:border-blue-500/50 transition-all duration-500">
+                <div class="w-16 h-16 rounded-2xl bg-blue-500/10 flex items-center justify-center text-blue-500 text-3xl border border-blue-500/20">
+                    <i class="fas fa-check-circle"></i>
                 </div>
-                
-                <div class="relative z-10 w-full">
-                    <div class="text-sm font-black text-white tracking-widest uppercase mb-2 group-hover:text-[#00f0ff] transition-colors">Official Warranty</div>
-                    <div class="text-[10px] md:text-xs text-slate-400 font-medium leading-relaxed bg-slate-950/60 px-4 py-2.5 rounded-xl border border-slate-800 shadow-inner">Secure Encrypted Protocol.<br>100% Guaranteed.</div>
-                </div>
+                <div class="text-sm font-black text-white tracking-widest uppercase">100% Warranty</div>
+                <div class="text-[10px] md:text-xs text-slate-400 font-medium leading-relaxed">We provide a full warranty for all purchases for your peace of mind.</div>
             </div>
 
-            <!-- 3. Local Payment -->
-            <div class="bg-slate-900/90 backdrop-blur-xl border border-yellow-500/30 p-6 md:p-8 rounded-3xl flex flex-col items-center text-center gap-4 relative overflow-hidden group shadow-[0_10px_30px_rgba(234,179,8,0.1)] hover:shadow-[0_15px_40px_rgba(234,179,8,0.2)] hover:border-yellow-400 transition-all duration-500 transform hover:-translate-y-1.5">
-                <!-- Inner Dotted Grid on Hover -->
-                <div class="absolute inset-0 bg-[url('data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMjAiIGhlaWdodD0iMjAiIHhtbG5zPSJodHRwOi8vd3d3LnczLm9yZy8yMDAwL3N2ZyI+PGNpcmNsZSBjeD0iMiIgY3k9IjIiIHI9IjEiIGZpbGw9InJnYmEoMjM0LCAxNzksIDgsIDAuMikiLz48L3N2Zz4=')] opacity-0 group-hover:opacity-100 transition-opacity duration-500 z-0"></div>
-                <div class="absolute -top-10 -right-10 w-32 h-32 bg-yellow-500/20 rounded-full blur-3xl group-hover:bg-yellow-500/30 transition-colors duration-500 z-0"></div>
-                
-                <div class="w-20 h-20 rounded-2xl bg-slate-950 flex items-center justify-center text-yellow-400 text-4xl border border-yellow-500/40 shadow-[inset_0_0_15px_rgba(234,179,8,0.2),0_0_20px_rgba(234,179,8,0.2)] group-hover:scale-110 transition-transform duration-500 relative z-10">
-                    <i class="fas fa-wallet drop-shadow-[0_0_15px_rgba(234,179,8,0.8)]"></i>
+            <div class="bg-slate-900/60 backdrop-blur-xl border border-slate-700/50 p-6 md:p-8 rounded-3xl flex flex-col items-center text-center gap-4 hover:border-yellow-500/50 transition-all duration-500">
+                <div class="w-16 h-16 rounded-2xl bg-yellow-500/10 flex items-center justify-center text-yellow-500 text-3xl border border-yellow-500/20">
+                    <i class="fas fa-wallet"></i>
                 </div>
-                
-                <div class="relative z-10 w-full">
-                    <div class="text-sm font-black text-white tracking-widest uppercase mb-2 group-hover:text-yellow-400 transition-colors">Local Payment</div>
-                    <div class="text-[10px] md:text-xs text-slate-400 font-medium leading-relaxed bg-slate-950/60 px-4 py-2.5 rounded-xl border border-slate-800 shadow-inner">KPay & Wave Pay Ecosystems<br>Fully Linked.</div>
-                </div>
+                <div class="text-sm font-black text-white tracking-widest uppercase">Easy Payments</div>
+                <div class="text-[10px] md:text-xs text-slate-400 font-medium leading-relaxed">We accept KBZPay and WavePay for easy and fast transactions.</div>
             </div>
         </div>
     </div>
 
-    <!-- SECTION 5: Main Hub (Sidebar + Grid) -->
-    <div class="grid grid-cols-1 xl:grid-cols-4 gap-8 mb-16">
+    <!-- SECTION 5: Main Product Grid -->
+    <div class="mb-16">
+        <div class="flex flex-col sm:flex-row justify-between items-start sm:items-end mb-8 gap-3">
+            <div>
+                <h2 class="text-3xl md:text-4xl font-black text-white mb-2 tracking-tight">Recent Arrivals</h2>
+                <p class="text-slate-400 text-sm font-medium">Check out our latest digital products</p>
+            </div>
+            <a href="index.php?module=shop&page=search" class="text-blue-400 hover:text-white text-sm font-black flex items-center gap-2 transition-all uppercase tracking-widest bg-blue-500/10 hover:bg-blue-600 px-5 py-3 rounded-xl border border-blue-500/20">
+                View All Products <i class="fas fa-arrow-right"></i>
+            </a>
+        </div>
         
-        <!-- LEFT SIDEBAR: Trending & Reviews -->
-        <div class="xl:col-span-1 space-y-8">
-            
-            <!-- Trending -->
-            <div class="glass border border-slate-700/50 rounded-3xl p-6 md:p-8 shadow-2xl relative overflow-hidden">
-                <div class="absolute top-0 right-0 w-40 h-40 bg-orange-500/10 rounded-full blur-3xl pointer-events-none"></div>
-                <h3 class="text-xl font-black text-white flex items-center gap-3 mb-8 uppercase tracking-wider relative z-10">
-                    <i class="fas fa-fire text-orange-500 animate-pulse text-2xl"></i> Trending
-                </h3>
-                <div class="space-y-6 relative z-10">
-                    <?php foreach($best_sellers as $product): ?>
-                        <?php 
-                            $b_base = $product['sale_price'] ?: $product['price'];
-                            $b_final = $b_base * ((100 - $discount) / 100);
-                        ?>
-                        <a href="index.php?module=shop&page=product&id=<?php echo $product['id']; ?>" class="flex items-center gap-4 group">
-                            <div class="w-16 h-16 rounded-2xl bg-slate-900 flex items-center justify-center text-[#00f0ff] border border-slate-700 shrink-0 group-hover:border-[#00f0ff]/50 transition-colors overflow-hidden shadow-inner relative">
-                                <?php if(!empty($product['image_path'])): ?>
-                                    <img src="<?php echo BASE_URL . $product['image_path']; ?>" class="w-full h-full object-cover">
-                                <?php elseif(!empty($product['cat_image'])): ?>
-                                    <img src="<?php echo BASE_URL . $product['cat_image']; ?>" class="w-full h-full object-cover">
-                                <?php else: ?>
-                                    <i class="fas fa-box text-2xl opacity-50"></i>
-                                <?php endif; ?>
-                            </div>
-                            
-                            <div class="min-w-0 flex-1">
-                                <h4 class="text-sm font-bold text-slate-200 truncate group-hover:text-[#00f0ff] transition-colors"><?php echo htmlspecialchars($product['name']); ?></h4>
-                                <div class="flex items-center gap-2 text-[10px] mt-1.5">
-                                    <span class="text-green-400 font-mono font-bold bg-green-900/20 px-2 py-0.5 rounded border border-green-500/20"><?php echo format_price($b_final); ?></span>
-                                </div>
-                            </div>
-                        </a>
-                    <?php endforeach; ?>
-                </div>
-            </div>
-            
-            <!-- Network Comms (Reviews) -->
-            <?php if(!empty($recent_reviews)): ?>
-            <div class="glass border border-slate-700/50 rounded-3xl p-6 md:p-8 shadow-2xl relative overflow-hidden">
-                <div class="absolute bottom-0 right-0 w-40 h-40 bg-[#00f0ff]/5 rounded-full blur-3xl pointer-events-none"></div>
-                <h3 class="text-xl font-black text-white mb-6 flex items-center gap-3 uppercase tracking-wider relative z-10">
-                    <i class="fas fa-satellite-dish text-[#00f0ff]"></i> Live Comms
-                </h3>
-                <div class="space-y-4 relative z-10">
-                    <?php foreach($recent_reviews as $r): ?>
-                        <a href="index.php?module=shop&page=product&id=<?php echo $r['pid']; ?>" class="block p-5 rounded-2xl bg-slate-900/50 border border-slate-700/50 hover:border-[#00f0ff]/30 transition group shadow-inner">
-                            <div class="flex items-center gap-3 mb-3">
-                                <?php if(!empty($r['p_image'])): ?>
-                                    <img src="<?php echo BASE_URL . $r['p_image']; ?>" class="w-8 h-8 rounded-lg object-cover border border-slate-600 shrink-0">
-                                <?php else: ?>
-                                    <div class="w-8 h-8 rounded-lg bg-slate-800 flex items-center justify-center text-slate-500 text-xs shrink-0"><i class="fas fa-box"></i></div>
-                                <?php endif; ?>
-                                <div class="min-w-0">
-                                    <p class="text-[10px] font-bold text-slate-300 group-hover:text-white transition truncate">@<?php echo htmlspecialchars($r['username']); ?></p>
-                                    <div class="flex text-[8px] text-yellow-500 mt-0.5">
-                                        <?php for($i=0; $i<$r['rating']; $i++) echo '<i class="fas fa-star"></i>'; ?>
-                                    </div>
-                                </div>
-                            </div>
-                            <p class="text-xs text-slate-400 italic line-clamp-3 leading-relaxed font-medium">"<?php echo htmlspecialchars($r['comment']); ?>"</p>
-                        </a>
-                    <?php endforeach; ?>
-                </div>
-            </div>
-            <?php endif; ?>
-
-        </div>
-
-        <!-- RIGHT MAIN GRID: New Arrivals -->
-        <div class="xl:col-span-3">
-            <div class="flex flex-col sm:flex-row justify-between items-start sm:items-end mb-6 gap-3">
-                <div>
-                    <h2 class="text-3xl md:text-4xl font-black text-white mb-2 tracking-tight">New Deployments</h2>
-                    <p class="text-slate-400 text-sm font-medium">Fresh data injected into the matrix</p>
-                </div>
-                <a href="index.php?module=shop&page=search" class="text-[#00f0ff] hover:text-slate-900 text-sm font-black flex items-center gap-2 transition-all uppercase tracking-widest bg-[#00f0ff]/10 hover:bg-[#00f0ff] px-5 py-3 rounded-xl border border-[#00f0ff]/30 shadow-lg">
-                    View Full Matrix <i class="fas fa-arrow-right"></i>
-                </a>
-            </div>
-            
-            <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
-                <?php foreach($recent_products as $product): 
-                    include __DIR__ . '/product_card.php'; 
-                endforeach; ?>
-            </div>
+        <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
+            <?php foreach($recent_products as $product): 
+                include __DIR__ . '/product_card.php'; 
+            endforeach; ?>
         </div>
     </div>
 
-    <!-- SECTION 6: Payment Methods Directory -->
-    <?php if(!empty($active_payments)): ?>
-    <div class="mt-10 border-t border-slate-800 pt-10">
-        <div class="text-center mb-8 relative">
-            <div class="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 w-32 h-32 bg-[#00f0ff]/5 rounded-full blur-2xl pointer-events-none"></div>
-            <h3 class="text-xl md:text-2xl font-black text-white tracking-tight flex items-center justify-center gap-3 relative z-10">
-                <i class="fas fa-link text-[#00f0ff]"></i> Financial Interlinks
+    <!-- SECTION 6: Recent Activity (Moved to bottom) -->
+    <div class="bg-slate-900/60 backdrop-blur-xl border border-slate-700/50 rounded-3xl p-6 md:p-8 shadow-2xl relative overflow-hidden group mb-12">
+        <div class="flex items-center justify-between mb-6">
+            <h3 class="text-lg font-black text-white flex items-center gap-3 uppercase tracking-wider relative z-10">
+                <i class="fas fa-history text-blue-400"></i> Recent Sales
             </h3>
-            <p class="text-slate-400 text-xs font-medium uppercase tracking-widest mt-2 relative z-10">Secure Gateway Integrations</p>
+            <span class="text-[10px] text-green-400 font-mono font-bold bg-green-500/10 px-3 py-1 rounded-full border border-green-500/20">LIVE</span>
         </div>
 
-        <div class="relative w-full overflow-hidden py-4 group/payment">
-            <!-- Fade Edges -->
-            <div class="absolute inset-y-0 left-0 w-12 md:w-32 bg-gradient-to-r from-[#0f172a] to-transparent z-10 pointer-events-none"></div>
-            <div class="absolute inset-y-0 right-0 w-12 md:w-32 bg-gradient-to-l from-[#0f172a] to-transparent z-10 pointer-events-none"></div>
-            
-            <div class="flex overflow-x-auto gap-4 md:gap-6 snap-x-mandatory hide-scrollbar pl-4 md:pl-[20%] pr-4 md:pr-[20%]">
-                <?php foreach($active_payments as $pm): ?>
-                    <div class="snap-center shrink-0 w-[200px] md:w-[240px] bg-slate-900/60 backdrop-blur border border-slate-700/50 hover:border-[#00f0ff]/40 rounded-2xl p-4 flex items-center gap-4 transition-all duration-300 hover:-translate-y-1 hover:shadow-[0_10px_20px_rgba(0,240,255,0.1)]">
-                        <div class="w-12 h-12 rounded-xl bg-slate-800 flex items-center justify-center border border-slate-600 shrink-0 text-[#00f0ff] shadow-inner">
-                            <i class="<?php echo htmlspecialchars($pm['logo_class']); ?> text-xl"></i>
-                        </div>
-                        <div class="min-w-0">
-                            <h4 class="text-sm font-bold text-white tracking-wide truncate"><?php echo htmlspecialchars($pm['bank_name']); ?></h4>
-                            <p class="text-[9px] text-green-400 uppercase tracking-widest font-bold mt-0.5 flex items-center gap-1"><i class="fas fa-check-circle"></i> Verified</p>
-                        </div>
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-4 relative z-10 no-scrollbar overflow-y-auto max-h-[300px]" id="activityFeed">
+            <?php foreach($recent_activity as $act): 
+                $u_safe = substr($act['username'], 0, 1) . '***' . substr($act['username'], -1);
+            ?>
+            <div class="flex items-center justify-between gap-4 p-4 bg-slate-800/40 rounded-2xl border border-slate-700/30">
+                <div class="flex items-center gap-3">
+                    <div class="w-8 h-8 rounded-full bg-slate-900 flex items-center justify-center border border-slate-700 text-blue-400">
+                        <i class="fas fa-user text-xs"></i>
                     </div>
-                <?php endforeach; ?>
+                    <div>
+                        <p class="text-xs font-bold text-slate-200">Customer <span class="text-blue-400">@<?php echo $u_safe; ?></span></p>
+                        <p class="text-[10px] text-slate-500">Bought <b><?php echo htmlspecialchars($act['item_name']); ?></b></p>
+                    </div>
+                </div>
+                <div class="text-right">
+                    <span class="text-[9px] text-slate-600 font-mono"><?php echo date('H:i', strtotime($act['created_at'])); ?></span>
+                </div>
             </div>
-            
-            <p class="text-center text-[10px] text-slate-500 font-mono mt-6 flex items-center justify-center gap-2">
-                <i class="fas fa-arrows-alt-h"></i> Swipe to explore nodes
-            </p>
+            <?php endforeach; ?>
         </div>
     </div>
-    <?php endif; ?>
 
 </div>
 
@@ -676,50 +481,22 @@ if (is_logged_in()) {
 <script>
 document.addEventListener('DOMContentLoaded', () => {
     
-    // --- 0. TELEMETRY COUNTER ANIMATION ---
-    const counters = document.querySelectorAll('.telemetry-counter');
-    const speed = 100;
-    
-    counters.forEach(counter => {
-        const updateCount = () => {
-            const target = +counter.getAttribute('data-target');
-            const count = +counter.innerText;
-            const inc = target / speed;
-            
-            if (count < target) {
-                counter.innerText = Math.ceil(count + inc);
-                setTimeout(updateCount, 15);
-            } else {
-                counter.innerText = target + (counter.getAttribute('data-suffix') || '');
-            }
-        };
-        
-        const observer = new IntersectionObserver((entries) => {
-            if(entries[0].isIntersecting) {
-                updateCount();
-                observer.disconnect();
-            }
-        });
-        observer.observe(counter);
-    });
-
     // --- 1. HERO BANNER SLIDER ---
     const hSlider = document.getElementById('bannerSlider');
     const hDots = document.querySelectorAll('.slider-dot');
     const hProgress = document.getElementById('slideProgress');
     let hInterval;
-    const hTime = 6000; // 6 seconds to appreciate the slow pan
+    const hTime = 6000;
 
     const updateHero = (index) => {
         hDots.forEach((dot, i) => {
             dot.className = i === index 
-                ? 'w-10 h-3 rounded-full transition-all duration-300 slider-dot bg-[#00f0ff] shadow-[0_0_15px_rgba(0,240,255,1)]' 
-                : 'w-3 h-3 rounded-full transition-all duration-300 slider-dot bg-white/40 hover:bg-white/80';
+                ? 'w-8 h-2.5 rounded-full transition-all duration-300 slider-dot bg-white' 
+                : 'w-2.5 h-2.5 rounded-full transition-all duration-300 slider-dot bg-white/30 hover:bg-white/60';
         });
-        
         if(hProgress) {
             hProgress.style.animation = 'none';
-            hProgress.offsetHeight; /* trigger reflow */
+            hProgress.offsetHeight;
             hProgress.style.animation = `loadProgress ${hTime}ms linear forwards`;
         }
     };
@@ -730,7 +507,6 @@ document.addEventListener('DOMContentLoaded', () => {
         let target = hSlider.scrollLeft + (next ? w : -w);
         if(target >= hSlider.scrollWidth - 10) target = 0;
         if(target < 0) target = hSlider.scrollWidth - w;
-        
         hSlider.scrollTo({ left: target, behavior: 'smooth' });
         updateHero(Math.round(target / w));
     };
@@ -743,115 +519,62 @@ document.addEventListener('DOMContentLoaded', () => {
     if(hSlider) {
         document.getElementById('nextSlide')?.addEventListener('click', () => { clearInterval(hInterval); moveHero(true); startHero(); });
         document.getElementById('prevSlide')?.addEventListener('click', () => { clearInterval(hInterval); moveHero(false); startHero(); });
-        
-        hDots.forEach((dot, idx) => {
-            dot.addEventListener('click', () => {
+        hDots.forEach((dot, idx) => { dot.addEventListener('click', () => {
                 clearInterval(hInterval);
                 hSlider.scrollTo({ left: idx * hSlider.clientWidth, behavior: 'smooth' });
                 updateHero(idx);
                 startHero();
             });
         });
-        
-        hSlider.addEventListener('scroll', () => {
-            clearTimeout(window.scrollTimeout);
-            window.scrollTimeout = setTimeout(() => {
-                updateHero(Math.round(hSlider.scrollLeft / hSlider.clientWidth));
-            }, 100);
-        });
-        
         startHero();
     }
 
-    // --- 2. CATEGORY SLIDER PROGRESS ---
+    // --- 2. CATEGORY SLIDER ---
     const cSlider = document.getElementById('categorySlider');
     const cProgress = document.getElementById('catScrollProgress');
-    
     if(cSlider && cProgress) {
         const updateCatProgress = () => {
-            const scrollPx = cSlider.scrollTop || cSlider.scrollLeft;
+            const scrollPx = cSlider.scrollLeft;
             const maxScroll = cSlider.scrollWidth - cSlider.clientWidth;
             const percentage = (scrollPx / maxScroll) * 100;
             cProgress.style.width = percentage + '%';
         };
-        
         cSlider.addEventListener('scroll', updateCatProgress);
-        updateCatProgress(); // init
-        
-        document.getElementById('catNext')?.addEventListener('click', () => {
-            cSlider.scrollBy({ left: 300, behavior: 'smooth' });
-        });
-        document.getElementById('catPrev')?.addEventListener('click', () => {
-            cSlider.scrollBy({ left: -300, behavior: 'smooth' });
-        });
+        document.getElementById('catNext')?.addEventListener('click', () => cSlider.scrollBy({ left: 300, behavior: 'smooth' }));
+        document.getElementById('catPrev')?.addEventListener('click', () => cSlider.scrollBy({ left: -300, behavior: 'smooth' }));
     }
 
-    // --- 3. DYNAMIC LIVE TELEMETRY ENGINE ---
-    
-    // Live User Fluctuation
-    const liveUsersEl = document.getElementById('liveUsersCounter');
-    if (liveUsersEl) {
-        let currentUsers = parseInt(liveUsersEl.innerText.replace(/,/g, '')) || 342;
-        setInterval(() => {
-            const change = Math.floor(Math.random() * 9) - 3;
-            currentUsers += change;
-            if (currentUsers < 10) currentUsers = 120;
-            if (currentUsers > 1000) currentUsers = 850;
-            liveUsersEl.innerText = currentUsers.toLocaleString();
-            liveUsersEl.classList.add('text-white', 'scale-110');
-            setTimeout(() => liveUsersEl.classList.remove('text-white', 'scale-110'), 300);
-        }, 4000);
-    }
-
-    // ⚡️ NEW: MATRIX DATA STREAM (Micro-Interactions)
-    function createStreamPixel(container) {
-        const pixel = document.createElement('div');
-        pixel.className = 'data-stream-pixel';
-        pixel.style.left = Math.random() * 100 + '%';
-        pixel.style.top = '-10%';
-        pixel.style.animationDuration = (Math.random() * 1 + 1) + 's';
-        container.appendChild(pixel);
-        setTimeout(() => pixel.remove(), 2000);
-    }
-
-    document.querySelectorAll('.glass-card, .group\\/cat').forEach(card => {
-        card.addEventListener('mousemove', (e) => {
-            if(Math.random() > 0.8) createStreamPixel(card);
-        });
-    });
-
-    // ⚡️ NEW: LIVE ACTIVITY SIMULATOR (Makes site feel busy)
-    const feedContainer = document.querySelector('.space-y-4.relative.z-10.no-scrollbar');
+    // --- 3. LIVE ACTIVITY SIMULATOR ---
+    const feedContainer = document.getElementById('activityFeed');
     if(feedContainer) {
         const simulationItems = [
-            { user: 'o***7', item: 'Steam Wallet Card' },
+            { user: 'k***n', item: 'Steam Wallet Card' },
             { user: 'm***a', item: 'ChatGPT Plus' },
-            { user: 'k***n', item: 'Netflix Ultra HD' },
-            { user: 'z***1', item: 'KBZPay Verification' }
+            { user: 'o***7', item: 'Netflix HD' },
+            { user: 'z***1', item: 'Spotify Premium' }
         ];
-
         setInterval(() => {
-            if(Math.random() > 0.7) {
+            if(Math.random() > 0.8) {
                 const item = simulationItems[Math.floor(Math.random() * simulationItems.length)];
                 const html = `
-                <div class="flex items-center justify-between gap-4 p-4 bg-slate-800/40 rounded-2xl border border-[#00f0ff]/20 animate-fade-in-up">
-                    <div class="flex items-center gap-4">
-                        <div class="w-10 h-10 rounded-full bg-slate-900 flex items-center justify-center border border-[#00f0ff]/30 text-[#00f0ff]">
-                            <i class="fas fa-bolt text-sm"></i>
+                <div class="flex items-center justify-between gap-4 p-4 bg-slate-800/40 rounded-2xl border border-blue-500/10 animate-fade-in-up">
+                    <div class="flex items-center gap-3">
+                        <div class="w-8 h-8 rounded-full bg-slate-900 flex items-center justify-center border border-slate-700 text-blue-400">
+                            <i class="fas fa-shopping-cart text-[10px]"></i>
                         </div>
                         <div>
-                            <p class="text-xs font-bold text-white">Operative <span class="text-[#00f0ff]">@${item.user}</span></p>
-                            <p class="text-[10px] text-slate-400 mt-0.5">Just secured <b>${item.item}</b></p>
+                            <p class="text-xs font-bold text-white">Customer <span class="text-blue-400">@${item.user}</span></p>
+                            <p class="text-[10px] text-slate-500">Bought <b>${item.item}</b></p>
                         </div>
                     </div>
                     <div class="text-right">
-                        <span class="text-[9px] text-[#00f0ff] font-mono">NOW</span>
+                        <span class="text-[9px] text-blue-500 font-mono">JUST NOW</span>
                     </div>
                 </div>`;
                 feedContainer.insertAdjacentHTML('afterbegin', html);
                 if(feedContainer.children.length > 8) feedContainer.lastElementChild.remove();
             }
-        }, 12000); // New "Live" action every 12 seconds
+        }, 15000);
     }
 });
 </script>

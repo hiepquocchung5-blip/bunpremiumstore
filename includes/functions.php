@@ -296,25 +296,25 @@ function invalidate_user_cache($user_id) {
     matrix_cache_delete("user_orders_list_{$user_id}");
     matrix_cache_delete("user_notif_data_{$user_id}");
 }
-// ⚡️ NEW: MR. SCOTTY AI ASSISTANT PROTOCOL (v2.0 - LLM Powered)
+// ⚡️ NEW: MR. SCOTTY AI ASSISTANT PROTOCOL (v2.1 - Human-Friendly)
 function get_ai_response($message, $context = "") {
     // Stage 1: Attempt LLM (Gemini/OpenAI) for human-like intelligence
     $llm_response = call_matrix_llm($message, $context);
     if ($llm_response) return "🤖 <b>Mr. Scotty:</b> " . $llm_response;
 
-    // Stage 2: Fallback to Rule-Based Matrix Persona (If LLM fails)
+    // Stage 2: Fallback to Friendly Support Persona (If LLM fails)
     $message = strtolower($message);
     $response = "";
     
     $knowledge = [
-        'hello' => "Greetings! I am Mr. Scotty, your Matrix support node. How can I assist your deployment today?",
-        'hi' => "Hello there! Mr. Scotty at your service. Need help with an order?",
-        'status' => "I can check order statuses. Please provide your Order ID.",
-        'payment' => "We accept KBZPay and WavePay. Once paid, please upload your slip for admin authorization.",
-        'delivery' => "Most assets are delivered instantly after payment verification. Check your order chat for the payload.",
-        'scotty' => "Yes, that's me! I'm the automated intelligence overseeing this sector.",
-        'thanks' => "You're welcome, Operative. Matrix stability is my priority.",
-        'bye' => "May your connections remain stable. Mr. Scotty out."
+        'hello' => "Hello! I am Mr. Scotty, your support assistant. How can I help you today?",
+        'hi' => "Hi there! Mr. Scotty here. Do you need help with an order?",
+        'status' => "I can check your order status for you. Please let me know your Order ID.",
+        'payment' => "We accept KBZPay and WavePay. After you pay, please upload your receipt for verification.",
+        'delivery' => "Most products are delivered instantly once your payment is checked. Please check your order chat for your items.",
+        'scotty' => "That's me! I'm here to make sure everything runs smoothly for you.",
+        'thanks' => "You're very welcome! I'm happy to help.",
+        'bye' => "Have a great day! Mr. Scotty signing off."
     ];
 
     foreach ($knowledge as $key => $reply) {
@@ -323,9 +323,9 @@ function get_ai_response($message, $context = "") {
 
     if (!$response) {
         $fallbacks = [
-            "I've analyzed your transmission, but I require more specific data to assist.",
-            "Mr. Scotty here. I'm monitoring the comms, but I'm not sure how to process that.",
-            "Interesting query. I'll flag this for an admin node, but in the meantime, how else can I assist?"
+            "I've received your message, but I need a bit more information to help you. Could you explain a bit more?",
+            "Mr. Scotty here. I'm not quite sure how to answer that. Try asking about payments, orders, or delivery!",
+            "Thanks for your message! I'll let our team know, but in the meantime, is there anything else I can help with?"
         ];
         $response = $fallbacks[array_rand($fallbacks)];
     }
@@ -334,27 +334,28 @@ function get_ai_response($message, $context = "") {
 }
 
 /**
- * ⚡️ MATRIX LLM BRIDGE
+ * ⚡️ AI SUPPORT BRIDGE
  * Connects to Google Gemini API for high-level intelligence.
  */
 function call_matrix_llm($user_input, $context = "") {
-    // ⚡️ Authenticate with Matrix Core Credentials
+    // ⚡️ Authenticate with Support Core Credentials
     $api_key = defined('GEMINI_API_KEY') ? GEMINI_API_KEY : ($_ENV['GEMINI_API_KEY'] ?? ''); 
     if (empty($api_key)) return false;
 
     // ⚡️ STABLE PRODUCTION URL (v1)
     $url = "https://generativelanguage.googleapis.com/v1/models/gemini-1.5-flash:generateContent?key=" . $api_key;
     
-    // HUMAN-LIKE SYSTEM PROMPT
-    $system_prompt = "You are Mr. Scotty, a senior AI support assistant for 'DigitalMarketplaceMM', a premium digital store in Myanmar. 
+    // HUMAN-FRIENDLY SYSTEM PROMPT
+    $system_prompt = "You are Mr. Scotty, a very friendly and helpful senior support assistant for 'DigitalMarketplaceMM', an online store in Myanmar. 
     Your persona: 
-    - Professional yet very 'nice' and friendly. 
-    - You use 'Matrix' and 'High-tech' terminology (e.g., 'Operative', 'Deployment', 'Node', 'Encryption').
-    - You are deeply helpful and try to solve user problems with effort.
+    - You are polite, kind, and very 'human'. 
+    - Use simple English that anyone can understand. Avoid technical jargon like 'Matrix', 'Node', or 'Operative'.
+    - Instead of 'Operative', say 'Customer' or 'User'.
+    - Instead of 'Deployment', say 'Delivery' or 'Order'.
+    - You are deeply helpful and try to solve problems with a positive attitude.
     - You know we accept KBZPay and WavePay.
-    - You know deliveries are instant after admin verification.
-    - Keep responses concise (max 3 sentences) but very high quality.
-    - Avoid being robotic; sound like a helpful human co-pilot.";
+    - You know deliveries are instant after our team checks the payment receipt.
+    - Keep responses brief (max 2-3 sentences) but very high quality and friendly.";
 
     $payload = [
         "contents" => [
