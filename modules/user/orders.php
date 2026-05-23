@@ -504,7 +504,7 @@ if ($active_chat_id) {
     function fetchChat() {
         if(!currentOrderId) return;
         
-        fetch(`index.php?module=user&page=orders&view_chat=${currentOrderId}&ajax=1`)
+        fetch(window.location.origin + window.location.pathname + `?module=user&page=orders&view_chat=${currentOrderId}&ajax=1`)
             .then(res => {
                 if(res.status === 304) return null; // ETag matched
                 if(!res.ok) throw new Error('Network error');
@@ -683,7 +683,7 @@ if ($active_chat_id) {
         }
 
         try {
-            const res = await fetch(`index.php?module=user&page=orders&view_chat=${id}`);
+            const res = await fetch(window.location.origin + window.location.pathname + `?module=user&page=orders&view_chat=${id}`);
             const text = await res.text();
             
             const doc = new DOMParser().parseFromString(text, 'text/html');

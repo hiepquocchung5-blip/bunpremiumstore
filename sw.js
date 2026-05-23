@@ -79,18 +79,15 @@ self.addEventListener('fetch', event => {
         return;
     }
 
-    // ⚡️ DEFAULT: Network First with Graceful Fallback (NO 503)
+    // ⚡️ DEFAULT: Network First with Graceful Fallback
     event.respondWith(
         fetch(event.request).catch(async () => {
             const cached = await caches.match(event.request);
             if (cached) return cached;
             
-            // If it's a page request, we could return an offline page here
-            // For now, we return a basic 404 to avoid the 'Service Unavailable' 503 error
-            return new Response('Offline: Connection Required', {
-                status: 404,
-                headers: { 'Content-Type': 'text/plain' }
-            });
+            // If network fails and no cache, let the browser handle the error naturally
+            // This prevents the 'Failed to load resource: 404' console noise
+            throw new Error('Network and Cache failure');
         })
     );
 });
