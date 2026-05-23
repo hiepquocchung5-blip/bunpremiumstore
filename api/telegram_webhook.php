@@ -266,7 +266,7 @@ function trigger_push_alert($pdo, $user_id, $title, $body, $order_id) {
             $push = new PushService($pdo);
             $url = "https://digitalmarketplacemm.com/index.php?module=user&page=orders&view_chat=" . $order_id;
             $push->sendToUser($user_id, $title, $body, $url);
-        } catch (Exception $e) {}
+        } catch (Exception $e) {} 
     }
 }
 ?>

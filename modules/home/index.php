@@ -74,7 +74,7 @@ $first_name = is_logged_in() ? explode(' ', $_SESSION['user_name'])[0] : 'Operat
 
 $user_stats = ['balance' => 0, 'active_missions' => 0];
 if(is_logged_in()) {
-    $user_stats['balance'] = $pdo->prepare("SELECT balance FROM users WHERE id = ?");
+    $user_stats['balance'] = $pdo->prepare("SELECT wallet_balance FROM users WHERE id = ?");
     $user_stats['balance']->execute([$user_id]);
     $user_stats['balance'] = $user_stats['balance']->fetchColumn() ?: 0;
     
@@ -180,10 +180,6 @@ if (is_logged_in()) {
             <?php if(is_logged_in()): ?>
             <!-- Personal Stats Bar -->
             <div class="flex items-center gap-4 bg-slate-900/50 backdrop-blur-xl border border-slate-700/50 p-2 rounded-2xl shadow-xl">
-                <div class="px-4 py-2 border-r border-slate-800">
-                    <p class="text-[9px] text-slate-500 font-black uppercase tracking-widest mb-0.5">Matrix Credits</p>
-                    <p class="text-lg font-mono font-black text-white"><?php echo number_format($user_stats['balance']); ?> <span class="text-[#00f0ff] text-xs">Ks</span></p>
-                </div>
                 <div class="px-4 py-2 border-r border-slate-800">
                     <p class="text-[9px] text-slate-500 font-black uppercase tracking-widest mb-0.5">Active Missions</p>
                     <p class="text-lg font-mono font-black text-yellow-500"><?php echo str_pad($user_stats['active_missions'], 2, '0', STR_PAD_LEFT); ?></p>
