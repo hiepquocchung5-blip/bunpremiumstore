@@ -312,6 +312,23 @@ if ($active_chat_id) {
 
 <!-- Dynamic Styling for Fullscreen Mobile Chat Focus -->
 <style>
+    /* ⚡️ IMMERSIVE CHAT MODE: Hide Global Nav on Mobile */
+    @media (max-width: 767px) {
+        body.chat-active-mobile nav.glass.sticky,
+        body.chat-active-mobile #mobile-bottom-nav,
+        body.chat-active-mobile #global-footer { 
+            display: none !important; 
+        }
+        
+        /* Adjust Main Wrapper when Chat is Active */
+        body.chat-active-mobile .max-w-7xl {
+            height: 100svh !important;
+            max-height: 100svh !important;
+            margin: 0 !important;
+            padding: 0 !important;
+        }
+    }
+
     /* iOS & Mobile Scroll Locking */
     body.chat-active-mobile { 
         overflow: hidden !important; 
