@@ -32,48 +32,50 @@ function urlBase64ToUint8Array(base64String) {
 }
 
 window.registerServiceWorker = async function (triggerWelcome = false) {
-    if (!('serviceWorker' in navigator)) {
-        console.error('Service Worker not supported');
-        return;
+    if (!('serviceWorker' in navigator) || !('PushManager' in window)) {
+        console.error('Push protocols not supported by this node.');
+        throw new Error('Push not supported');
     }
 
     if (!PUBLIC_VAPID_KEY) {
-        console.error('VAPID Public Key is missing. Check .env configuration.');
-        return;
+        console.error('VAPID Public Key missing.');
+        throw new Error('Configuration error');
     }
 
     try {
-        // FORCE ABSOLUTE ROOT PATH: Prevents 404 errors by ensuring it never looks in /assets/
-        const swUrl = '/sw.js';
-        const register = await navigator.serviceWorker.register(swUrl, { scope: '/' });
+        // FORCE ABSOLUTE ROOT PATH: Ensures sw.js is always found
+        const swUrl = BASE_URL + 'sw.js';
+        const register = await navigator.serviceWorker.register(swUrl, { scope: BASE_URL });
         await navigator.serviceWorker.ready;
+
+        // iOS Logic: Only subscribe if permission is already granted or explicitly requested
+        if (Notification.permission === 'default') {
+            const permission = await Notification.requestPermission();
+            if (permission !== 'granted') throw new Error('Permission denied');
+        }
 
         const subscription = await register.pushManager.subscribe({
             userVisibleOnly: true,
             applicationServerKey: urlBase64ToUint8Array(PUBLIC_VAPID_KEY)
         });
 
-        // 1. Instantly fire a local welcome notification (No DB required)
+        // 1. Instantly fire a local welcome notification
         if (triggerWelcome && Notification.permission === 'granted') {
             register.showNotification('System Uplink Active ⚡️', {
-                body: 'Welcome to DigitalMarketplaceMM! Proceed to the authorization portal to access premium digital assets.',
-                icon: '/assets/images/logo.png',
-                badge: '/assets/images/logo.png',
+                body: 'Welcome to DigitalMarketplaceMM! Proceed to the portal to access premium digital assets.',
+                icon: BASE_URL + 'assets/images/logo.png',
+                badge: BASE_URL + 'assets/images/logo.png',
                 vibrate: [100, 50, 100, 50, 200],
-                data: { url: '/index.php?module=auth&page=login' },
-                actions: [
-                    { action: 'open', title: 'Initialize Login' },
-                    { action: 'close', title: 'Abort' }
-                ]
+                data: { url: BASE_URL + 'index.php?module=auth&page=login' }
             });
         }
 
-        // 2. Sync endpoint with server (for logged in users)
+        // 2. Sync endpoint with server
         await fetch(window.AppConfig.pushApiUrl, {
             method: 'POST',
             body: JSON.stringify(subscription),
             headers: { 'Content-Type': 'application/json' },
-            credentials: 'include' // ⚡️ CRITICAL: Sends the PHP Session ID across subdomains
+            credentials: 'include' 
         });
 
         console.log('[Matrix] Push Notification Uplink Secured.');

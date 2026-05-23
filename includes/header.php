@@ -480,10 +480,55 @@ if (isset($_SESSION['user_id'])) {
 
         // ⚡️ INLINE DEBUG & FAILSAFE FOR PUSH BUTTON (Overrides app.js if needed)
         document.addEventListener('DOMContentLoaded', () => {
+            // Premium iOS Helper Injector
+            function showIosHelper() {
+                const helper = document.createElement('div');
+                helper.id = 'ios-helper-modal';
+                helper.className = 'fixed inset-0 z-[200] flex items-center justify-center p-4 animate-fade-in';
+                helper.innerHTML = `
+                    <div class="absolute inset-0 bg-slate-950/80 backdrop-blur-md" onclick="this.parentElement.remove()"></div>
+                    <div class="relative bg-slate-900 border border-[#00f0ff]/30 w-full max-w-sm rounded-3xl overflow-hidden shadow-[0_20px_50px_rgba(0,0,0,0.8)] animate-fade-in-up">
+                        <div class="p-6 text-center">
+                            <div class="w-20 h-20 bg-[#00f0ff]/10 rounded-full flex items-center justify-center mx-auto mb-6 border border-[#00f0ff]/20 shadow-[0_0_20px_rgba(0,240,255,0.1)]">
+                                <i class="fab fa-apple text-4xl text-white"></i>
+                            </div>
+                            <h3 class="text-xl font-black text-white mb-2 uppercase tracking-tight">iOS Matrix Uplink</h3>
+                            <p class="text-xs text-slate-400 leading-relaxed mb-6">Apple requires specific protocols to enable secure transmissions on iOS devices.</p>
+                            
+                            <div class="space-y-4 text-left">
+                                <div class="flex gap-4 p-3 bg-slate-800/50 rounded-2xl border border-slate-700">
+                                    <div class="w-8 h-8 rounded-lg bg-blue-600 flex items-center justify-center shrink-0 font-black text-xs text-white">1</div>
+                                    <p class="text-[11px] text-slate-300 font-medium">Tap the <i class="fas fa-share-square text-[#00f0ff]"></i> <b>Share</b> icon in your Safari toolbar.</p>
+                                </div>
+                                <div class="flex gap-4 p-3 bg-slate-800/50 rounded-2xl border border-slate-700">
+                                    <div class="w-8 h-8 rounded-lg bg-blue-600 flex items-center justify-center shrink-0 font-black text-xs text-white">2</div>
+                                    <p class="text-[11px] text-slate-300 font-medium">Select <i class="fas fa-plus-square text-[#00f0ff]"></i> <b>Add to Home Screen</b> and launch from there.</p>
+                                </div>
+                                <div class="flex gap-4 p-3 bg-slate-800/50 rounded-2xl border border-slate-700">
+                                    <div class="w-8 h-8 rounded-lg bg-blue-600 flex items-center justify-center shrink-0 font-black text-xs text-white">3</div>
+                                    <p class="text-[11px] text-slate-300 font-medium">Return here and tap <b>Establish Uplink</b> again.</p>
+                                </div>
+                            </div>
+                        </div>
+                        <button onclick="this.parentElement.parentElement.remove()" class="w-full py-4 bg-[#00f0ff] hover:bg-blue-400 text-slate-900 font-black uppercase tracking-widest text-xs transition">Understood</button>
+                    </div>
+                `;
+                document.body.appendChild(helper);
+            }
+
             document.querySelectorAll('.enable-push-btn').forEach(btn => {
                 btn.onclick = (e) => {
                     e.preventDefault();
                     e.stopPropagation();
+
+                    // Detect iOS
+                    const isIos = /iPad|iPhone|iPod/.test(navigator.userAgent) && !window.MSStream;
+                    const isStandalone = window.navigator.standalone || window.matchMedia('(display-mode: standalone)').matches;
+
+                    if (isIos && !isStandalone) {
+                        showIosHelper();
+                        return;
+                    }
                     
                     const icon = btn.querySelector('i');
                     if (icon) icon.className = "fas fa-spinner fa-spin";
@@ -519,7 +564,12 @@ if (isset($_SESSION['user_id'])) {
                         }).catch(err => {
                             console.error('Manual Uplink Error:', err);
                             if (icon) icon.className = "fas fa-bell-slash text-red-500";
-                            alert("Uplink failed. Ensure notifications are allowed in site settings and cache is cleared.");
+                            
+                            if (isIos) {
+                                showIosHelper();
+                            } else {
+                                alert("Uplink failed. Ensure notifications are allowed in site settings and cache is cleared.");
+                            }
                         });
                     } else {
                         console.error('Matrix App.js not loaded.');
