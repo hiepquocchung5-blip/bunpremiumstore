@@ -338,8 +338,8 @@ function get_ai_response($message, $context = "") {
  * Connects to Google Gemini API for high-level intelligence.
  */
 function call_matrix_llm($user_input, $context = "") {
-    // API KEY placeholder - User should update this in their environment
-    $api_key = $_ENV['GEMINI_API_KEY'] ?? ''; 
+    // ⚡️ Authenticate with Matrix Core Credentials
+    $api_key = defined('GEMINI_API_KEY') ? GEMINI_API_KEY : ($_ENV['GEMINI_API_KEY'] ?? ''); 
     if (empty($api_key)) return false;
 
     $url = "https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=" . $api_key;
