@@ -52,10 +52,31 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['ajax_msg'])) {
                 $wants_human = false;
                 foreach($human_keywords as $hk) { if(strpos(strtolower($msg), $hk) !== false) { $wants_human = true; break; } }
 
-                // 🤖 AI RESPONSE
+                // 🤖 MR. SCOTTY AI PROTOCOL: Advanced Autonomous Intelligence
                 $ai_responded = false;
-                // Fetch context and history...
-                $ai_msg = strip_tags(get_ai_response($msg, $rich_context));
+                
+                // RICH CONTEXT: Scotty now sees everything about the user and the order!
+                $rich_context = "Customer: @{$order_check['username']} ({$order_check['full_name']}) | ";
+                $rich_context .= "Item: " . ($order_check['item_name'] ?? 'Digital Asset') . " | ";
+                $rich_context .= "Order Status: " . strtoupper($order_check['status']) . " | ";
+                $rich_context .= "Order ID: #{$oid} | ";
+                $rich_context .= "Payment: " . ($order_check['payment_method'] ?? 'Not specified') . " | ";
+                
+                if (!empty($order_check['user_instruction'])) {
+                    $rich_context .= "Product Setup Steps: " . $order_check['user_instruction'];
+                }
+
+                // 🧠 CONVERSATIONAL MEMORY: Fetch last 3 messages for context
+                $stmt_mem = $pdo->prepare("SELECT sender_type, message FROM order_messages WHERE order_id = ? ORDER BY id DESC LIMIT 3");
+                $stmt_mem->execute([$oid]);
+                $history = array_reverse($stmt_mem->fetchAll());
+                $history_context = "";
+                foreach($history as $h) {
+                    $role = ($h['sender_type'] === 'user') ? 'Customer' : 'Assistant';
+                    $history_context .= "{$role}: {$h['message']}\n";
+                }
+
+                $ai_msg = strip_tags(get_ai_response($msg, $rich_context . " | Recent History:\n" . $history_context));
                 
                 if (!empty($ai_msg)) {
                     $stmt = $pdo->prepare("INSERT INTO order_messages (order_id, sender_type, message) VALUES (?, 'admin', ?)");
@@ -63,8 +84,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['ajax_msg'])) {
                     $ai_responded = true;
                 }
                 
-                // ⚡️ TELEGRAM ALERT: Only if human is requested or AI didn't handle it
-                if ($wants_human || !$ai_responded) {
+                // ⚡️ REAL-TIME TELEGRAM ALERT (Skip if AI handled it)
+                if (!$ai_responded && defined('TG_BOT_TOKEN') && defined('TG_ADMIN_CHAT_ID')) {
+                    $admin_url = defined('ADMIN_URL') ? ADMIN_URL : BASE_URL . 'admin/';
                     $priority_tag = $wants_human ? "🚨 <b>HIGH PRIORITY (Human Requested)</b>" : "💬 <b>New Message</b>";
                     $tg_msg = "{$priority_tag}\n\n";
                     $tg_msg .= "🆔 <b>Order:</b> #{$oid} - {$order_check['item_name']}\n";
@@ -74,21 +96,21 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['ajax_msg'])) {
 
                     $admin_ids = array_map('trim', explode(',', TG_ADMIN_CHAT_ID));
                     foreach ($admin_ids as $adid) {
-                        send_reply($adid, $tg_msg); // Global helper
+                        if (empty($adid)) continue;
+                        send_reply($adid, $tg_msg);
                     }
                 }
                 
                 echo json_encode(['success' => true]);
                 exit;
-            } catch (Exception $e) {}
-        }
-                
-                echo json_encode(['success' => true]);
+            } catch (Exception $e) {
+                error_log("Order Chat Transmission Error: " . $e->getMessage());
+                echo json_encode(['success' => false, 'error' => 'Connection to Matrix interrupted.']);
                 exit;
-            } catch (Exception $e) {}
+            }
         }
     }
-    echo json_encode(['success' => false, 'error' => 'Message could not be sent.']);
+    echo json_encode(['success' => false, 'error' => 'Unauthorized signature.']);
     exit;
 }
 
