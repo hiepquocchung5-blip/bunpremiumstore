@@ -211,3 +211,6 @@ ALTER TABLE orders ADD CONSTRAINT fk_order_pass FOREIGN KEY (pass_id) REFERENCES
 
 -- 4. Purge the dummy products that were cluttering your database
 DELETE FROM products WHERE id = 99999 OR name LIKE 'System: Agent Pass%';
+
+ALTER TABLE users ADD COLUMN is_banned TINYINT DEFAULT 0 AFTER is_verified;
+ALTER TABLE users ADD COLUMN ban_reason VARCHAR(255) DEFAULT NULL AFTER is_banned;
