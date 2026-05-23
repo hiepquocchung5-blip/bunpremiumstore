@@ -42,14 +42,76 @@ try {
         case '/stats':
             if ($isAdmin) {
                 $pending = $pdo->query("SELECT COUNT(*) FROM orders WHERE status = 'pending'")->fetchColumn();
+                $total_users = $pdo->query("SELECT COUNT(*) FROM users")->fetchColumn();
                 $revenue = $pdo->query("SELECT SUM(total_price_paid) FROM orders WHERE status = 'active' AND DATE(created_at) = CURDATE()")->fetchColumn() ?: 0;
                 
                 $reply = "📊 <b><u>SYSTEM TELEMETRY</u></b>\n";
                 $reply .= "━━━━━━━━━━━━━━━━━━━━\n";
-                $reply .= "🟢 <b>Status:</b> Matrix Online\n";
+                $reply .= "🟢 <b>Matrix:</b> Online\n";
+                $reply .= "👤 <b>Total Nodes:</b> $total_users\n";
                 $reply .= "🕒 <b>Pending Orders:</b> $pending\n";
                 $reply .= "💰 <b>Daily Volume:</b> " . number_format($revenue) . " Ks\n";
                 $reply .= "━━━━━━━━━━━━━━━━━━━━";
+            }
+            break;
+
+        case '/find':
+            if ($isAdmin && !empty($arg)) {
+                $stmt = $pdo->prepare("
+                    SELECT o.id, o.status, u.username, u.email, COALESCE(p.name, ps.name) as item_name
+                    FROM orders o JOIN users u ON o.user_id = u.id
+                    LEFT JOIN products p ON o.product_id = p.id LEFT JOIN passes ps ON o.pass_id = ps.id
+                    WHERE o.id = ? OR u.email LIKE ? OR u.username LIKE ?
+                    LIMIT 1
+                ");
+                $search = "%$arg%";
+                $stmt->execute([$arg, $search, $search]);
+                $res = $stmt->fetch();
+
+                if ($res) {
+                    $reply = "🔍 <b><u>NODE LOCATED</u></b>\n\n";
+                    $reply .= "🆔 <b>ID:</b> <code>#{$res['id']}</code>\n";
+                    $reply .= "👤 <b>User:</b> @{$res['username']}\n";
+                    $reply .= "📧 <b>Email:</b> {$res['email']}\n";
+                    $reply .= "📦 <b>Item:</b> {$res['item_name']}\n";
+                    $reply .= "🚥 <b>Status:</b> " . strtoupper($res['status']);
+                } else {
+                    $reply = "❌ <b>Node Not Found:</b> No record matching <code>$arg</code>.";
+                }
+            }
+            break;
+
+        case '/broadcast':
+            if ($isAdmin && !empty($argsStr)) {
+                // In a real scenario, you'd fetch all chat_ids from a 'telegram_users' table
+                // For now, we alert the active admin group
+                $reply = "📡 <b>BROADCAST INITIATED</b>\n\nComms sent to authorized admin nodes.";
+                $admin_ids = array_map('trim', explode(',', TG_ADMIN_CHAT_ID));
+                foreach ($admin_ids as $adid) {
+                    if ($adid == $chat_id) continue;
+                    send_reply($adid, "📣 <b><u>GLOBAL ANNOUNCEMENT</u></b>\n\n" . $argsStr);
+                }
+            }
+            break;
+
+        case '/ping':
+            $start = microtime(true);
+            $reply = "🏓 <b>PONG</b>\n\n";
+            $reply .= "🛰 <b>Latency:</b> " . round((microtime(true) - $start) * 1000, 2) . "ms\n";
+            $reply .= "⏲ <b>Server Time:</b> " . date('H:i:s');
+            break;
+
+        case '/aistatus':
+            if ($isAdmin) {
+                $reply = "🤖 <b><u>AI DIAGNOSTICS</u></b>\n\n";
+                $test_reply = call_matrix_llm("Are you online?", "Internal Health Check");
+                if ($test_reply) {
+                    $reply .= "🟢 <b>Gemini Core:</b> Online\n";
+                    $reply .= "💬 <b>Sample Reply:</b> <i>" . h($test_reply) . "</i>";
+                } else {
+                    $reply .= "🔴 <b>Gemini Core:</b> Offline / No Response\n";
+                    $reply .= "⚠️ Check <code>error_log</code> for HTTP/Curl details.";
+                }
             }
             break;
 
@@ -145,9 +207,10 @@ try {
                 if (strpos($text, '/') === 0) {
                     $reply = "⚡️ <b>DigitalMarketplaceMM Matrix</b> ⚡️\n\n Operative <b>@$username</b> identified.\n\n";
                     $reply .= "🛠 <b><u>ADMIN PROTOCOLS</u></b>\n";
-                    $reply .= "🔹 <code>/stats</code> | <code>/pending</code>\n";
+                    $reply .= "🔹 <code>/stats</code> | <code>/pending</code> | <code>/find [ID]</code>\n";
                     $reply .= "🔹 <code>/approve [ID]</code> | <code>/reject [ID]</code>\n";
                     $reply .= "🔹 <code>/reply [ID] [Msg]</code>\n";
+                    $reply .= "🔹 <code>/aistatus</code> | <code>/ping</code>\n";
                 } else {
                     // It's a normal message from Admin, Mr. Scotty can act as a co-pilot if requested
                     if (strpos(strtolower($text), 'scotty') !== false) {
