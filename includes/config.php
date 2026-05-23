@@ -43,8 +43,12 @@ define('VAPID_PRIVATE_KEY', $_ENV['VAPID_PRIVATE_KEY'] ?? '');
 define('VAPID_SUBJECT', $_ENV['VAPID_SUBJECT'] ?? '');
 
 // AI Configuration
-$raw_gemini_key = $_ENV['GEMINI_API_KEY'] ?? 'AIzaSyB6jHRrKjwasPjhlEo_R_iBM7gI7cYdA1Y';
+$raw_gemini_key = $_ENV['GEMINI_API_KEY'] ?? 'AIzaSyBPiCei7ihBEteOriQYYYCUCYbye9OMvWc';
 define('GEMINI_API_KEY', trim($raw_gemini_key));
+
+// Telegram Configuration
+define('TG_BOT_TOKEN', trim($_ENV['TG_BOT_TOKEN'] ?? ''));
+define('TG_ADMIN_CHAT_ID', trim($_ENV['TG_ADMIN_CHAT_ID'] ?? ''));
 
 // 5. Google OAuth Configuration
 define('GOOGLE_CLIENT_ID', trim($_ENV['GOOGLE_CLIENT_ID'] ?? ''));
