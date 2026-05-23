@@ -290,4 +290,10 @@ function matrix_cache_delete($key) {
         @unlink($cache_file);
     }
 }
+
+// ⚡️ NEW: INVALIDATE USER CACHE
+function invalidate_user_cache($user_id) {
+    matrix_cache_delete("user_orders_list_{$user_id}");
+    matrix_cache_delete("user_notif_data_{$user_id}");
+}
 ?>

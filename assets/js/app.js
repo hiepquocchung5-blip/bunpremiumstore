@@ -131,13 +131,16 @@ document.addEventListener('DOMContentLoaded', () => {
         const dropdown = parent ? parent.querySelector('div.absolute') : null;
 
         function checkNotifications() {
-            fetch(BASE_URL + 'api/notifications.php')
+            fetch(BASE_URL + 'api/notifications.php', {
+                headers: { 'Cache-Control': 'max-age=0' }
+            })
                 .then(response => {
+                    if (response.status === 304) return null; // No change
                     if (!response.ok) throw new Error('Network response was not ok');
                     return response.json();
                 })
                 .then(data => {
-                    if (!data || typeof data !== 'object') return;
+                    if (!data) return; // 304 handled
 
                     // Dynamic Alert Trigger (If count increased, show toast)
                     if (data.count > previousNotifCount && previousNotifCount !== 0) {
@@ -159,25 +162,35 @@ document.addEventListener('DOMContentLoaded', () => {
                         let contentHtml = '';
                         if (data.notifications && Array.isArray(data.notifications) && data.notifications.length > 0) {
                             contentHtml = data.notifications.map(n => `
-                                <a href="${BASE_URL}${n.link}" class="block px-4 py-3 text-xs text-gray-300 hover:bg-gray-700 hover:text-white transition border-b border-gray-700 last:border-0 flex items-start gap-2">
-                                    <i class="fas fa-circle text-[6px] text-[#00f0ff] mt-1.5 shrink-0 shadow-[0_0_8px_#00f0ff]"></i>
-                                    <span>${n.text}</span>
+                                <a href="${BASE_URL}${n.link}" class="block px-4 py-3 hover:bg-slate-800/80 transition border-b border-slate-700/50 last:border-0 group/notif">
+                                    <div class="flex justify-between items-start mb-0.5">
+                                        <span class="text-[10px] font-black text-[#00f0ff] uppercase tracking-widest flex items-center gap-1.5">
+                                            <i class="fas fa-circle text-[4px] animate-pulse"></i> ${n.text.split(':')[0]}
+                                        </span>
+                                        <span class="text-[9px] text-slate-500 font-mono">${n.time || ''}</span>
+                                    </div>
+                                    <p class="text-[11px] text-slate-300 font-medium leading-tight group-hover/notif:text-white transition-colors">${n.subtext || n.text.split(':').slice(1).join(':')}</p>
                                 </a>
                             `).join('');
                         } else {
-                            contentHtml = '<div class="text-xs text-center py-6 text-gray-500">No new notifications</div>';
+                            contentHtml = '<div class="text-xs text-center py-10 text-slate-500"><i class="fas fa-check-circle text-2xl mb-2 opacity-20 text-green-500"></i><br>All caught up</div>';
                         }
 
-                        const listContainer = dropdown.querySelector('.custom-scrollbar');
+                        const listContainer = dropdown.querySelector('#nav-notif-list') || dropdown.querySelector('.custom-scrollbar');
                         if (listContainer) {
                             listContainer.innerHTML = contentHtml;
                         }
                     }
                 })
-                .catch(err => { });
+                .catch(err => { console.debug('[Matrix] Notif Sync Interrupted'); });
         }
 
-        setInterval(checkNotifications, 15000); // Polling faster at 15s to make it feel responsive
+        // ⚡️ iOS Optimization: Resume polling when visibility changes
+        document.addEventListener('visibilitychange', () => {
+            if (document.visibilityState === 'visible') checkNotifications();
+        });
+
+        setInterval(checkNotifications, 15000); 
         checkNotifications();
     }
 

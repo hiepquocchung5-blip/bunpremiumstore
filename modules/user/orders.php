@@ -45,6 +45,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['ajax_msg'])) {
                 
                 $_SESSION['last_msg_time'] = time(); // Record transmission
                 
+                // ⚡️ INVALIDATE CACHE for real-time notification update
+                invalidate_user_cache($user_id);
+                
                 // ⚡️ REAL-TIME TELEGRAM ALERT TO ADMINS
                 if (defined('TG_BOT_TOKEN') && defined('TG_ADMIN_CHAT_ID')) {
                     $admin_url = defined('ADMIN_URL') ? ADMIN_URL : BASE_URL . 'admin/';
@@ -557,7 +560,8 @@ if ($active_chat_id) {
 
     // Handle Order Switching (PJAX/SPA style)
     async function switchOrder(e, id) {
-        e.preventDefault();
+        if (e) e.preventDefault();
+        if (id === currentOrderId && window.innerWidth >= 768) return;
         
         currentOrderId = id;
         lastChatHtml = '';
@@ -581,18 +585,27 @@ if ($active_chat_id) {
         }
 
         const rightPane = document.getElementById('right-pane');
+        const leftSidebar = document.getElementById('left-sidebar');
         
         // Show Fullscreen Mobile Loading State
         if(window.innerWidth < 768) {
             toggleMobileFullscreen(true);
+            if(leftSidebar) leftSidebar.classList.add('hidden');
             rightPane.className = "fixed inset-0 z-[9999] w-full h-[100dvh] flex flex-col bg-slate-950 transition-all";
             rightPane.innerHTML = `
                 <div class="p-4 border-b border-slate-800 flex items-center pt-[max(env(safe-area-inset-top),1rem)]">
-                    <button onclick="showMobileSidebar()" class="text-white p-2 -ml-2"><i class="fas fa-arrow-left"></i></button>
+                    <button onclick="showMobileSidebar()" class="text-white p-2 -ml-2 w-10 h-10 flex items-center justify-center bg-slate-800 rounded-full border border-slate-700 shadow-lg"><i class="fas fa-arrow-left"></i></button>
+                    <div class="ml-4 flex flex-col">
+                        <span class="text-[10px] font-black text-slate-500 uppercase tracking-widest">Opening Secure Chat</span>
+                        <span class="text-xs text-[#00f0ff] font-bold">Connecting to Node #${id}...</span>
+                    </div>
                 </div>
                 <div class="flex-1 flex flex-col items-center justify-center text-slate-500">
-                    <i class="fas fa-circle-notch fa-spin text-3xl text-blue-500 mb-4"></i>
-                    <p class="font-medium text-xs">Opening Chat...</p>
+                    <div class="relative w-16 h-16 mb-6">
+                        <div class="absolute inset-0 border-4 border-[#00f0ff]/20 rounded-full"></div>
+                        <div class="absolute inset-0 border-4 border-t-[#00f0ff] rounded-full animate-spin"></div>
+                    </div>
+                    <p class="font-bold text-xs uppercase tracking-[0.3em] animate-pulse">Initializing Matrix...</p>
                 </div>
             `;
         } else {
@@ -625,9 +638,15 @@ if ($active_chat_id) {
     // Mobile Back Button Function
     function showMobileSidebar() {
         const rightPane = document.getElementById('right-pane');
-        rightPane.className = "hidden md:flex relative h-full md:h-auto z-10 w-full md:w-2/3 lg:w-3/4 flex-col bg-slate-950 md:bg-slate-900/80 md:backdrop-blur-xl md:border border-slate-700/50 md:rounded-2xl shadow-xl overflow-hidden transition-all";
+        const leftSidebar = document.getElementById('left-sidebar');
         
+        if (rightPane) rightPane.className = "hidden md:flex relative h-full md:h-auto z-10 w-full md:w-2/3 lg:w-3/4 flex-col bg-slate-950 md:bg-slate-900/80 md:backdrop-blur-xl md:border border-slate-700/50 md:rounded-2xl shadow-xl overflow-hidden transition-all";
+        if (leftSidebar) leftSidebar.classList.remove('hidden');
+        if (leftSidebar) leftSidebar.classList.add('flex');
+
         toggleMobileFullscreen(false);
+        currentOrderId = 0;
+        clearInterval(pollInterval);
         
         window.history.pushState({}, '', 'index.php?module=user&page=orders');
     }
