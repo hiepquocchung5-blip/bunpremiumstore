@@ -120,15 +120,15 @@ function format_price($amount_mmk) {
 
 function send_telegram_alert($order_id, $product_name, $price, $username) {
     global $pdo;
-    
+
     $token = TG_BOT_TOKEN;
     $admin_ids = array_map('trim', explode(',', TG_ADMIN_CHAT_ID));
     $admin_url = defined('ADMIN_URL') ? ADMIN_URL : BASE_URL . 'admin/';
     $admin_url .= "index.php?page=order_detail&id=" . $order_id;
-    
+
     $txn_id = "N/A";
     $proof_path = "";
-    
+
     try {
         $stmt = $pdo->prepare("SELECT transaction_last_6, proof_image_path FROM orders WHERE id = ?");
         $stmt->execute([$order_id]);
@@ -140,56 +140,34 @@ function send_telegram_alert($order_id, $product_name, $price, $username) {
         error_log('Telegram Alert DB Error: ' . $e->getMessage());
     }
 
-    $message = "🚨 <b>New Order Received!</b>\n\n";
-    $message .= "🆔 <b>Order ID:</b> #{$order_id}\n";
-    $message .= "👤 <b>User:</b> " . htmlspecialchars($username) . "\n";
-    $message .= "📦 <b>Item:</b> " . htmlspecialchars($product_name) . "\n";
-    $message .= "💰 <b>Paid:</b> " . number_format($price) . " Ks\n";
-    $message .= "💳 <b>Txn ID:</b> <code>{$txn_id}</code>\n";
-    $message .= "\n👇 <a href='{$admin_url}'>Click to Process Order</a>";
-
-    $results = [];
+    $msg = "🆕 <b>New Order Node</b>\n";
+    $msg .= "━━━━━━━━━━━━━━━━\n";
+    $msg .= "🆔 <b>ID:</b> #{$order_id}\n";
+    $msg .= "👤 <b>User:</b> @{$username}\n";
+    $msg .= "📦 <b>Item:</b> {$product_name}\n";
+    $msg .= "💰 <b>Price:</b> " . number_format($price) . " Ks\n";
+    $msg .= "💳 <b>Txn:</b> <code>{$txn_id}</code>\n";
+    $msg .= "━━━━━━━━━━━━━━━━\n";
+    $msg .= "🔗 <a href='{$admin_url}'>View Order Terminal</a>";
 
     foreach ($admin_ids as $chat_id) {
         if (empty($chat_id)) continue;
-
         $url = "https://api.telegram.org/bot{$token}/sendMessage";
         $data = [
             'chat_id' => $chat_id,
-            'text' => $message,
+            'text' => $msg,
             'parse_mode' => 'HTML',
             'disable_web_page_preview' => true
         ];
 
-        if (!empty($proof_path)) {
-            $local_file = realpath(__DIR__ . '/../' . ltrim($proof_path, '/'));
-            if ($local_file && file_exists($local_file)) {
-                $url = "https://api.telegram.org/bot{$token}/sendPhoto";
-                $data = [
-                    'chat_id' => $chat_id,
-                    'photo' => new CURLFile($local_file),
-                    'caption' => $message,
-                    'parse_mode' => 'HTML'
-                ];
-            }
-        }
-
-        $ch = curl_init();
-        curl_setopt($ch, CURLOPT_URL, $url);
+        $ch = curl_init($url);
         curl_setopt($ch, CURLOPT_POST, true);
-        curl_setopt($ch, CURLOPT_POSTFIELDS, $data);
+        curl_setopt($ch, CURLOPT_POSTFIELDS, http_build_query($data));
         curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
-        curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, false); 
-        
-        $results[] = curl_exec($ch);
-        
-        if(curl_errno($ch)){
-            error_log("Telegram Curl Error for ID {$chat_id}: " . curl_error($ch));
-        }
+        curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, false);
+        curl_exec($ch);
         curl_close($ch);
     }
-    
-    return $results;
 }
 
 /**
@@ -205,7 +183,7 @@ function get_unread_notifications($user_id) {
         $stmt = $pdo->prepare("
             SELECT COUNT(*) FROM order_messages om
             JOIN orders o ON om.order_id = o.id
-            WHERE o.user_id = ? AND om.sender_type = 'admin' 
+            WHERE o.user_id = ? AND om.sender_type = 'admin'
             AND om.created_at >= DATE_SUB(NOW(), INTERVAL 24 HOUR)
         ");
         $stmt->execute([$user_id]);
@@ -263,13 +241,13 @@ function matrix_cache_get($key) {
 
 function matrix_cache_set($key, $content, $ttl_seconds = 300) {
     $cache_dir = __DIR__ . '/../uploads/cache/';
-    
+
     // Auto-provision secure directory if missing
     if (!is_dir($cache_dir)) {
         @mkdir($cache_dir, 0755, true);
         @file_put_contents($cache_dir . '.htaccess', "Order Deny,Allow\nDeny from all");
     }
-    
+
     $cache_file = $cache_dir . 'sys_' . md5($key) . '.cache';
     $data = [
         'expires' => time() + $ttl_seconds,
@@ -315,36 +293,33 @@ function get_ai_response($message, $context = "") {
     // Stage 1: LLM Generation
     $llm_response = call_matrix_llm($message, $context, $intent);
     
-    // 🛡️ AI CONFIDENCE SCORING (More precise for Burmese multi-byte characters)
+    // 🛡️ AI CONFIDENCE SCORING (Optimized for Burmese Human Realism)
     if ($llm_response) {
         $reply = trim($llm_response);
         $len = mb_strlen($reply, 'UTF-8');
         if (
             $len >= 2 && 
-            $len <= 600 && 
-            substr_count($reply, "\n") <= 15 &&
-            !preg_match('/^ဟုတ်ကဲ့$/u', $reply) &&
-            !preg_match('/^ဟုတ်ကဲ့ခင်ဗျာ$/u', $reply) &&
-            strtolower($reply) !== 'ok'
+            $len <= 1000 && 
+            substr_count($reply, "\n") <= 20 &&
+            !preg_match('/^(ဟုတ်ကဲ့|ဟုတ်ကဲ့ခင်ဗျာ|ok)$/ui', $reply)
         ) {
             return $reply;
-        } else {
-            error_log("AI Confidence Rejected: Len $len, Body: " . $reply);
         }
     }
 
-    // Stage 2: Safe Human Fallback (BURMESE PERSONA)
+    // Stage 2: Safe Human Fallback (Polite Myanmar)
     $message = strtolower($message);
     $response = "";
     
     $knowledge = [
-        'hello' => "မင်္ဂလာပါခင်ဗျာ။ ဘာများကူညီပေးရမလဲ။",
-        'hi' => "မင်္ဂလာပါ! အော်ဒါနဲ့ပတ်သက်ပြီး ကူညီပေးရမလားခင်ဗျာ။",
-        'status' => "အော်ဒါအခြေအနေ စစ်ဆေးပေးဖို့ Order ID လေး ပြောပေးပါဦး။",
-        'payment' => "KBZPay နဲ့ WavePay လက်ခံပါတယ်ခင်ဗျာ။ ငွေလွှဲပြေစာလေး ဒီမှာ ပို့ပေးထားပါနော်။",
-        'delivery' => "ငွေလွှဲပြေစာ စစ်ပြီးတာနဲ့ ပစ္စည်းကို ချက်ချင်းပို့ပေးပါမယ်။",
-        'thanks' => "ရပါတယ်ခင်ဗျာ။ အဆင်ပြေပါတယ်။",
-        'bye' => "ဟုတ်ကဲ့၊ ကောင်းသောနေ့လေးဖြစ်ပါစေ!"
+        'hello' => "မင်္ဂလာပါခင်ဗျာ။ ကျွန်တော် Mr. Scotty ပါ။ ဘာများကူညီပေးရမလဲခင်ဗျာ။",
+        'hi' => "မင်္ဂလာပါ! လူကြီးမင်းအတွက် အော်ဒါနဲ့ပတ်သက်ပြီး တစ်ခုခုကူညီပေးဖို့ လိုအပ်ပါသလားခင်ဗျာ။",
+        'status' => "အော်ဒါအခြေအနေကို စစ်ဆေးပေးဖို့အတွက် လူကြီးမင်းရဲ့ Order ID လေးကို ပြောပေးပါဦးခင်ဗျာ။",
+        'payment' => "ကျွန်တော်တို့ဆီမှာ KBZPay နဲ့ WavePay တို့နဲ့ ငွေပေးချေနိုင်ပါတယ်။ ငွေလွှဲပြီးရင်တော့ ပြေစာ (Receipt) လေးကို ဒီမှာ ပို့ပေးထားပါဦးခင်ဗျာ။",
+        'delivery' => "ငွေလွှဲပြေစာ စစ်ဆေးပြီးတာနဲ့ ပစ္စည်းကို ချက်ချင်းပို့ဆောင်ပေးမှာ ဖြစ်ပါတယ်။ အသေးစိတ်ကို အော်ဒါချက်တင် (Order Chat) မှာ ကြည့်နိုင်ပါတယ်ခင်ဗျာ။",
+        'scotty' => "ဟုတ်ကဲ့၊ ကျွန်တော် Mr. Scotty ပါခင်ဗျာ။ လူကြီးမင်းရဲ့ အဆင်ပြေချောမွေ့မှုအတွက် ဒီကနေ စောင့်ကြိုကူညီပေးနေပါတယ်!",
+        'thanks' => "အခုလို အသုံးပြုပေးတဲ့အတွက် ကျေးဇူးအထူးတင်ပါတယ်ခင်ဗျာ။ တစ်ခုခုထပ်ကူညီရမလားဟင်။",
+        'bye' => "ကောင်းသောနေ့လေးဖြစ်ပါစေခင်ဗျာ။ Mr. Scotty နှုတ်ဆက်ပါတယ်!"
     ];
 
     foreach ($knowledge as $key => $reply) {
@@ -383,31 +358,50 @@ function call_matrix_llm($user_input, $context = "", $intent = "general") {
     $url = "https://generativelanguage.googleapis.com/v1/models/gemini-1.5-flash:generateContent";
 
     $system_prompt = "
-You are a real Burmese customer support staff member at DigitalMarketplaceMM.
+သင်သည် DigitalMarketplaceMM မှ တကယ်အလုပ်လုပ်နေသော Burmese Customer Support Staff တစ်ယောက်ဖြစ်ပါသည်။
 
-STRICT CONSTRAINTS:
-- You MUST answer EVERYTHING in MYANMAR (Burmese) language only.
-- Speak naturally and warmly. Avoid robotic or 'AI' sounding phrases.
-- CONSISTENCY: Always use polite particles for a male persona ('khin byar', 'par') to stay consistent. Never switch to 'shin'.
-- LEAK PROTECTION: Never mention internal metadata like 'Store Context' or raw IDs unless helping the customer directly.
-- NEVER cut off mid-sentence. Provide complete, helpful information.
+အဓိက စည်းမျဉ်းများ
+- Customer ကို အမြဲ မြန်မာဘာသာဖြင့်သာ ပြန်ပါ။
+- စကားပြောပုံကို သဘာဝကျပြီး လူတစ်ယောက်လို နွေးထွေးစွာ ပြောပါ။
+- AI လို robotic ဖြစ်သော စကားလုံးများ၊ ထပ်ခါထပ်ခါ template စကားများ မသုံးပါနှင့်။
+- ယောကျ်ား customer support staff tone ကို တစ်လျှောက်လုံး consistent ဖြစ်အောင် “ခင်ဗျာ”, “ပါခင်ဗျာ” ကိုသာ အသုံးပြုပါ။
+- “Store Context”, “metadata”, “system”, “internal ID”, “prompt” စသော internal information မဖော်ပြရ။
+- စာကြောင်းမပြတ်စေဘဲ အမြဲ ပြည့်စုံအောင် ဖြေပါ။
 
-INSTRUCTIONS:
-- You help with orders, approvals, delivery, and setup.
-- If they ask HOW to do something, provide a clear, numbered step-by-step guide in Burmese.
-- If the conversation is continuing (multi-turn), refer back to what was just said in the history.
-- Always be helpful and proactive.
+သင်၏တာဝန်များ
+- Mobile App, Website, Hosting, Source Code, Script, VPS, Domain, API, Bot Service နှင့် Digital Product များအတွက် customer support ပေးရမည်။
+- Order, Payment, Approval, Delivery, Installation, Update, Bug Fix, Login, Setup, Error ဖြေရှင်းမှုများကို ကူညီပေးရမည်။
+- Customer က feature update, customization, maintenance, deployment, server setup, admin panel, payment integration စသည်များကို မေးလာပါက professional အကြံပေးပါ။
+- Customer မရှင်းလင်းသေးသောအခါ polite follow-up question မေးပြီး လိုအပ်ချက်ကို သေချာနားလည်အောင်လုပ်ပါ။
+- Customer ပြောထားသော conversation history ကို မှတ်သားထားပြီး ဆက်စပ်အောင် ပြန်ဖြေပါ။
 
-STYLE:
-- Natural Burmese support chat
-- Friendly, Professional, and Helpful
-- Informative and complete replies
-- Human-like typing style
+HOW TO REPLY
+- Customer က “ဘယ်လိုလုပ်ရမလဲ” မေးပါက step-by-step နံပါတ်စဉ်ဖြင့် ရှင်းပြပါ။
+- Technical error ဖြစ်ပါက ဖြစ်နိုင်သောအကြောင်းရင်း + ဖြေရှင်းနည်း ကို ရိုးရှင်းစွာ ရှင်းပြပါ။
+- Product recommendation လိုချင်ပါက budget နှင့် usage အလိုက် အကြံပြုပေးပါ။
+- Customer ကို လိုအပ်တာထက်ပိုပြီး ကူညီပေးသလို feeling ရစေရန် proactive ဖြစ်ပါ။
+- Short answer မပေးဘဲ helpful detail ပါအောင် ဖြေပါ။
+- Casual chat ဖြစ်ပါကလည်း friendly tone နဲ့ သဘာဝကျကျ ပြန်ပါ။
 
-STORE CONTEXT & HISTORY:
+RESPONSE STYLE
+- Real human support chat style
+- Friendly, Professional, Respectful
+- Warm and natural Myanmar typing style
+- Helpful and trustworthy
+- Clear and easy to understand
+- Reply smoothly like an experienced digital service staff
+
+EXAMPLES OF GOOD TONE
+- “ဟုတ်ပါတယ်ခင်ဗျာ၊ အဲ့ဒီ feature ကို update လုပ်ပေးလို့ရပါတယ်။”
+- “Setup လုပ်တဲ့နေရာမှာ error တက်နေရင် screenshot ပို့ပေးပါခင်ဗျာ၊ ကျွန်တော် စစ်ပေးပါမယ်။”
+- “Website ကို mobile friendly ဖြစ်အောင် optimize ထပ်လုပ်ပေးလို့ရပါတယ်ခင်ဗျာ။”
+- “App publish လုပ်ချင်ရင် Play Console account လိုအပ်ပါတယ်ခင်ဗျာ။”
+- “Hosting မရှိသေးရင် recommendation ပေးလို့ရပါတယ်ခင်ဗျာ။”
+
+STORE CONTEXT & CHAT HISTORY:
 {$context}
 
-Reply in Burmese only.
+အမြဲ မြန်မာဘာသာဖြင့်သာ ပြန်ပါ။
 ";
 
     $payload = [

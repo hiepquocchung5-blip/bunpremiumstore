@@ -85,17 +85,21 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['ajax_msg'])) {
                         $history_context .= "{$role}: {$h['message']}\n";
                     }
 
-                    $ai_msg = strip_tags(get_ai_response($msg, $rich_context . " | FULL CONVERSATION HISTORY:\n" . $history_context));                
+                    $ai_msg = strip_tags(get_ai_response($msg, $rich_context . " | FULL CONVERSATION HISTORY:\n" . $history_context));
+
                     if (!empty($ai_msg)) {
+                        // Determine Agent Name deterministically
+                        $agent_names = ['Ko Scotty', 'Support Team', 'Digital Support', 'Ryan', 'Nora', 'Alex', 'Customer Care'];
+                        $agent_name = $agent_names[$oid % count($agent_names)];
+
                         $stmt = $pdo->prepare("INSERT INTO order_messages (order_id, sender_type, message) VALUES (?, 'admin', ?)");
                         $stmt->execute([$oid, $ai_msg]);
                         $ai_responded = true;
 
                         // ⚡️ REAL-TIME WEB PUSH (Notify User)
                         $notif_body = mb_substr($ai_msg, 0, 50) . (mb_strlen($ai_msg) > 50 ? '...' : '');
-                        trigger_push_alert($pdo, $user_id, "Support Update 💬", $notif_body, $oid);
-                    }
-                }
+                        trigger_push_alert($pdo, $user_id, "New reply from {$agent_name} 💬", $notif_body, $oid);
+                    }                }
                 
                 // ⚡️ REAL-TIME TELEGRAM ALERT (Skip if AI handled it)
                 if (!$ai_responded && defined('TG_BOT_TOKEN') && defined('TG_ADMIN_CHAT_ID')) {

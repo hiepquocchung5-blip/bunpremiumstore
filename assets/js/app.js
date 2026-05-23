@@ -1,5 +1,5 @@
 // assets/js/app.js
-// PRODUCTION v3.3 - Dynamic Alert Injection & Matrix Toast UI
+// PRODUCTION v3.4 - Dynamic Alert Injection & Support Hub UI
 
 /**
  * --------------------------------------------------------------------------

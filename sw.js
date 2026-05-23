@@ -1,8 +1,8 @@
 // sw.js (MUST BE IN ROOT DIRECTORY)
-// PRODUCTION v2.9 - Silent Matrix SW & Error Suppressor
+// PRODUCTION v3.0 - Resilient Store Service Worker & Error Suppressor
 
-const CACHE_NAME = 'matrix-static-v1';
-const IMAGE_CACHE_NAME = 'matrix-images-v1';
+const CACHE_NAME = 'store-static-v1';
+const IMAGE_CACHE_NAME = 'store-images-v1';
 
 // Assets to cache immediately on install
 const PRECACHE_ASSETS = [
