@@ -333,61 +333,40 @@ function get_ai_response($message, $context = "") {
     return "🤖 <b>Mr. Scotty:</b> " . $response;
 }
 
-/**
- * ⚡️ AI SUPPORT BRIDGE
- * Connects to Google Gemini API for high-level intelligence.
- */
 function call_matrix_llm($user_input, $context = "") {
-    // ⚡️ Authenticate with Support Core Credentials
     $api_key = defined('GEMINI_API_KEY') ? trim(GEMINI_API_KEY) : trim($_ENV['GEMINI_API_KEY'] ?? ''); 
     if (empty($api_key)) return false;
 
-    // ⚡️ STABLE PRODUCTION URL (v1)
-    $url = "https://generativelanguage.googleapis.com/v1/models/gemini-1.5-flash:generateContent?key=" . $api_key;
-    
-    // HUMAN-FRIENDLY SYSTEM PROMPT
+    // ⚡️ VERIFIED WORKING ENDPOINT & MODEL
+    $url = "https://generativelanguage.googleapis.com/v1beta/models/gemini-flash-latest:generateContent";
+
     $system_prompt = "You are Mr. Scotty, a very friendly and helpful senior support assistant for 'DigitalMarketplaceMM', an online store in Myanmar. 
-    Your persona: 
-    - You are polite, kind, and very 'human'. 
-    - Use simple English that anyone can understand. Avoid technical jargon like 'Matrix', 'Node', or 'Operative'.
-    - Instead of 'Operative', say 'Customer' or 'User'.
-    - Instead of 'Deployment', say 'Delivery' or 'Order'.
-    - You are deeply helpful and try to solve problems with a positive attitude.
-    - You know we accept KBZPay and WavePay.
-    - You know deliveries are instant after our team checks the payment receipt.
-    - Keep responses brief (max 2-3 sentences) but very high quality and friendly.";
+    Persona: Polite, kind, human-like. Use simple English. Avoid jargon.
+    Context: $context";
 
     $payload = [
-        "contents" => [
-            ["parts" => [["text" => $system_prompt . "\n\nUser Transmission: " . $user_input . "\nContext: " . $context]]]
-        ],
-        "generationConfig" => [
-            "temperature" => 0.7,
-            "maxOutputTokens" => 200
-        ]
+        "contents" => [["parts" => [["text" => $system_prompt . "\n\nUser Question: " . $user_input]]]]
     ];
 
     $ch = curl_init($url);
-    curl_setopt($ch, CURLOPT_HTTPHEADER, ['Content-Type: application/json']);
+    curl_setopt($ch, CURLOPT_HTTPHEADER, [
+        'Content-Type: application/json',
+        'X-goog-api-key: ' . $api_key
+    ]);
     curl_setopt($ch, CURLOPT_POSTFIELDS, json_encode($payload));
     curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
     curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, false);
-    curl_setopt($ch, CURLOPT_TIMEOUT, 5); // 5s timeout to maintain 'Lite Speed'
+    curl_setopt($ch, CURLOPT_TIMEOUT, 10);
 
     $result = curl_exec($ch);
     $http_code = curl_getinfo($ch, CURLINFO_HTTP_CODE);
-    $curl_error = curl_error($ch);
     curl_close($ch);
 
     if ($http_code === 200) {
         $json = json_decode($result, true);
-        $text = $json['candidates'][0]['content']['parts'][0]['text'] ?? false;
-        if (!$text) {
-            error_log("Gemini API Parse Error: " . $result);
-        }
-        return $text;
+        return $json['candidates'][0]['content']['parts'][0]['text'] ?? false;
     } else {
-        error_log("Gemini API HTTP Error $http_code: " . $result . " | Curl: " . $curl_error);
+        error_log("AI Uplink Error: HTTP $http_code | Body: $result");
     }
 
     return false;
