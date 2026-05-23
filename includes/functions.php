@@ -379,8 +379,8 @@ function call_matrix_llm($user_input, $context = "", $intent = "general") {
         return false; // Instant fallback during cooldown
     }
 
-    // ⚡️ Standard Model Node (Most compatible with Free Tier)
-    $url = "https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent";
+    // ⚡️ STABLE PRODUCTION NODE (v1)
+    $url = "https://generativelanguage.googleapis.com/v1/models/gemini-1.5-flash:generateContent";
 
     $system_prompt = "
 You are a real Burmese customer support staff member at DigitalMarketplaceMM.
@@ -446,9 +446,9 @@ Reply in Burmese only.
             error_log("Gemini Quota Exceeded (429). Falling back to human rules for 60s.");
         }
         
-        // Fallback to verified gemini-1.5-flash if primary endpoint fails
+        // Fallback to verified gemini-flash-latest on v1beta
         if ($http_code === 404) {
-            $url = "https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent";
+            $url = "https://generativelanguage.googleapis.com/v1beta/models/gemini-flash-latest:generateContent";
             $ch = curl_init($url);
             curl_setopt($ch, CURLOPT_HTTPHEADER, [
                 'Content-Type: application/json',
