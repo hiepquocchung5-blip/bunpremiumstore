@@ -164,7 +164,7 @@ if (isset($_SESSION['user_id'])) {
                 <!-- 2. Desktop Search -->
                 <div class="hidden lg:flex flex-1 items-center justify-center px-12">
                     <div class="relative w-full max-w-xl group">
-                        <button onclick="document.getElementById('search-modal').classList.remove('hidden')" class="w-full flex items-center justify-between bg-slate-900/50 border border-slate-700 hover:border-[#00f0ff]/50 rounded-xl py-2.5 px-4 text-sm text-slate-400 transition-all duration-300 shadow-inner group-hover:shadow-[0_0_15px_rgba(0,240,255,0.05)]">
+                        <button onclick="openSearchModal()" class="w-full flex items-center justify-between bg-slate-900/50 border border-slate-700 hover:border-[#00f0ff]/50 rounded-xl py-2.5 px-4 text-sm text-slate-400 transition-all duration-300 shadow-inner group-hover:shadow-[0_0_15px_rgba(0,240,255,0.05)]">
                             <span class="flex items-center gap-3">
                                 <i class="fas fa-search text-slate-500 group-hover:text-[#00f0ff] transition"></i>
                                 Search games, software, gifts...
@@ -351,7 +351,7 @@ if (isset($_SESSION['user_id'])) {
                 <span class="text-[8px] font-black uppercase tracking-widest">Home</span>
             </a>
 
-            <button onclick="document.getElementById('search-modal').classList.remove('hidden')" class="flex flex-col items-center gap-1.5 text-slate-400 hover:text-[#00f0ff] transition">
+            <button onclick="openSearchModal()" class="flex flex-col items-center gap-1.5 text-slate-400 hover:text-[#00f0ff] transition">
                 <i class="fas fa-search text-lg"></i>
                 <span class="text-[8px] font-black uppercase tracking-widest">Search</span>
             </button>
@@ -445,21 +445,47 @@ if (isset($_SESSION['user_id'])) {
     </div>
 
     <!-- Global Search Modal -->
-    <div id="search-modal" class="fixed inset-0 z-[120] hidden flex items-start justify-center pt-20 px-4">
-        <div class="absolute inset-0 bg-slate-950/90 backdrop-blur-md" onclick="document.getElementById('search-modal').classList.add('hidden')"></div>
+    <div id="search-modal" class="fixed inset-0 z-[120] hidden flex items-start justify-center md:pt-20 px-0 md:px-4 transition-all duration-300">
+        <div class="absolute inset-0 bg-slate-950/95 backdrop-blur-xl" onclick="closeSearchModal()"></div>
         
-        <div class="w-full max-w-2xl relative z-10 animate-fade-in-down">
-            <form action="index.php" method="GET" class="relative bg-slate-900 rounded-2xl shadow-[0_0_50px_rgba(0,240,255,0.15)] border border-[#00f0ff]/50 overflow-hidden flex items-center p-2 focus-within:shadow-[0_0_40px_rgba(0,240,255,0.3)] transition-all">
+        <div class="w-full max-w-2xl relative z-10 animate-fade-in-down h-full md:h-auto flex flex-col">
+            <!-- Search Header Area -->
+            <form action="index.php" method="GET" class="relative bg-slate-900 md:rounded-2xl shadow-[0_0_50px_rgba(0,240,255,0.15)] border-b md:border border-[#00f0ff]/30 overflow-hidden flex items-center p-3 md:p-2 focus-within:border-[#00f0ff] transition-all pt-[max(env(safe-area-inset-top),0.75rem)] md:pt-2">
                 <input type="hidden" name="module" value="shop">
                 <input type="hidden" name="page" value="search">
                 
-                <div class="pl-4 pr-2 text-[#00f0ff]"><i class="fas fa-search text-xl"></i></div>
-                <input type="text" name="q" placeholder="Query Matrix..." id="global-search-input"
-                       class="flex-1 bg-transparent border-none py-3 px-2 text-white text-lg placeholder-slate-500 focus:outline-none font-mono">
+                <button type="button" onclick="closeSearchModal()" class="md:hidden text-slate-400 p-2 mr-1">
+                    <i class="fas fa-arrow-left text-lg"></i>
+                </button>
+
+                <div class="hidden md:block pl-4 pr-2 text-[#00f0ff]"><i class="fas fa-search text-xl"></i></div>
                 
-                <button type="submit" class="bg-blue-600 hover:bg-[#00f0ff] hover:text-slate-900 text-white px-6 py-3 rounded-xl font-bold transition-colors uppercase tracking-widest text-xs hidden sm:block">Execute</button>
+                <input type="text" name="q" placeholder="Search for assets..." id="global-search-input"
+                       class="flex-1 bg-transparent border-none py-3 px-2 text-white text-lg placeholder-slate-500 focus:outline-none font-medium">
+                
+                <button type="submit" class="bg-blue-600 hover:bg-[#00f0ff] hover:text-slate-900 text-white px-6 py-3 rounded-xl font-bold transition-colors uppercase tracking-widest text-xs">Execute</button>
             </form>
-            <div class="text-center mt-4 text-xs text-slate-500 font-medium tracking-widest uppercase">
+
+            <!-- Quick Suggestions (Mobile Optimized) -->
+            <div class="flex-1 overflow-y-auto p-6 md:p-4 space-y-6">
+                <div>
+                    <h4 class="text-[10px] font-black text-slate-500 uppercase tracking-[0.2em] mb-4 flex items-center gap-2">
+                        <i class="fas fa-fire text-orange-500"></i> Popular Nodes
+                    </h4>
+                    <div class="flex flex-wrap gap-2">
+                        <a href="index.php?module=shop&page=search&q=Netflix" class="px-4 py-2 bg-slate-800/50 border border-slate-700 rounded-full text-xs text-slate-300 hover:border-[#00f0ff] hover:text-[#00f0ff] transition">Netflix</a>
+                        <a href="index.php?module=shop&page=search&q=Steam" class="px-4 py-2 bg-slate-800/50 border border-slate-700 rounded-full text-xs text-slate-300 hover:border-[#00f0ff] hover:text-[#00f0ff] transition">Steam</a>
+                        <a href="index.php?module=shop&page=search&q=ChatGPT" class="px-4 py-2 bg-slate-800/50 border border-slate-700 rounded-full text-xs text-slate-300 hover:border-[#00f0ff] hover:text-[#00f0ff] transition">ChatGPT</a>
+                        <a href="index.php?module=shop&page=search&q=Spotify" class="px-4 py-2 bg-slate-800/50 border border-slate-700 rounded-full text-xs text-slate-300 hover:border-[#00f0ff] hover:text-[#00f0ff] transition">Spotify</a>
+                    </div>
+                </div>
+
+                <div class="md:hidden pt-4 border-t border-slate-800/50">
+                    <p class="text-[10px] text-slate-500 text-center font-medium italic">Type at least 3 characters to search the matrix</p>
+                </div>
+            </div>
+
+            <div class="hidden md:block text-center mt-4 pb-8 text-xs text-slate-500 font-medium tracking-widest uppercase">
                 Press <kbd class="bg-slate-800 border border-slate-700 px-2 py-1 rounded text-slate-300 font-mono">ESC</kbd> to abort
             </div>
         </div>
@@ -474,17 +500,43 @@ if (isset($_SESSION['user_id'])) {
         </div>
 
     <script>
+        // Global Search Modal Controls
+        function openSearchModal() {
+            const modal = document.getElementById('search-modal');
+            modal.classList.remove('hidden');
+            // Prevent body scroll on mobile
+            if(window.innerWidth < 768) {
+                document.body.style.overflow = 'hidden';
+                document.body.style.height = '100svh';
+            }
+            setTimeout(() => {
+                document.getElementById('global-search-input').focus();
+            }, 100);
+        }
+
+        function closeSearchModal() {
+            document.getElementById('search-modal').classList.add('hidden');
+            document.body.style.overflow = '';
+            document.body.style.height = '';
+        }
+
         // Keyboard shortcuts for search modal
         document.addEventListener('keydown', (e) => {
             if ((e.ctrlKey || e.metaKey) && e.key === 'k') {
                 e.preventDefault();
-                const modal = document.getElementById('search-modal');
-                modal.classList.remove('hidden');
-                setTimeout(() => document.getElementById('global-search-input').focus(), 100);
+                openSearchModal();
             }
             if (e.key === 'Escape') {
-                document.getElementById('search-modal').classList.add('hidden');
+                closeSearchModal();
             }
+        });
+
+        // Update all search buttons to use openSearchModal
+        document.addEventListener('DOMContentLoaded', () => {
+            const searchTriggers = document.querySelectorAll('[onclick*="search-modal"]');
+            searchTriggers.forEach(trigger => {
+                trigger.setAttribute('onclick', 'openSearchModal()');
+            });
         });
 
         // ⚡️ INLINE DEBUG & FAILSAFE FOR PUSH BUTTON (Overrides app.js if needed)
