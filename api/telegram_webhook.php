@@ -207,6 +207,27 @@ try {
             }
             break;
 
+        case '/train':
+            if ($isAdmin && !empty($argsStr)) {
+                $parts = explode(' ', $argsStr, 2);
+                if (count($parts) < 2) {
+                    $reply = "❌ <b>Usage:</b> <code>/train [Tag] [New Pattern]</code>\nExample: <code>/train greeting hello there</code>";
+                } else {
+                    $tag = trim($parts[0]);
+                    $pattern = trim($parts[1]);
+                    
+                    require_once __DIR__ . '/../includes/MatrixLocalAI.php';
+                    $localAI = new MatrixLocalAI(__DIR__ . '/../includes/ai_training.json');
+                    
+                    if ($localAI->learn($pattern, $tag)) {
+                        $reply = "🧠 <b>REINFORCEMENT SUCCESS</b>\n\nAI has learned to associate <i>\"$pattern\"</i> with 🏷 <b>$tag</b>.";
+                    } else {
+                        $reply = "❌ <b>TRAINING FAILED</b>\n\nTag <code>$tag</code> not found in training data.";
+                    }
+                }
+            }
+            break;
+
         case '/start':
         case '/help':
         default:
@@ -217,9 +238,8 @@ try {
                     $reply .= "🛠 <b><u>ADMIN COMMANDS</u></b>\n";
                     $reply .= "🔹 <code>/stats</code> - Store status\n";
                     $reply .= "🔹 <code>/pending</code> - See new orders\n";
-                    $reply .= "🔹 <code>/find [ID]</code> - Search for a user\n";
+                    $reply .= "🔹 <code>/train [Tag] [Msg]</code> - Teach AI\n";
                     $reply .= "🔹 <code>/approve [ID]</code> - Confirm an order\n";
-                    $reply .= "🔹 <code>/reject [ID]</code> - Cancel an order\n";
                     $reply .= "🔹 <code>/reply [ID] [Msg]</code> - Message a user\n";
                     $reply .= "🔹 <code>/aistatus</code> - Check AI health\n";
                     $reply .= "🔹 <code>/ping</code> - Check server speed\n";

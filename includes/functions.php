@@ -290,7 +290,7 @@ function detect_intent($message) {
 function get_ai_response($message, $context = "") {
     $intent = detect_intent($message);
 
-    // Stage 1: Matrix Local Algorithmic AI (No-API Formula)
+    // Stage 1: Matrix Local Algorithmic AI (Reinforcement Engine)
     $local_ai_path = __DIR__ . '/MatrixLocalAI.php';
     $training_path = __DIR__ . '/ai_training.json';
     
@@ -298,9 +298,10 @@ function get_ai_response($message, $context = "") {
         require_once $local_ai_path;
         $localAI = new MatrixLocalAI($training_path);
         
-        // Predict using Cosine Similarity & TF-IDF (Threshold 0.25)
+        // Predict with Reinforcement Logic (Threshold 0.25)
         $local_prediction = $localAI->predict($message, 0.25);
         if ($local_prediction && !empty($local_prediction['response'])) {
+            // We can log the successful hit for future analytics here
             return trim($local_prediction['response']);
         }
     }

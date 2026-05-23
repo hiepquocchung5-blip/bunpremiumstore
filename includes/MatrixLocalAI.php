@@ -1,10 +1,12 @@
 <?php
 /**
- * 🧠 MATRIX LOCAL AI ENGINE (No-API Algorithmic Model)
- * Theory: Term Frequency-Inverse Document Frequency (TF-IDF) & Cosine Similarity
+ * 🧠 MATRIX LOCAL AI ENGINE v2.0 (Reinforcement Edition)
+ * Theory: TF-IDF, Cosine Similarity & Dynamic Reinforcement Learning
  * 
- * This engine allows the system to process intents locally without relying on an external API.
- * You can write your own training data in `ai_training.json`.
+ * Features:
+ * - Algorithmic Pattern Matching
+ * - Self-Learning / Reinforcement Mechanism
+ * - Metadata Preservation (Icons, Colors, BG)
  */
 
 class MatrixLocalAI {
@@ -12,8 +14,10 @@ class MatrixLocalAI {
     private $vocabulary = [];
     private $document_vectors = [];
     private $doc_freq = [];
+    private $file_path = "";
 
     public function __construct($json_file) {
+        $this->file_path = $json_file;
         if (file_exists($json_file)) {
             $json_content = file_get_contents($json_file);
             $this->training_data = json_decode($json_content, true);
@@ -23,27 +27,17 @@ class MatrixLocalAI {
         }
     }
 
-    /**
-     * Algorithmic Step 1: Tokenization
-     * Breaks Burmese and English sentences down into distinct words/tokens.
-     */
     private function tokenize($text) {
         $text = mb_strtolower($text, 'UTF-8');
-        // Remove punctuation, keep letters, numbers, and spaces
         $text = preg_replace('/[^\p{L}\p{N}\s]/u', ' ', $text);
-        // Split by whitespace
-        $tokens = preg_split('/\s+/u', $text, -1, PREG_SPLIT_NO_EMPTY);
-        return $tokens;
+        return preg_split('/\s+/u', $text, -1, PREG_SPLIT_NO_EMPTY);
     }
 
-    /**
-     * Algorithmic Step 2: Training the Vector Space Model
-     * Calculates the Document Frequencies across the training set.
-     */
     private function train() {
         $doc_index = 0;
         $this->doc_freq = [];
         $this->vocabulary = [];
+        $this->document_vectors = [];
 
         foreach ($this->training_data as $intent) {
             foreach ($intent['patterns'] as $pattern) {
@@ -59,32 +53,29 @@ class MatrixLocalAI {
                 }
                 
                 $this->document_vectors[$doc_index] = [
-                    'intent' => $intent['tag'],
+                    'tag' => $intent['tag'],
                     'tokens' => $tokens,
-                    'responses' => $intent['responses']
+                    'responses' => $intent['responses'],
+                    'metadata' => [
+                        'icon' => $intent['icon'] ?? '',
+                        'color' => $intent['color'] ?? '',
+                        'bg' => $intent['bg'] ?? ''
+                    ]
                 ];
                 $doc_index++;
             }
         }
         
         $total_docs = count($this->document_vectors);
-        
-        // Pre-calculate TF-IDF for all training documents
         foreach ($this->document_vectors as &$doc) {
             $doc['vector'] = $this->calculate_tfidf($doc['tokens'], $total_docs);
         }
     }
 
-    /**
-     * Algorithmic Step 3: TF-IDF Formula
-     * TF (Term Frequency): (Count of term in doc) / (Total terms in doc)
-     * IDF (Inverse Document Frequency): log(Total docs / Number of docs containing term)
-     */
     private function calculate_tfidf($tokens, $total_docs) {
         $vector = [];
         $token_counts = array_count_values($tokens);
         $total_tokens = count($tokens);
-
         if ($total_tokens == 0) return $vector;
 
         foreach ($this->vocabulary as $word) {
@@ -97,34 +88,26 @@ class MatrixLocalAI {
         return $vector;
     }
 
-    /**
-     * Algorithmic Step 4: Cosine Similarity Formula
-     * measures the cosine of the angle between two vectors projected in a multi-dimensional space.
-     */
     private function cosine_similarity($vec1, $vec2) {
         $dot_product = 0;
         $norm_a = 0;
         $norm_b = 0;
-        
         foreach ($this->vocabulary as $word) {
             $val1 = $vec1[$word] ?? 0;
             $val2 = $vec2[$word] ?? 0;
-            
             $dot_product += $val1 * $val2;
             $norm_a += $val1 * $val1;
             $norm_b += $val2 * $val2;
         }
-        
         if ($norm_a == 0 || $norm_b == 0) return 0;
         return $dot_product / (sqrt($norm_a) * sqrt($norm_b));
     }
 
     /**
-     * Final Execution: Predict the best matching intent
+     * Predict the intent with full metadata support
      */
     public function predict($text, $threshold = 0.25) {
         if (empty($this->training_data) || empty($this->vocabulary)) return false;
-
         $input_tokens = $this->tokenize($text);
         if (empty($input_tokens)) return false;
 
@@ -132,27 +115,58 @@ class MatrixLocalAI {
         $input_vector = $this->calculate_tfidf($input_tokens, $total_docs);
 
         $best_score = 0;
-        $best_intent = null;
-        $best_responses = [];
+        $winner = null;
 
         foreach ($this->document_vectors as $doc) {
             $score = $this->cosine_similarity($input_vector, $doc['vector']);
             if ($score > $best_score) {
                 $best_score = $score;
-                $best_intent = $doc['intent'];
-                $best_responses = $doc['responses'];
+                $winner = $doc;
             }
         }
 
-        // If the similarity score passes our mathematical threshold
-        if ($best_score >= $threshold && !empty($best_responses)) {
+        if ($best_score >= $threshold && $winner) {
             return [
                 'score' => round($best_score, 4),
-                'intent' => $best_intent,
-                'response' => $best_responses[array_rand($best_responses)] // Pick random variety
+                'tag' => $winner['tag'],
+                'response' => $winner['responses'][array_rand($winner['responses'])],
+                'metadata' => $winner['metadata']
             ];
         }
-
         return false;
+    }
+
+    /**
+     * ⚡️ REINFORCEMENT LEARNING ENGINE
+     * Teach the AI new patterns for a specific tag.
+     */
+    public function learn($new_pattern, $target_tag) {
+        $found = false;
+        foreach ($this->training_data as &$intent) {
+            if ($intent['tag'] === $target_tag) {
+                // Avoid duplicates
+                if (!in_array($new_pattern, $intent['patterns'])) {
+                    $intent['patterns'][] = $new_pattern;
+                }
+                $found = true;
+                break;
+            }
+        }
+
+        if ($found) {
+            $this->persist();
+            $this->train(); // Re-index the vectors
+            return true;
+        }
+        return false;
+    }
+
+    /**
+     * Persist the updated knowledge back to the JSON file
+     */
+    private function persist() {
+        if (empty($this->file_path)) return false;
+        $json_output = json_encode($this->training_data, JSON_PRETTY_PRINT | JSON_UNESCAPED_UNICODE);
+        return file_put_contents($this->file_path, $json_output);
     }
 }
