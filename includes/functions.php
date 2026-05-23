@@ -367,6 +367,11 @@ function call_matrix_llm($user_input, $context = "", $intent = "general") {
     $api_key = defined('GEMINI_API_KEY') ? trim(GEMINI_API_KEY) : trim($_ENV['GEMINI_API_KEY'] ?? ''); 
     if (empty($api_key)) return false;
 
+    // ⚡️ RATE LIMIT PROTECTION: Check Matrix Cache for Cooldown node
+    if (function_exists('matrix_cache_get') && matrix_cache_get('ai_quota_cooldown')) {
+        return false; // Instant fallback during cooldown
+    }
+
     // Use latest verified node
     $url = "https://generativelanguage.googleapis.com/v1beta/models/gemini-flash-latest:generateContent";
 
@@ -426,6 +431,14 @@ Reply in Burmese only.
         $json = json_decode($result, true);
         return $json['candidates'][0]['content']['parts'][0]['text'] ?? false;
     } else {
+        // ⚡️ HANDLE QUOTA EXCEEDED (429)
+        if ($http_code === 429) {
+            if (function_exists('matrix_cache_set')) {
+                matrix_cache_set('ai_quota_cooldown', true, 60); // Cool down for 60s
+            }
+            error_log("Gemini Quota Exceeded (429). Falling back to human rules for 60s.");
+        }
+        
         // Fallback to verified gemini-flash-latest if primary endpoint fails
         if ($http_code === 404) {
             $url = "https://generativelanguage.googleapis.com/v1beta/models/gemini-flash-latest:generateContent";

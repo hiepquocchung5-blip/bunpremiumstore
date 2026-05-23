@@ -101,14 +101,24 @@ try {
 
         case '/aistatus':
             if ($isAdmin) {
-                $reply = "🤖 <b><u>AI HEALTH CHECK</u></b>\n\n";
-                $test_reply = call_matrix_llm("Are you online?", "Health Check");
-                if ($test_reply) {
-                    $reply .= "🟢 <b>AI Status:</b> Online & Working\n";
-                    $reply .= "💬 <b>Sample Reply:</b> <i>" . h($test_reply) . "</i>";
+                $reply = "🤖 <b><u>AI SYSTEM HEALTH</u></b>\n\n";
+                
+                $is_cooling_down = function_exists('matrix_cache_get') ? matrix_cache_get('ai_quota_cooldown') : false;
+                
+                if ($is_cooling_down) {
+                    $reply .= "⏳ <b>Status:</b> RATE LIMITED (429)\n";
+                    $reply .= "⚠️ <b>Mode:</b> Manual Human Rules Active\n";
+                    $reply .= "📝 <b>Details:</b> Google free tier quota reached. System is resting for 60 seconds to reset uplink.";
                 } else {
-                    $reply .= "🔴 <b>AI Status:</b> Offline\n";
-                    $reply .= "⚠️ <b>Action:</b> Check your Gemini API Key in config.php.";
+                    $test_reply = call_matrix_llm("Are you online?", "Health Check");
+                    if ($test_reply) {
+                        $reply .= "🟢 <b>Status:</b> Online & Optimal\n";
+                        $reply .= "🧠 <b>Model:</b> Gemini Flash Latest\n";
+                        $reply .= "💬 <b>Test Result:</b> <i>" . h($test_reply) . "</i>";
+                    } else {
+                        $reply .= "🔴 <b>Status:</b> Connection Error\n";
+                        $reply .= "⚠️ <b>Action:</b> Check Gemini API Key and network uplink.";
+                    }
                 }
             }
             break;
