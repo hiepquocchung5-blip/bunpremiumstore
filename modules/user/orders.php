@@ -106,12 +106,12 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['ajax_msg'])) {
                 exit;
             } catch (Exception $e) {
                 error_log("Order Chat Transmission Error: " . $e->getMessage());
-                echo json_encode(['success' => false, 'error' => 'Connection to Matrix interrupted.']);
+                echo json_encode(['success' => false, 'error' => 'Connection issue. Please try again.']);
                 exit;
             }
         }
     }
-    echo json_encode(['success' => false, 'error' => 'Unauthorized signature.']);
+    echo json_encode(['success' => false, 'error' => 'Unauthorized access.']);
     exit;
 }
 
@@ -659,10 +659,10 @@ if ($active_chat_id) {
             rightPane.className = "fixed inset-0 z-[9999] w-full h-[100dvh] flex flex-col bg-slate-950 transition-all";
             rightPane.innerHTML = `
                 <div class="p-4 border-b border-slate-800 flex items-center pt-[max(env(safe-area-inset-top),1rem)]">
-                    <button onclick="showMobileSidebar()" class="text-white p-2 -ml-2 w-10 h-10 flex items-center justify-center bg-slate-800 rounded-full border border-slate-700 shadow-lg"><i class="fas fa-arrow-left"></i></button>
+                    <button onclick="showMobileSidebar(event)" class="md:hidden flex items-center justify-center w-10 h-10 -ml-2 text-white hover:text-[#00f0ff] bg-slate-800/50 border border-slate-700 rounded-xl transition-all active:scale-90 shadow-lg"><i class="fas fa-arrow-left"></i></button>
                     <div class="ml-4 flex flex-col">
-                        <span class="text-[10px] font-black text-slate-500 uppercase tracking-widest">Opening Secure Chat</span>
-                        <span class="text-xs text-[#00f0ff] font-bold">Connecting to Node #${id}...</span>
+                        <span class="text-[10px] font-black text-slate-500 uppercase tracking-widest">Support Chat</span>
+                        <span class="text-xs text-[#00f0ff] font-bold">Connecting to Order #${id}...</span>
                     </div>
                 </div>
                 <div class="flex-1 flex flex-col items-center justify-center text-slate-500">
@@ -670,14 +670,14 @@ if ($active_chat_id) {
                         <div class="absolute inset-0 border-4 border-[#00f0ff]/20 rounded-full"></div>
                         <div class="absolute inset-0 border-4 border-t-[#00f0ff] rounded-full animate-spin"></div>
                     </div>
-                    <p class="font-bold text-xs uppercase tracking-[0.3em] animate-pulse">Initializing Matrix...</p>
+                    <p class="font-bold text-xs uppercase tracking-[0.3em] animate-pulse">Loading chat...</p>
                 </div>
             `;
         } else {
             rightPane.innerHTML = `
                 <div class="flex-1 flex flex-col items-center justify-center text-slate-500 h-full animate-pulse">
                     <i class="fas fa-circle-notch fa-spin text-4xl text-[#00f0ff] mb-4"></i>
-                    <p class="font-medium tracking-widest uppercase text-xs">Opening Chat...</p>
+                    <p class="font-medium tracking-widest uppercase text-xs">Loading chat...</p>
                 </div>
             `;
         }

@@ -100,11 +100,11 @@ self.addEventListener('push', function(event) {
     try {
         data = event.data ? event.data.json() : {};
     } catch (e) {
-        data = { title: 'New Update', body: 'You have a new message from our store.' };
+        data = { title: 'New Update', body: 'New information received.' };
     }
 
     const options = {
-        body: data.body || 'New message received.',
+        body: data.body || 'You have a new message.',
         icon: data.icon || '/assets/images/logo.png',
         badge: data.badge || '/assets/images/logo.png',
         vibrate: [100, 50, 100, 50, 200],

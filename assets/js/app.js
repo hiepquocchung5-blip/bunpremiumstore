@@ -61,8 +61,8 @@ window.registerServiceWorker = async function (triggerWelcome = false) {
 
         // 1. Instantly fire a local welcome notification
         if (triggerWelcome && Notification.permission === 'granted') {
-            register.showNotification('System Uplink Active ⚡️', {
-                body: 'Welcome to DigitalMarketplaceMM! Proceed to the portal to access premium digital assets.',
+            register.showNotification('Notifications Active ✅', {
+                body: 'Welcome to DigitalMarketplaceMM! You will now receive order updates.',
                 icon: BASE_URL + 'assets/images/logo.png',
                 badge: BASE_URL + 'assets/images/logo.png',
                 vibrate: [100, 50, 100, 50, 200],
@@ -78,7 +78,7 @@ window.registerServiceWorker = async function (triggerWelcome = false) {
             credentials: 'include' 
         });
 
-        console.log('[Matrix] Push Notification Uplink Secured.');
+        console.log('[Support] Push Notifications Active.');
         return true;
     } catch (err) {
         console.error('Service Worker Error:', err);
@@ -103,13 +103,13 @@ document.addEventListener('DOMContentLoaded', () => {
     function showDynamicToast(msg, link) {
         const toast = document.createElement('a');
         toast.href = link ? BASE_URL + link : '#';
-        toast.className = 'fixed bottom-20 right-4 md:bottom-6 md:right-6 bg-slate-900/90 backdrop-blur-xl border border-[#00f0ff]/40 text-white p-4 rounded-2xl shadow-[0_10px_40px_rgba(0,240,255,0.25)] z-[100] flex items-center gap-4 transform transition-all duration-500 translate-y-20 opacity-0 group hover:border-[#00f0ff] hover:shadow-[0_10px_50px_rgba(0,240,255,0.4)] max-w-sm';
+        toast.className = 'fixed bottom-20 right-4 md:bottom-6 md:right-6 bg-slate-900/90 backdrop-blur-xl border border-blue-500/40 text-white p-4 rounded-2xl shadow-[0_10px_40px_rgba(0,0,0,0.5)] z-[100] flex items-center gap-4 transform transition-all duration-500 translate-y-20 opacity-0 group hover:border-[#00f0ff] hover:shadow-[0_10px_50px_rgba(0,0,0,0.6)] max-w-sm';
         toast.innerHTML = `
-            <div class="w-12 h-12 bg-[#00f0ff]/10 rounded-xl flex items-center justify-center border border-[#00f0ff]/30 text-[#00f0ff] shrink-0 group-hover:scale-110 transition-transform">
-                <i class="fas fa-satellite-dish animate-pulse text-lg"></i>
+            <div class="w-12 h-12 bg-blue-500/10 rounded-xl flex items-center justify-center border border-blue-500/30 text-blue-400 shrink-0 group-hover:scale-110 transition-transform">
+                <i class="fas fa-bell animate-shake-bell text-lg"></i>
             </div>
             <div class="flex-1">
-                <h4 class="text-[10px] font-black uppercase tracking-widest text-[#00f0ff] mb-0.5 flex items-center gap-2">Matrix Alert <span class="w-1.5 h-1.5 rounded-full bg-[#00f0ff] animate-ping"></span></h4>
+                <h4 class="text-[10px] font-black uppercase tracking-widest text-blue-400 mb-0.5 flex items-center gap-2">Store Update <span class="w-1.5 h-1.5 rounded-full bg-blue-400 animate-ping"></span></h4>
                 <p class="text-sm font-medium leading-snug text-slate-200">${msg}</p>
             </div>
         `;
@@ -147,7 +147,7 @@ document.addEventListener('DOMContentLoaded', () => {
                     // Dynamic Alert Trigger (If count increased, show toast)
                     if (data.count > previousNotifCount && previousNotifCount !== 0) {
                         const latest = data.notifications && data.notifications.length > 0 ? data.notifications[0] : null;
-                        const msg = latest ? latest.text : 'A new transmission has been decrypted.';
+                        const msg = latest ? latest.text : 'You have a new message from our store.';
                         showDynamicToast(msg, latest?.link);
                     }
                     previousNotifCount = data.count;

@@ -550,21 +550,21 @@ if (isset($_SESSION['user_id'])) {
                             <div class="w-20 h-20 bg-[#00f0ff]/10 rounded-full flex items-center justify-center mx-auto mb-6 border border-[#00f0ff]/20 shadow-[0_0_20px_rgba(0,240,255,0.1)]">
                                 <i class="fab fa-apple text-4xl text-white"></i>
                             </div>
-                            <h3 class="text-xl font-black text-white mb-2 uppercase tracking-tight">iOS Matrix Uplink</h3>
-                            <p class="text-xs text-slate-400 leading-relaxed mb-6">Apple requires specific protocols to enable secure transmissions on iOS devices.</p>
+                            <h3 class="text-xl font-black text-white mb-2 uppercase tracking-tight">Enable Notifications</h3>
+                            <p class="text-xs text-slate-400 leading-relaxed mb-6">Follow these simple steps to enable order updates on your device.</p>
                             
                             <div class="space-y-4 text-left">
                                 <div class="flex gap-4 p-3 bg-slate-800/50 rounded-2xl border border-slate-700">
                                     <div class="w-8 h-8 rounded-lg bg-blue-600 flex items-center justify-center shrink-0 font-black text-xs text-white">1</div>
-                                    <p class="text-[11px] text-slate-300 font-medium">Tap the <i class="fas fa-share-square text-[#00f0ff]"></i> <b>Share</b> icon in your Safari toolbar.</p>
+                                    <p class="text-[11px] text-slate-300 font-medium">Tap the <i class="fas fa-share-square text-[#00f0ff]"></i> <b>Share</b> icon in Safari.</p>
                                 </div>
                                 <div class="flex gap-4 p-3 bg-slate-800/50 rounded-2xl border border-slate-700">
                                     <div class="w-8 h-8 rounded-lg bg-blue-600 flex items-center justify-center shrink-0 font-black text-xs text-white">2</div>
-                                    <p class="text-[11px] text-slate-300 font-medium">Select <i class="fas fa-plus-square text-[#00f0ff]"></i> <b>Add to Home Screen</b> and launch from there.</p>
+                                    <p class="text-[11px] text-slate-300 font-medium">Select <i class="fas fa-plus-square text-[#00f0ff]"></i> <b>Add to Home Screen</b>.</p>
                                 </div>
                                 <div class="flex gap-4 p-3 bg-slate-800/50 rounded-2xl border border-slate-700">
                                     <div class="w-8 h-8 rounded-lg bg-blue-600 flex items-center justify-center shrink-0 font-black text-xs text-white">3</div>
-                                    <p class="text-[11px] text-slate-300 font-medium">Return here and tap <b>Establish Uplink</b> again.</p>
+                                    <p class="text-[11px] text-slate-300 font-medium">Open the app from your home screen and enable alerts again.</p>
                                 </div>
                             </div>
                         </div>
@@ -584,55 +584,55 @@ if (isset($_SESSION['user_id'])) {
                     const isStandalone = window.navigator.standalone || window.matchMedia('(display-mode: standalone)').matches;
 
                     if (isIos && !isStandalone) {
-                        showIosHelper();
-                        return;
-                    }
-                    
-                    const icon = btn.querySelector('i');
-                    if (icon) icon.className = "fas fa-spinner fa-spin";
-                    
-                    if (typeof window.registerServiceWorker === 'function') {
-                        // Pass 'true' to ensure the local welcome push triggers
-                        window.registerServiceWorker(true).then(() => {
-                            // Visually remove the prompt block upon success with a smooth transition
-                            const wrapper = btn.closest('.enable-push-wrapper');
-                            
-                            // Visual Success State
-                            btn.innerHTML = `<i class="fas fa-check"></i> Secured`;
-                            btn.classList.replace('bg-[#00f0ff]', 'bg-green-500');
-                            btn.classList.replace('text-[#00f0ff]', 'text-green-400');
-                            
-                            setTimeout(() => {
-                                if (wrapper && wrapper.classList.contains('group/prompt')) {
-                                    // If inside dropdown, replace with badge
-                                    wrapper.innerHTML = `
-                                    <div class="w-full flex justify-center items-center py-2">
-                                        <span class="text-[9px] text-green-400 font-black uppercase tracking-widest flex items-center gap-2">
-                                            <span class="w-1.5 h-1.5 rounded-full bg-green-500 animate-pulse shadow-[0_0_5px_#22c55e]"></span> Uplink Secured
-                                        </span>
-                                    </div>`;
-                                } else if (wrapper) {
-                                    wrapper.style.opacity = '0';
-                                    setTimeout(() => wrapper.remove(), 300);
-                                } else {
-                                    btn.remove();
-                                }
-                            }, 800);
-
-                        }).catch(err => {
-                            console.error('Manual Uplink Error:', err);
-                            if (icon) icon.className = "fas fa-bell-slash text-red-500";
-                            
-                            if (isIos) {
-                                showIosHelper();
+                    showIosHelper();
+                    return;
+                }
+                
+                const icon = btn.querySelector('i');
+                if (icon) icon.className = "fas fa-spinner fa-spin";
+                
+                if (typeof window.registerServiceWorker === 'function') {
+                    // Pass 'true' to ensure the local welcome push triggers
+                    window.registerServiceWorker(true).then(() => {
+                        // Visually remove the prompt block upon success with a smooth transition
+                        const wrapper = btn.closest('.enable-push-wrapper');
+                        
+                        // Visual Success State
+                        btn.innerHTML = `<i class="fas fa-check"></i> Enabled`;
+                        btn.classList.replace('bg-[#00f0ff]', 'bg-green-500');
+                        btn.classList.replace('text-[#00f0ff]', 'text-green-400');
+                        
+                        setTimeout(() => {
+                            if (wrapper && wrapper.classList.contains('group/prompt')) {
+                                // If inside dropdown, replace with badge
+                                wrapper.innerHTML = `
+                                <div class="w-full flex justify-center items-center py-2">
+                                    <span class="text-[9px] text-green-400 font-black uppercase tracking-widest flex items-center gap-2">
+                                        <span class="w-1.5 h-1.5 rounded-full bg-green-500 animate-pulse shadow-[0_0_5px_#22c55e]"></span> Alerts Active
+                                    </span>
+                                </div>`;
+                            } else if (wrapper) {
+                                wrapper.style.opacity = '0';
+                                setTimeout(() => wrapper.remove(), 300);
                             } else {
-                                alert("Uplink failed. Ensure notifications are allowed in site settings and cache is cleared.");
+                                btn.remove();
                             }
-                        });
-                    } else {
-                        console.error('Matrix App.js not loaded.');
-                        if (icon) icon.className = "fas fa-exclamation-triangle text-red-500";
-                    }
+                        }, 800);
+
+                    }).catch(err => {
+                        console.error('Manual setup Error:', err);
+                        if (icon) icon.className = "fas fa-bell-slash text-red-500";
+                        
+                        if (isIos) {
+                            showIosHelper();
+                        } else {
+                            alert("Setup failed. Please allow notifications in your browser settings.");
+                        }
+                    });
+                } else {
+                    console.error('Support script not loaded.');
+                    if (icon) icon.className = "fas fa-exclamation-triangle text-red-500";
+                }
                 };
             });
         });
@@ -645,17 +645,18 @@ if (isset($_SESSION['user_id'])) {
                     if (typeof window.registerServiceWorker === 'function') {
                         await window.registerServiceWorker(false);
 
-                        // Clean up UI if sync resolves silently                        document.querySelectorAll('.enable-push-wrapper').forEach(el => {
-                             if(el.classList.contains('group/prompt')) {
-                                 el.innerHTML = `
+                        // Clean up UI if sync resolves silently
+                        document.querySelectorAll('.enable-push-wrapper').forEach(el => {
+                            if (el.classList.contains('group/prompt')) {
+                                el.innerHTML = `
                                     <div class="w-full flex justify-center items-center py-2">
                                         <span class="text-[9px] text-green-400 font-black uppercase tracking-widest flex items-center gap-2">
-                                            <span class="w-1.5 h-1.5 rounded-full bg-green-500 animate-pulse shadow-[0_0_5px_#22c55e]"></span> Uplink Secured
+                                            <span class="w-1.5 h-1.5 rounded-full bg-green-500 animate-pulse shadow-[0_0_5px_#22c55e]"></span> Alerts Active
                                         </span>
                                     </div>`;
-                             } else {
-                                 el.remove();
-                             }
+                            } else {
+                                el.remove();
+                            }
                         });
                     }
                 } catch(err) { console.error('Matrix Push Sync Error:', err); }

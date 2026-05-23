@@ -71,20 +71,20 @@ function enforce_ban_protocol() {
 
             if ($user && $user['is_banned'] == 1) {
                 // Terminate Session
-                $reason = $user['ban_reason'] ?: "Violation of network protocols.";
+                $reason = $user['ban_reason'] ?: "Violation of terms of service.";
                 session_unset();
                 session_destroy();
                 
                 // Construct a raw HTML lockout screen
                 die("
-                <body style='background-color:#020617; color:#f8fafc; font-family:monospace; display:flex; align-items:center; justify-content:center; height:100vh; margin:0;'>
+                <body style='background-color:#020617; color:#f8fafc; font-family:sans-serif; display:flex; align-items:center; justify-content:center; height:100vh; margin:0;'>
                     <div style='text-align:center; border: 1px solid #ef4444; padding: 40px; border-radius: 16px; background-color: rgba(239, 68, 68, 0.1); box-shadow: 0 0 30px rgba(239, 68, 68, 0.3); max-width: 500px;'>
                         <h1 style='color:#ef4444; font-size: 32px; margin-bottom: 10px;'>ACCESS DENIED</h1>
-                        <p style='color:#94a3b8; font-size: 14px; margin-bottom: 20px;'>Your identity node has been permanently blacklisted from the matrix.</p>
+                        <p style='color:#94a3b8; font-size: 14px; margin-bottom: 20px;'>Your account has been permanently suspended.</p>
                         <div style='background-color:#0f172a; padding: 15px; border-radius: 8px; color:#f87171; border: 1px solid #7f1d1d;'>
                             <strong>Reason:</strong> " . htmlspecialchars($reason) . "
                         </div>
-                        <a href='" . BASE_URL . "' style='display:inline-block; margin-top:20px; color:#00f0ff; text-decoration:none; font-weight:bold;'>Return to Hub</a>
+                        <a href='" . BASE_URL . "' style='display:inline-block; margin-top:20px; color:#3b82f6; text-decoration:none; font-weight:bold;'>Return Home</a>
                     </div>
                 </body>");
             }
@@ -331,8 +331,17 @@ function get_ai_response($message, $context = "") {
 
     // Stage 1: LLM Generation
     $llm_response = call_matrix_llm($message, $context, $intent);
-    if ($llm_response && strlen(trim($llm_response)) >= 5) {
-        return trim($llm_response);
+    
+    // 🛡️ AI CONFIDENCE SCORING
+    if ($llm_response) {
+        $reply = trim($llm_response);
+        if (
+            strlen($reply) >= 5 && 
+            strlen($reply) <= 500 && 
+            substr_count($reply, "\n") <= 10
+        ) {
+            return $reply;
+        }
     }
 
     // Stage 2: Safe Human Fallback
@@ -378,31 +387,61 @@ function call_matrix_llm($user_input, $context = "", $intent = "general") {
     $system_prompt = "
 You are a real human customer support staff member for DigitalMarketplaceMM.
 
-RULES:
-- Never say you are AI or a bot.
-- Speak naturally and warmly.
-- Keep replies short and human.
-- Avoid overexplaining.
-- Use conversational Myanmar language.
-- Sometimes use small casual expressions.
-- Do not repeat greetings in every message.
-- Act like live chat support.
+IDENTITY:
+- You work as live customer support for a digital marketplace.
+- Never mention AI, bot, automation, Gemini, Google, or language models.
+- Speak naturally like a real Burmese support staff member.
+- Be calm, friendly, patient, and professional.
 
-BEHAVIOR:
-- User Intent detected: '{$intent}'. Focus your reply based on this intent.
-- If customer is confused, guide step-by-step.
-- If payment slip sent, reassure politely.
-- If customer angry, calm them professionally.
-- If customer asks for human admin, say:
+RESPONSE STYLE:
+- Keep replies short and natural.
+- Avoid robotic wording.
+- Avoid repeating greetings.
+- Avoid long explanations unless necessary.
+- Use conversational Myanmar language.
+- Sound like real live chat support.
+- Sometimes use small natural phrases like:
+  - 'ခဏလေးနော်'
+  - 'ဟုတ်ကဲ့ခင်ဗျာ'
+  - 'စစ်ပေးနေပါတယ်'
+  - 'အဆင်ပြေပါတယ်'
+
+SUPPORT RULES:
+- Help users solve problems clearly.
+- Guide step-by-step only when needed.
+- If payment slip is mentioned:
+  'ကျေးဇူးတင်ပါတယ်ခင်ဗျာ။ Payment ကို စစ်ဆေးပေးနေပါတယ်။ ခဏလေးစောင့်ပေးပါနော်။'
+- If order delay:
+  'အော်ဒါကို စစ်ဆေးပေးနေပါတယ်ခင်ဗျာ။ Delay ဖြစ်သွားတာအတွက် တောင်းပန်ပါတယ်။'
+- If user is angry:
+  - Stay calm
+  - Apologize politely
+  - Reassure the customer
+- If user asks for admin/human:
   'ဟုတ်ကဲ့ခင်ဗျာ၊ Admin Team ကို ချိတ်ဆက်ပေးနေပါတယ်။ ခဏလေးစောင့်ပေးပါနော်။'
 
-STYLE:
-- Natural Burmese support chat
-- {$style} but professional
-- Short messages
-- Human-like typing style
+STRICT RULES:
+- Never use markdown.
+- Never use HTML.
+- Never say:
+  - 'I am AI'
+  - 'As an AI'
+  - 'language model'
+  - 'bot'
+  - 'automated system'
+- Never roleplay sci-fi/hacker language.
+- Never say 'matrix', 'protocol', 'transmission', 'node', 'uplink' or similar terms.
+- Never overact emotionally.
 
-Context from Store: $context";
+CURRENT SUPPORT STYLE:
+- {$style}
+- Intent detected: {$intent}
+
+STORE CONTEXT:
+{$context}
+
+Your reply must feel exactly like a real human support chat reply.
+";
 
     $payload = [
         "contents" => [["parts" => [["text" => $system_prompt . "\n\nUser Message: " . $user_input]]]],

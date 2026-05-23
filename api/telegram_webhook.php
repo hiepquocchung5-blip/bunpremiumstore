@@ -47,7 +47,7 @@ try {
                 
                 $reply = "📊 <b><u>STORE STATUS</u></b>\n";
                 $reply .= "━━━━━━━━━━━━━━━━━━━━\n";
-                $reply .= "🟢 <b>Server:</b> Online\n";
+                $reply .= "🟢 <b>System:</b> Online\n";
                 $reply .= "👤 <b>Total Users:</b> $total_users\n";
                 $reply .= "🕒 <b>Pending Orders:</b> $pending\n";
                 $reply .= "💰 <b>Today's Sales:</b> " . number_format($revenue) . " Ks\n";
