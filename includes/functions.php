@@ -296,4 +296,45 @@ function invalidate_user_cache($user_id) {
     matrix_cache_delete("user_orders_list_{$user_id}");
     matrix_cache_delete("user_notif_data_{$user_id}");
 }
+// ⚡️ NEW: MR. SCOTTY AI ASSISTANT PROTOCOL
+function get_ai_response($message, $context = "") {
+    // This is the core logic for Mr. Scotty, the AI assistant.
+    // In production, this would connect to Gemini or OpenAI.
+    // We'll implement a robust rule-based AI with fallback to a smart persona.
+    
+    $message = strtolower($message);
+    $response = "";
+    
+    // 1. Knowledge Base (Instant Matrix Replies)
+    $knowledge = [
+        'hello' => "Greetings! I am Mr. Scotty, your Matrix support node. How can I assist your deployment today?",
+        'hi' => "Hello there! Mr. Scotty at your service. Need help with an order?",
+        'status' => "I can check order statuses. Please provide your Order ID.",
+        'payment' => "We accept KBZPay and WavePay. Once paid, please upload your slip for admin authorization.",
+        'delivery' => "Most assets are delivered instantly after payment verification. Check your order chat for the payload.",
+        'scotty' => "Yes, that's me! I'm the automated intelligence overseeing this sector.",
+        'thanks' => "You're welcome, Operative. Matrix stability is my priority.",
+        'bye' => "May your connections remain stable. Mr. Scotty out."
+    ];
+
+    foreach ($knowledge as $key => $reply) {
+        if (strpos($message, $key) !== false) {
+            $response = $reply;
+            break;
+        }
+    }
+
+    // 2. Persona Fallback (If no keyword matched)
+    if (!$response) {
+        $fallbacks = [
+            "I've analyzed your transmission, but I require more specific data to assist. Could you clarify your request?",
+            "Mr. Scotty here. I'm monitoring the comms, but I'm not sure how to process that. Try asking about payments or delivery.",
+            "Interesting query. I'll flag this for an admin node, but in the meantime, how else can I assist?",
+            "Transmission received. I am Mr. Scotty, your automated co-pilot. I'm here to ensure your digital marketplace journey is seamless."
+        ];
+        $response = $fallbacks[array_rand($fallbacks)];
+    }
+
+    return "🤖 <b>Mr. Scotty:</b> " . $response;
+}
 ?>

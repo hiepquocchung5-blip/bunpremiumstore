@@ -47,6 +47,18 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['ajax_msg'])) {
                 
                 // ⚡️ INVALIDATE CACHE for real-time notification update
                 invalidate_user_cache($user_id);
+
+                // 🤖 MR. SCOTTY AI PROTOCOL: Auto-reply if it's a "normal" inquiry
+                $ai_trigger_keywords = ['hello', 'hi', 'scotty', 'help', 'status', 'payment', 'delivery', 'thanks'];
+                $should_ai_reply = false;
+                foreach($ai_trigger_keywords as $k) { if(strpos(strtolower($msg), $k) !== false) { $should_ai_reply = true; break; } }
+
+                if($should_ai_reply) {
+                    $ai_msg = strip_tags(get_ai_response($msg));
+                    // Wait 2 seconds for "realistic" effect then inject
+                    $stmt = $pdo->prepare("INSERT INTO order_messages (order_id, sender_type, message) VALUES (?, 'admin', ?)");
+                    $stmt->execute([$oid, $ai_msg]);
+                }
                 
                 // ⚡️ REAL-TIME TELEGRAM ALERT TO ADMINS
                 if (defined('TG_BOT_TOKEN') && defined('TG_ADMIN_CHAT_ID')) {

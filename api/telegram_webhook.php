@@ -137,14 +137,37 @@ try {
         case '/start':
         case '/help':
         default:
-            $reply = "⚡️ <b>DigitalMarketplaceMM Matrix</b> ⚡️\n\n Operative <b>@$username</b> identified.\n\n";
             if ($isAdmin) {
-                $reply .= "🛠 <b><u>ADMIN PROTOCOLS</u></b>\n";
-                $reply .= "🔹 <code>/stats</code> | <code>/pending</code>\n";
-                $reply .= "🔹 <code>/approve [ID]</code> | <code>/reject [ID]</code>\n";
-                $reply .= "🔹 <code>/reply [ID] [Msg]</code>\n";
+                // If it's a command starting with /, show help
+                if (strpos($text, '/') === 0) {
+                    $reply = "⚡️ <b>DigitalMarketplaceMM Matrix</b> ⚡️\n\n Operative <b>@$username</b> identified.\n\n";
+                    $reply .= "🛠 <b><u>ADMIN PROTOCOLS</u></b>\n";
+                    $reply .= "🔹 <code>/stats</code> | <code>/pending</code>\n";
+                    $reply .= "🔹 <code>/approve [ID]</code> | <code>/reject [ID]</code>\n";
+                    $reply .= "🔹 <code>/reply [ID] [Msg]</code>\n";
+                } else {
+                    // It's a normal message from Admin, Mr. Scotty can act as a co-pilot if requested
+                    if (strpos(strtolower($text), 'scotty') !== false) {
+                        $reply = get_ai_response($text);
+                    }
+                }
             } else {
-                $reply .= "🆔 <b>Node:</b> <code>$chat_id</code>\nAccess Restricted.";
+                // IT IS A USER (Non-Admin) - Mr. Scotty takes over for normal messages!
+                if (strpos($text, '/') === 0) {
+                    $reply = "⚡️ <b>DigitalMarketplaceMM Matrix</b> ⚡️\n\n Operative <b>@$username</b> identified.\n\n";
+                    $reply .= "🆔 <b>Node:</b> <code>$chat_id</code>\nAccess Restricted.";
+                } else {
+                    // Normal message from user -> AUTO REPLY BY MR. SCOTTY
+                    $reply = get_ai_response($text);
+                    
+                    // Also notify admins that a user is talking to Scotty
+                    $admin_notify = "🤖 <b>Mr. Scotty</b> is handling 👤 @{$username}\n💬 <i>{$text}</i>";
+                    $admin_ids = array_map('trim', explode(',', TG_ADMIN_CHAT_ID));
+                    foreach ($admin_ids as $adid) {
+                        if ($adid == $chat_id) continue;
+                        send_reply($adid, $admin_notify);
+                    }
+                }
             }
             break;
     }
