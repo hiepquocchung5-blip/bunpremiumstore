@@ -643,11 +643,9 @@ if (isset($_SESSION['user_id'])) {
             if ('serviceWorker' in navigator && 'Notification' in window && Notification.permission === 'granted') {
                 try {
                     if (typeof window.registerServiceWorker === 'function') {
-                        console.log('[Matrix] Initiating Background Uplink Sync...');
                         await window.registerServiceWorker(false);
-                        
-                        // Clean up UI if sync resolves silently
-                        document.querySelectorAll('.enable-push-wrapper').forEach(el => {
+
+                        // Clean up UI if sync resolves silently                        document.querySelectorAll('.enable-push-wrapper').forEach(el => {
                              if(el.classList.contains('group/prompt')) {
                                  el.innerHTML = `
                                     <div class="w-full flex justify-center items-center py-2">

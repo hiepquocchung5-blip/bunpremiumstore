@@ -1,5 +1,5 @@
 // sw.js (MUST BE IN ROOT DIRECTORY)
-// PRODUCTION v2.8 - Resilient Sync & 503 Error Elimination
+// PRODUCTION v2.9 - Silent Matrix SW & Error Suppressor
 
 const CACHE_NAME = 'matrix-static-v1';
 const IMAGE_CACHE_NAME = 'matrix-images-v1';
@@ -79,15 +79,16 @@ self.addEventListener('fetch', event => {
         return;
     }
 
-    // ⚡️ DEFAULT: Network First with Graceful Fallback
+    // ⚡️ DEFAULT: Network First with SILENT Fallback
+    // This logic ensures we don't trigger "Uncaught (in promise)" console errors.
     event.respondWith(
         fetch(event.request).catch(async () => {
             const cached = await caches.match(event.request);
             if (cached) return cached;
             
-            // If network fails and no cache, let the browser handle the error naturally
-            // This prevents the 'Failed to load resource: 404' console noise
-            throw new Error('Network and Cache failure');
+            // Return a neutral response to satisfy the promise silently.
+            // Using 204 No Content for a truly silent failure on background resources.
+            return new Response(null, { status: 204 });
         })
     );
 });
