@@ -6,7 +6,7 @@
     </button>
 
     <!-- Footer -->
-    <footer class="border-t border-gray-800 bg-gray-900 relative z-10 text-sm">
+    <footer id="global-footer" class="border-t border-gray-800 bg-gray-900 relative z-10 text-sm">
         
         <!-- Newsletter Strip -->
         <div class="border-b border-gray-800 bg-gray-800/30">

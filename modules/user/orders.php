@@ -229,8 +229,10 @@ if ($active_chat_id) {
 
 <!-- Dynamic Styling for Fullscreen Mobile Chat Focus -->
 <style>
-    body.chat-active-mobile { overflow: hidden !important; }
-    body.chat-active-mobile #mobile-bottom-nav { display: none !important; }
+    body.chat-active-mobile { overflow: hidden !important; height: 100svh !important; position: fixed; width: 100%; }
+    body.chat-active-mobile #mobile-bottom-nav,
+    body.chat-active-mobile #global-footer,
+    body.chat-active-mobile #scrollToTop { display: none !important; }
     
     /* Smooth iOS Scroll inside chat box */
     .chat-scroll-container {
@@ -240,7 +242,7 @@ if ($active_chat_id) {
 </style>
 
 <!-- Main Wrapper: Fixed height to strictly prevent page scroll -->
-<div class="max-w-7xl mx-auto h-[calc(100dvh-70px)] md:h-[calc(100vh-100px)] flex flex-col md:flex-row gap-0 md:gap-6 pt-0 md:py-6 px-0 md:px-4 relative w-full overflow-hidden">
+<div class="max-w-7xl mx-auto h-[calc(100svh-70px)] md:h-[calc(100vh-100px)] flex flex-col md:flex-row gap-0 md:gap-6 pt-0 md:py-6 px-0 md:px-4 relative w-full overflow-hidden">
     
     <!-- ========================================== -->
     <!-- LEFT SIDEBAR: Order List                   -->
