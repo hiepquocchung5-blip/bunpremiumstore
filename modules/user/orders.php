@@ -164,6 +164,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['message']) && !isset(
         $stmt->execute([$oid, $user_id]);
         if ($stmt->fetch() && $msg !== '') {
             $pdo->prepare("INSERT INTO order_messages (order_id, sender_type, message) VALUES (?, 'user', ?)")->execute([$oid, $msg]);
+            invalidate_user_cache($user_id);
         }
         redirect("index.php?module=user&page=orders&view_chat=" . $oid);
     }
@@ -637,19 +638,37 @@ if ($active_chat_id) {
 
     // Mobile Back Button Function
     function showMobileSidebar() {
+        const btn = event?.currentTarget;
+        if (btn) btn.innerHTML = '<i class="fas fa-circle-notch fa-spin"></i>';
+        
         const rightPane = document.getElementById('right-pane');
         const leftSidebar = document.getElementById('left-sidebar');
         
-        if (rightPane) rightPane.className = "hidden md:flex relative h-full md:h-auto z-10 w-full md:w-2/3 lg:w-3/4 flex-col bg-slate-950 md:bg-slate-900/80 md:backdrop-blur-xl md:border border-slate-700/50 md:rounded-2xl shadow-xl overflow-hidden transition-all";
-        if (leftSidebar) leftSidebar.classList.remove('hidden');
-        if (leftSidebar) leftSidebar.classList.add('flex');
+        setTimeout(() => {
+            if (rightPane) rightPane.className = "hidden md:flex relative h-full md:h-auto z-10 w-full md:w-2/3 lg:w-3/4 flex-col bg-slate-950 md:bg-slate-900/80 md:backdrop-blur-xl md:border border-slate-700/50 md:rounded-2xl shadow-xl overflow-hidden transition-all";
+            if (leftSidebar) leftSidebar.classList.remove('hidden');
+            if (leftSidebar) leftSidebar.classList.add('flex');
 
-        toggleMobileFullscreen(false);
-        currentOrderId = 0;
-        clearInterval(pollInterval);
-        
-        window.history.pushState({}, '', 'index.php?module=user&page=orders');
+            toggleMobileFullscreen(false);
+            currentOrderId = 0;
+            clearInterval(pollInterval);
+            
+            window.history.pushState({}, '', 'index.php?module=user&page=orders');
+        }, 150);
     }
+    
+    // ⚡️ OPTIMIZATION: Dynamic Polling Frequency
+    document.addEventListener('visibilitychange', () => {
+        if (currentOrderId > 0) {
+            clearInterval(pollInterval);
+            if (document.visibilityState === 'visible') {
+                fetchChat();
+                pollInterval = setInterval(fetchChat, 3000); // Fast 3s when active
+            } else {
+                pollInterval = setInterval(fetchChat, 15000); // Slow 15s when backgrounded
+            }
+        }
+    });
     
     window.addEventListener('popstate', (e) => {
         if(e.state && e.state.id) {
