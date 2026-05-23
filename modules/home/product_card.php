@@ -52,9 +52,9 @@ $product_url = "index.php?module=shop&page=product&id=" . $product['id'];
         <div class="flex items-start justify-between mb-4">
             <div class="w-14 h-14 bg-slate-800 rounded-xl flex items-center justify-center text-2xl text-[#00f0ff] group-hover:scale-110 group-hover:shadow-[0_0_20px_rgba(0,240,255,0.3)] transition-all duration-500 border border-slate-600 shadow-inner overflow-hidden relative shrink-0">
                 <?php if($has_product_image): ?>
-                    <img src="<?php echo BASE_URL . $product['image_path']; ?>" alt="<?php echo htmlspecialchars($product['name']); ?>" class="w-full h-full object-cover">
+                    <img src="<?php echo BASE_URL . $product['image_path']; ?>" alt="<?php echo htmlspecialchars($product['name']); ?>" class="w-full h-full object-cover" loading="lazy">
                 <?php elseif($has_cat_image): ?>
-                    <img src="<?php echo BASE_URL . $product['cat_image']; ?>" alt="Category" class="w-full h-full object-cover">
+                    <img src="<?php echo BASE_URL . $product['cat_image']; ?>" alt="Category" class="w-full h-full object-cover" loading="lazy">
                 <?php else: ?>
                     <i class="fas <?php echo htmlspecialchars($fallback_icon); ?>"></i>
                 <?php endif; ?>

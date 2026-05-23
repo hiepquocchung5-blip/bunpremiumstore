@@ -295,4 +295,21 @@ document.addEventListener('DOMContentLoaded', () => {
     if ('Notification' in window && (Notification.permission === 'granted' || Notification.permission === 'denied')) {
         document.querySelectorAll('.enable-push-wrapper').forEach(el => el.remove());
     }
+
+    /**
+     * 8. ⚡️ LITE SPEED: Image Optimization & Error Fallbacks
+     */
+    document.querySelectorAll('img').forEach(img => {
+        // Fallback for broken images (Matrix Style)
+        img.onerror = () => {
+            img.src = 'data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMTAwIiBoZWlnaHQ9IjEwMCIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj48cmVjdCB3aWR0aD0iMTAwJSIgaGVpZ2h0PSIxMDAlIiBmaWxsPSIjMGYxNzJhIi8+PHRleHQgeD0iNTAlIiB5PSI1MCUiIGZvbnQtc2l6ZT0iNDAiIGZpbGw9IiMwMGYwZmYiIGZvbnQtZmFtaWx5PSJmb250YXdlc29tZSIgdGV4dC1hbmNob3I9Im1pZGRsZSIgZG9taW5hbnQtYmFzZWxpbmU9ImNlbnRyYWwiID7ZpTwvdGV4dD48L3N2Zz4=';
+            img.classList.add('opacity-30', 'grayscale');
+        };
+
+        // Cache recently seen images in LocalStorage for 0ms visual presence (Metadata only)
+        if (img.src && img.src.includes('Imagecat_') || img.src.includes('Imageprod_')) {
+            const cacheKey = 'img_seen_' + btoa(img.src).substring(0, 16);
+            localStorage.setItem(cacheKey, Date.now());
+        }
+    });
 });

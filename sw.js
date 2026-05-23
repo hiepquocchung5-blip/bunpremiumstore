@@ -1,78 +1,101 @@
 // sw.js (MUST BE IN ROOT DIRECTORY)
-// PRODUCTION v2.0 - Advanced Service Worker Matrix & Smart Routing
+// PRODUCTION v2.5 - Advanced Service Worker Matrix, Smart Routing & Image Cache
 
-self.addEventListener('push', function(event) {
-    if (!(self.Notification && self.Notification.permission === 'granted')) {
+const CACHE_NAME = 'matrix-static-v1';
+const IMAGE_CACHE_NAME = 'matrix-images-v1';
+
+// Assets to cache immediately on install
+const PRECACHE_ASSETS = [
+    '/assets/css/style.css',
+    '/assets/js/app.js',
+    '/assets/images/logo.png',
+    '/assets/images/favicon.ico'
+];
+
+self.addEventListener('install', event => {
+    event.waitUntil(
+        caches.open(CACHE_NAME).then(cache => cache.addAll(PRECACHE_ASSETS))
+    );
+    self.skipWaiting();
+});
+
+self.addEventListener('activate', event => {
+    event.waitUntil(
+        caches.keys().then(keys => Promise.all(
+            keys.map(key => {
+                if (key !== CACHE_NAME && key !== IMAGE_CACHE_NAME) return caches.delete(key);
+            })
+        ))
+    );
+});
+
+self.addEventListener('fetch', event => {
+    const url = new URL(event.request.url);
+
+    // ⚡️ STRATEGY: Image Cache First (For Products & Categories)
+    if (event.request.destination === 'image') {
+        event.respondWith(
+            caches.open(IMAGE_CACHE_NAME).then(cache => {
+                return cache.match(event.request).then(response => {
+                    return response || fetch(event.request).then(networkResponse => {
+                        // Cache a copy of the new image
+                        cache.put(event.request, networkResponse.clone());
+                        return networkResponse;
+                    });
+                });
+            })
+        );
         return;
     }
 
-    // Failsafe Payload Decryption
+    // ⚡️ STRATEGY: Stale-While-Revalidate for CSS/JS
+    if (event.request.destination === 'style' || event.request.destination === 'script') {
+        event.respondWith(
+            caches.match(event.request).then(cachedResponse => {
+                const fetchPromise = fetch(event.request).then(networkResponse => {
+                    caches.open(CACHE_NAME).then(cache => cache.put(event.request, networkResponse.clone()));
+                    return networkResponse;
+                });
+                return cachedResponse || fetchPromise;
+            })
+        );
+        return;
+    }
+
+    // Default: Network First
+    event.respondWith(fetch(event.request).catch(() => caches.match(event.request)));
+});
+
+self.addEventListener('push', function(event) {
+    if (!(self.Notification && self.Notification.permission === 'granted')) return;
+
     let data = {};
     try {
         data = event.data ? event.data.json() : {};
     } catch (e) {
-        console.error('[SW] Payload decryption failed. Matrix interference detected:', e);
-        data = { 
-            title: 'Secure Transmission', 
-            body: 'Encrypted payload received.' 
-        };
+        data = { title: 'Secure Transmission', body: 'Encrypted payload received.' };
     }
 
-    const title = data.title || 'DigitalMarketplaceMM';
-    const message = data.body || 'Incoming transmission received from the matrix.';
-    const icon = data.icon || 'https://digitalmarketplacemm.com/assets/images/logo.png';
-    
-    // Ideal badge is a 96x96 white-with-transparent-background PNG 
-    // Fallback to icon if badge is not specifically provided
-    const badge = data.badge || icon; 
-    
-    const link = data.url || 'https://digitalmarketplacemm.com/index.php?module=user&page=orders';
-
     const options = {
-        body: message,
-        icon: icon,
-        badge: badge,
-        vibrate: [100, 50, 100, 50, 200], // Cyberpunk stutter pulse
-        data: { url: link },
-        timestamp: Date.now(),
-        requireInteraction: false, 
-        actions: [
-            { action: 'open', title: 'Access Terminal' },
-            { action: 'close', title: 'Dismiss' }
-        ]
+        body: data.body || 'Incoming transmission...',
+        icon: data.icon || '/assets/images/logo.png',
+        badge: data.badge || '/assets/images/logo.png',
+        vibrate: [100, 50, 100, 50, 200],
+        data: { url: data.url || '/index.php?module=user&page=orders' }
     };
 
-    event.waitUntil(self.registration.showNotification(title, options));
+    event.waitUntil(self.registration.showNotification(data.title || 'DigitalMarketplaceMM', options));
 });
 
 self.addEventListener('notificationclick', function(event) {
-    // 1. Close the notification automatically when clicked
     event.notification.close();
-
-    // 2. Handle Action Buttons
-    if (event.action === 'close') {
-        return; // Abort routing if dismissed
-    }
-
-    // 3. Smart Tab Routing Logic
     const targetUrl = event.notification.data.url;
-
     event.waitUntil(
         clients.matchAll({ type: 'window', includeUncontrolled: true }).then(windowClients => {
-            
-            // Check if there is already a window/tab open with the target URL
-            for (let i = 0; i < windowClients.length; i++) {
-                const client = windowClients[i];
-                // If it's open, just focus it to prevent opening multiple identical tabs
-                if (client.url === targetUrl && 'focus' in client) {
-                    return client.focus();
-                }
+            for (let client of windowClients) {
+                if (client.url === targetUrl && 'focus' in client) return client.focus();
             }
-            
-            // If the target URL is not open, initialize a new window
-            if (clients.openWindow) {
-                return clients.openWindow(targetUrl);
-            }
+            if (clients.openWindow) return clients.openWindow(targetUrl);
         })
     );
 });
