@@ -342,7 +342,8 @@ function call_matrix_llm($user_input, $context = "") {
     $api_key = defined('GEMINI_API_KEY') ? GEMINI_API_KEY : ($_ENV['GEMINI_API_KEY'] ?? ''); 
     if (empty($api_key)) return false;
 
-    $url = "https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=" . $api_key;
+    // ⚡️ STABLE PRODUCTION URL (v1)
+    $url = "https://generativelanguage.googleapis.com/v1/models/gemini-1.5-flash:generateContent?key=" . $api_key;
     
     // HUMAN-LIKE SYSTEM PROMPT
     $system_prompt = "You are Mr. Scotty, a senior AI support assistant for 'DigitalMarketplaceMM', a premium digital store in Myanmar. 
