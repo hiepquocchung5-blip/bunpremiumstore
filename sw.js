@@ -1,5 +1,5 @@
 // sw.js (MUST BE IN ROOT DIRECTORY)
-// PRODUCTION v2.5 - Advanced Service Worker Matrix, Smart Routing & Image Cache
+// PRODUCTION v2.6 - Hardened Matrix Service Worker & Body Clone Fix
 
 const CACHE_NAME = 'matrix-static-v1';
 const IMAGE_CACHE_NAME = 'matrix-images-v1';
@@ -32,38 +32,51 @@ self.addEventListener('activate', event => {
 self.addEventListener('fetch', event => {
     const url = new URL(event.request.url);
 
-    // ⚡️ STRATEGY: Image Cache First (For Products & Categories)
-    if (event.request.destination === 'image') {
+    // Skip non-GET requests
+    if (event.request.method !== 'GET') return;
+    
+    // Skip cross-origin requests for internal caching (optional, but safer for Tailwind CDN issues)
+    const isInternal = url.origin === self.location.origin;
+
+    // ⚡️ STRATEGY 1: Image Cache First (Internal only)
+    if (isInternal && event.request.destination === 'image') {
         event.respondWith(
-            caches.open(IMAGE_CACHE_NAME).then(cache => {
-                return cache.match(event.request).then(response => {
-                    return response || fetch(event.request).then(networkResponse => {
-                        // Cache a copy of the new image
-                        cache.put(event.request, networkResponse.clone());
-                        return networkResponse;
-                    });
-                });
+            caches.open(IMAGE_CACHE_NAME).then(async cache => {
+                const cachedResponse = await cache.match(event.request);
+                if (cachedResponse) return cachedResponse;
+
+                const networkResponse = await fetch(event.request);
+                if (networkResponse && networkResponse.status === 200) {
+                    cache.put(event.request, networkResponse.clone());
+                }
+                return networkResponse;
             })
         );
         return;
     }
 
-    // ⚡️ STRATEGY: Stale-While-Revalidate for CSS/JS
-    if (event.request.destination === 'style' || event.request.destination === 'script') {
+    // ⚡️ STRATEGY 2: Stale-While-Revalidate for CSS/JS (Internal only)
+    if (isInternal && (event.request.destination === 'style' || event.request.destination === 'script')) {
         event.respondWith(
-            caches.match(event.request).then(cachedResponse => {
+            caches.open(CACHE_NAME).then(async cache => {
+                const cachedResponse = await cache.match(event.request);
                 const fetchPromise = fetch(event.request).then(networkResponse => {
-                    caches.open(CACHE_NAME).then(cache => cache.put(event.request, networkResponse.clone()));
+                    if (networkResponse && networkResponse.status === 200) {
+                        cache.put(event.request, networkResponse.clone());
+                    }
                     return networkResponse;
-                });
+                }).catch(() => null);
+
                 return cachedResponse || fetchPromise;
             })
         );
         return;
     }
 
-    // Default: Network First
-    event.respondWith(fetch(event.request).catch(() => caches.match(event.request)));
+    // Default: Network First with Cache Fallback
+    event.respondWith(
+        fetch(event.request).catch(() => caches.match(event.request))
+    );
 });
 
 self.addEventListener('push', function(event) {
