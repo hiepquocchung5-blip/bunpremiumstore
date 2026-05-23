@@ -46,6 +46,26 @@ if (!$is_auth_page && !$is_ajax) {
     $_SESSION['resume_url'] = 'index.php' . ($current_query ? '?' . $current_query : '');
 }
 
+// ⚡️ GLOBAL CHAT NOTIFICATION LOGIC
+$has_unread_chat = false;
+if (isset($_SESSION['user_id'])) {
+    global $pdo;
+    try {
+        $stmt_unread = $pdo->prepare("
+            SELECT id FROM orders o 
+            WHERE user_id = ? 
+            AND (
+                SELECT sender_type FROM order_messages 
+                WHERE order_id = o.id 
+                ORDER BY id DESC LIMIT 1
+            ) IN ('admin', 'admin_ai')
+            LIMIT 1
+        ");
+        $stmt_unread->execute([$_SESSION['user_id']]);
+        $has_unread_chat = $stmt_unread->rowCount() > 0;
+    } catch (Exception $e) {}
+}
+
 // 5. Database State Check: Is User Subscribed?
 $is_push_subscribed = false;
 if (isset($_SESSION['user_id'])) {
@@ -235,11 +255,19 @@ if (isset($_SESSION['user_id'])) {
                     <!-- User Actions -->
                     <?php if(isset($_SESSION['user_id'])): ?>
                         
+                        <!-- MOBILE CHAT SHORTCUT -->
+                        <a href="index.php?module=user&page=orders" class="lg:hidden w-9 h-9 rounded-xl bg-slate-900/80 border border-slate-700 flex items-center justify-center text-slate-400 active:scale-95 transition-all relative">
+                            <i class="fas fa-comment-dots text-sm"></i>
+                            <?php if($has_unread_chat): ?>
+                                <span class="absolute -top-1 -right-1 w-2.5 h-2.5 bg-blue-500 rounded-full animate-pulse border-2 border-slate-900"></span>
+                            <?php endif; ?>
+                        </a>
+                        
                         <!-- NOTIFICATION BELL (Logged In - Dropdown) -->
                         <div class="relative cursor-pointer text-slate-400 hover:text-[#00f0ff] transition group hidden sm:block">
                             <div class="w-9 h-9 lg:w-10 lg:h-10 rounded-xl hover:bg-slate-800 flex items-center justify-center transition border border-transparent hover:border-slate-700 relative shadow-[inset_0_0_10px_rgba(0,0,0,0.5)]">
                                 <i class="far fa-bell text-lg group-hover:animate-shake-bell"></i>
-                                <span class="absolute top-1.5 right-1.5 w-2 h-2 bg-red-500 rounded-full animate-pulse border border-slate-900 hidden" id="nav-notif-badge"></span>
+                                <span class="absolute top-1.5 right-1.5 w-2 h-2 bg-red-500 rounded-full animate-pulse border border-slate-900 <?php echo $has_unread_chat ? '' : 'hidden'; ?>" id="nav-notif-badge"></span>
                             </div>
                             
                             <div class="absolute right-0 top-full mt-2 w-72 lg:w-80 bg-slate-800/95 backdrop-blur-xl rounded-xl shadow-[0_20px_50px_rgba(0,0,0,0.7)] border border-slate-700 opacity-0 invisible group-hover:opacity-100 group-hover:visible dropdown-menu z-50 overflow-hidden">
@@ -364,15 +392,21 @@ if (isset($_SESSION['user_id'])) {
                 </a>
             </div>
 
-            <a href="index.php?module=user&page=orders" class="flex flex-col items-center gap-1.5 <?php echo isActive('user', 'orders'); ?>">
+            <a href="index.php?module=user&page=orders" class="flex flex-col items-center gap-1.5 relative <?php echo isActive('user', 'orders'); ?>">
                 <i class="fas fa-box-open text-lg"></i>
                 <span class="text-[8px] font-black uppercase tracking-widest">Orders</span>
+                <?php if($has_unread_chat): ?>
+                    <span class="absolute -top-0.5 -right-0.5 w-2 h-2 bg-blue-500 rounded-full animate-pulse shadow-[0_0_8px_#3b82f6]"></span>
+                <?php endif; ?>
             </a>
 
             <!-- Toggle Mobile Menu Overlay -->
-            <button onclick="document.getElementById('mobile-menu').classList.toggle('translate-y-full'); document.getElementById('mobile-menu').classList.toggle('opacity-0');" class="flex flex-col items-center gap-1.5 text-slate-400 hover:text-[#00f0ff] transition">
+            <button onclick="document.getElementById('mobile-menu').classList.toggle('translate-y-full'); document.getElementById('mobile-menu').classList.toggle('opacity-0');" class="flex flex-col items-center gap-1.5 text-slate-400 hover:text-[#00f0ff] transition relative">
                 <i class="fas fa-bars text-lg"></i>
                 <span class="text-[8px] font-black uppercase tracking-widest">Menu</span>
+                <?php if($has_unread_chat): ?>
+                    <span class="absolute -top-0.5 -right-0.5 w-2 h-2 bg-blue-500 rounded-full opacity-50"></span>
+                <?php endif; ?>
             </button>
 
         </div>
@@ -409,6 +443,15 @@ if (isset($_SESSION['user_id'])) {
 
                 <h3 class="text-xs font-black text-slate-500 uppercase tracking-widest mb-4">Command Center</h3>
                 <div class="space-y-2">
+                    <a href="index.php?module=user&page=orders" class="flex items-center justify-between p-3 bg-slate-800/50 rounded-xl border border-slate-700 text-slate-300 hover:text-white transition">
+                        <div class="flex items-center gap-4">
+                            <div class="w-8 h-8 rounded-lg bg-[#00f0ff]/10 flex items-center justify-center text-[#00f0ff]"><i class="fas fa-box-open"></i></div>
+                            <span class="text-sm font-bold tracking-wide">My Orders</span>
+                        </div>
+                        <?php if($has_unread_chat): ?>
+                            <span class="bg-blue-500 text-[8px] font-black text-white px-2 py-0.5 rounded-full animate-pulse uppercase tracking-tighter shadow-[0_0_10px_#3b82f6]">New Msg</span>
+                        <?php endif; ?>
+                    </a>
                     <a href="index.php?module=user&page=dashboard" class="flex items-center gap-4 p-3 bg-slate-800/50 rounded-xl border border-slate-700 text-slate-300 hover:text-white transition">
                         <div class="w-8 h-8 rounded-lg bg-blue-500/10 flex items-center justify-center text-blue-400"><i class="fas fa-chart-pie"></i></div>
                         <span class="text-sm font-bold tracking-wide">Dashboard</span>
