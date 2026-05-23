@@ -334,7 +334,7 @@ if (isset($_SESSION['user_id'])) {
     <!-- ========================================== -->
     <!-- FLOATING APP BOTTOM NAV (MOBILE ONLY)      -->
     <!-- ========================================== -->
-    <div class="fixed bottom-4 left-4 right-4 z-[90] lg:hidden pointer-events-none">
+    <div id="mobile-bottom-nav" class="fixed bottom-4 left-4 right-4 z-[90] lg:hidden pointer-events-none">
         <div class="glass-pill rounded-2xl px-6 py-3 flex justify-between items-center shadow-[0_15px_40px_rgba(0,0,0,0.8)] pointer-events-auto relative">
             
             <a href="index.php" class="flex flex-col items-center gap-1.5 <?php echo isActive('home'); ?>">

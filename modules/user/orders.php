@@ -216,6 +216,7 @@ if ($active_chat_id) {
 <!-- Dynamic Styling for Fullscreen Mobile Chat Focus -->
 <style>
     body.chat-active-mobile { overflow: hidden !important; }
+    body.chat-active-mobile #mobile-bottom-nav { display: none !important; }
     
     /* Smooth iOS Scroll inside chat box */
     .chat-scroll-container {
@@ -304,29 +305,47 @@ if ($active_chat_id) {
                     <p class="text-sm mt-1">to open the chat window.</p>
                 </div>
             </div>
-        <?php else: ?>
+        <?php else: 
+            $statusColorHeader = match($active_order['status']) {
+                'completed', 'active' => 'text-green-400 bg-green-500/10 border-green-500/20',
+                'pending' => 'text-yellow-400 bg-yellow-500/10 border-yellow-500/20',
+                'cancelled', 'rejected' => 'text-red-400 bg-red-500/10 border-red-500/20',
+                default => 'text-slate-400 bg-slate-500/10 border-slate-500/20'
+            };
+        ?>
             
             <!-- Chat Header -->
             <div class="p-3 md:p-5 border-b border-slate-800 md:border-slate-700/50 bg-slate-900 md:bg-slate-800/80 backdrop-blur shrink-0 flex flex-col z-20 shadow-md relative pt-[max(env(safe-area-inset-top),0.75rem)]">
                 
-                <div class="flex items-center gap-3">
-                    <button onclick="showMobileSidebar()" class="md:hidden text-white hover:text-[#00f0ff] p-2 -ml-2 rounded-full transition">
-                        <i class="fas fa-arrow-left text-lg"></i>
-                    </button>
+                <div class="flex items-center justify-between gap-3">
+                    <div class="flex items-center gap-3 min-w-0">
+                        <button onclick="showMobileSidebar()" class="md:hidden text-white hover:text-[#00f0ff] p-2 -ml-2 rounded-full transition">
+                            <i class="fas fa-arrow-left text-lg"></i>
+                        </button>
 
-                    <div class="w-10 h-10 rounded-full bg-blue-600 flex items-center justify-center text-white shrink-0 border border-blue-400">
-                        <i class="fas fa-headset"></i>
+                        <div class="w-10 h-10 rounded-xl bg-gradient-to-br from-blue-600 to-blue-800 flex items-center justify-center text-white shrink-0 border border-blue-400/30 shadow-lg">
+                            <i class="fas fa-headset text-lg"></i>
+                        </div>
+
+                        <div class="min-w-0">
+                            <h2 class="text-sm md:text-lg font-bold text-white truncate leading-tight flex items-center gap-2">
+                                <?php echo htmlspecialchars($active_order['name']); ?>
+                            </h2>
+                            <div class="flex items-center gap-2 mt-0.5">
+                                <span class="text-[10px] text-slate-400 font-mono">Order #<?php echo $active_order['id']; ?></span>
+                                <span class="w-1 h-1 bg-slate-600 rounded-full"></span>
+                                <span class="text-[10px] text-green-400 font-bold uppercase flex items-center gap-1">
+                                    <span class="inline-block w-1.5 h-1.5 bg-green-500 rounded-full animate-pulse"></span> Agent Online
+                                </span>
+                            </div>
+                        </div>
                     </div>
 
-                    <div class="min-w-0 flex-1">
-                        <h2 class="text-base md:text-lg font-bold text-white truncate leading-tight">
-                            Support: <?php echo htmlspecialchars($active_order['name']); ?>
-                        </h2>
-                        <div class="flex items-center gap-2 mt-0.5">
-                            <span class="text-[10px] text-slate-400 font-mono">Order #<?php echo $active_order['id']; ?></span>
-                            <span class="w-1 h-1 bg-slate-600 rounded-full"></span>
-                            <span class="text-[10px] text-green-400 font-bold uppercase"><span class="inline-block w-1.5 h-1.5 bg-green-500 rounded-full animate-pulse mr-1"></span> Online</span>
-                        </div>
+                    <div class="flex flex-col items-end shrink-0">
+                        <span class="text-[9px] font-black uppercase px-2 py-1 rounded border tracking-widest <?php echo $statusColorHeader; ?> shadow-sm">
+                            <?php echo $active_order['status']; ?>
+                        </span>
+                        <span class="text-[9px] text-slate-500 mt-1 font-mono"><?php echo date('M d, H:i', strtotime($active_order['created_at'])); ?></span>
                     </div>
                 </div>
             </div>
