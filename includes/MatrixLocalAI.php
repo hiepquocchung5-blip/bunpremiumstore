@@ -66,7 +66,48 @@ class MatrixLocalAI {
         $this->vocabulary = [];
         $this->document_vectors = [];
 
-        foreach ($this->training_data as $intent) {
+        // 🔄 Normalize training data: Group singular entries by tag in memory for better TF-IDF accuracy
+        $normalized_data = [];
+        foreach ($this->training_data as $item) {
+            // 🛡️ REINFORCEMENT FILTER: Skip entries with negative reward (bad training data)
+            if (isset($item['reward']) && $item['reward'] < 0) continue;
+
+            $tag = $item['tag'] ?? 'unknown';
+            if (!isset($normalized_data[$tag])) {
+                $normalized_data[$tag] = [
+                    'tag' => $tag,
+                    'patterns' => [],
+                    'responses' => [],
+                    'metadata' => [
+                        'icon' => $item['icon'] ?? ($item['metadata']['icon'] ?? 'ti-help'),
+                        'color' => $item['color'] ?? ($item['metadata']['color'] ?? '#ccc'),
+                        'bg' => $item['bg'] ?? ($item['metadata']['bg'] ?? '#f0f0f0')
+                    ]
+                ];
+            }
+
+            // Handle Plural structure
+            if (isset($item['patterns']) && is_array($item['patterns'])) {
+                $normalized_data[$tag]['patterns'] = array_merge($normalized_data[$tag]['patterns'], $item['patterns']);
+                if (isset($item['responses'])) {
+                    $normalized_data[$tag]['responses'] = array_merge($normalized_data[$tag]['responses'], (array)$item['responses']);
+                }
+            } 
+            // Handle Singular structure
+            elseif (isset($item['pattern'])) {
+                $normalized_data[$tag]['patterns'][] = $item['pattern'];
+                if (isset($item['response'])) {
+                    $normalized_data[$tag]['responses'][] = $item['response'];
+                }
+            }
+        }
+
+        // 🧠 Vectorize the normalized documents
+        foreach ($normalized_data as $tag => $intent) {
+            // Remove duplicate patterns to keep the model lean
+            $intent['patterns'] = array_unique($intent['patterns']);
+            $intent['responses'] = array_unique($intent['responses']);
+
             foreach ($intent['patterns'] as $pattern) {
                 $tokens = $this->tokenize($pattern);
                 $unique_tokens = array_unique($tokens);
@@ -80,14 +121,10 @@ class MatrixLocalAI {
                 }
                 
                 $this->document_vectors[$doc_index] = [
-                    'tag' => $intent['tag'],
+                    'tag' => $tag,
                     'tokens' => $tokens,
                     'responses' => $intent['responses'],
-                    'metadata' => [
-                        'icon' => $intent['icon'] ?? '',
-                        'color' => $intent['color'] ?? '',
-                        'bg' => $intent['bg'] ?? ''
-                    ]
+                    'metadata' => $intent['metadata']
                 ];
                 $doc_index++;
             }
