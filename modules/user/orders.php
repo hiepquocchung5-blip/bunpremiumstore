@@ -117,37 +117,35 @@ if (isset($_GET['ajax']) && $_GET['ajax'] == 1 && $active_chat_id > 0) {
         $item_align = $is_user ? 'items-end' : 'items-start';
         
         $bubble_bg = $is_user 
-            ? 'bg-gradient-to-br from-[#00f0ff] to-blue-600 text-slate-900 font-medium rounded-2xl rounded-br-sm shadow-[0_4px_15px_rgba(0,240,255,0.3)]' 
-            : 'bg-slate-800 text-slate-200 border border-slate-700 rounded-2xl rounded-bl-sm shadow-md';
+            ? 'bg-gradient-to-br from-[#00f0ff] to-blue-600 text-slate-900 font-bold rounded-2xl rounded-br-sm shadow-[0_4px_20px_rgba(0,240,255,0.2)]' 
+            : 'bg-slate-800 text-slate-200 border border-slate-700 rounded-2xl rounded-bl-sm shadow-lg';
             
         $time = date('h:i A', strtotime($msg['created_at']));
         $safe_msg = htmlspecialchars($msg['message']);
 
-        echo "<div class='flex w-full {$align} mb-4 animate-fade-in-up group' data-msg-id='{$msg['id']}'>";
-        echo "<div class='max-w-[85%] md:max-w-[75%] flex flex-col {$item_align}'>";
-        echo "<div class='px-4 py-3 text-[13px] md:text-sm relative {$bubble_bg}'>";
+        echo "<div class='flex w-full {$align} mb-5 animate-fade-in-up group' data-msg-id='{$msg['id']}'>";
+        echo "<div class='max-w-[85%] md:max-w-[70%] flex flex-col {$item_align}'>";
+        echo "<div class='px-4 py-3.5 text-[13px] md:text-sm relative {$bubble_bg} transition-transform group-hover:scale-[1.01]'>";
         
         if ($msg['is_credential']) {
-            echo "<div class='flex items-center gap-2 text-[10px] font-black " . ($is_user ? "text-slate-900" : "text-[#00f0ff]") . " mb-2 border-b " . ($is_user ? "border-slate-900/20" : "border-white/10") . " pb-1 uppercase tracking-wider'><i class='fas fa-shield-alt'></i> Secure Data</div>";
-            echo "<div class='font-mono text-xs whitespace-pre-wrap select-all " . ($is_user ? "bg-white/30 text-slate-900" : "bg-black/40 text-green-400") . " p-2.5 rounded-lg border border-white/10'>{$safe_msg}</div>";
+            echo "<div class='flex items-center gap-2 text-[10px] font-black " . ($is_user ? "text-slate-900" : "text-[#00f0ff]") . " mb-2 border-b " . ($is_user ? "border-slate-900/20" : "border-white/10") . " pb-1.5 uppercase tracking-wider'><i class='fas fa-shield-alt'></i> Secure Data Proxy</div>";
+            echo "<div class='font-mono text-xs whitespace-pre-wrap select-all " . ($is_user ? "bg-white/30 text-slate-900" : "bg-black/40 text-green-400") . " p-3 rounded-xl border border-white/10'>{$safe_msg}</div>";
         } else {
             echo "<div class='whitespace-pre-wrap break-words leading-relaxed'>{$safe_msg}</div>";
         }
         
         echo "</div>";
         
-        // WhatsApp Style Read Receipts
-        echo "<div class='flex items-center gap-1.5 mt-1 px-1 opacity-80'>";
+        // Premium Read Receipts
+        echo "<div class='flex items-center gap-2 mt-1.5 px-1 opacity-60 group-hover:opacity-100 transition-opacity'>";
         if ($is_user) {
             if ($msg['id'] < $latest_admin_id) {
-                // SEEN (Blue/Neon Double Check)
-                echo "<i class='fas fa-check-double text-[10px] text-[#00f0ff] drop-shadow-[0_0_5px_rgba(0,240,255,0.8)]' title='Seen'></i>";
+                echo "<i class='fas fa-check-double text-[10px] text-[#00f0ff] drop-shadow-[0_0_8px_rgba(0,240,255,1)]' title='Seen'></i>";
             } else {
-                // DELIVERED (Gray Double Check)
                 echo "<i class='fas fa-check-double text-[10px] text-slate-500' title='Delivered'></i>";
             }
         }
-        echo "<span class='text-[9px] text-slate-500 font-medium'>{$time}</span>";
+        echo "<span class='text-[10px] text-slate-500 font-mono font-bold tracking-tight'>{$time}</span>";
         echo "</div>";
         
         echo "</div></div>";
@@ -323,7 +321,8 @@ if ($active_chat_id) {
                 
                 <div class="flex items-center justify-between gap-3">
                     <div class="flex items-center gap-3 min-w-0">
-                        <button onclick="showMobileSidebar()" class="md:hidden text-white hover:text-[#00f0ff] p-2 -ml-2 rounded-full transition">
+                        <!-- Enhanced Mobile Back Button -->
+                        <button onclick="showMobileSidebar(event)" class="md:hidden flex items-center justify-center w-10 h-10 -ml-2 text-white hover:text-[#00f0ff] bg-slate-800/50 border border-slate-700 rounded-xl transition-all active:scale-90 shadow-lg">
                             <i class="fas fa-arrow-left text-lg"></i>
                         </button>
 
@@ -517,14 +516,14 @@ if ($active_chat_id) {
             
             const tempId = 'temp-' + Date.now();
             const tempHtml = `
-            <div class='flex w-full justify-end mb-4 animate-fade-in-up group temp-msg' id='${tempId}'>
-                <div class='max-w-[85%] md:max-w-[75%] flex flex-col items-end'>
-                    <div class='px-4 py-3 text-[13px] md:text-sm relative bg-gradient-to-br from-[#00f0ff] to-blue-600 text-slate-900 font-medium rounded-2xl rounded-br-sm shadow-[0_4px_15px_rgba(0,240,255,0.3)]'>
+            <div class='flex w-full justify-end mb-5 animate-fade-in-up group temp-msg' id='${tempId}'>
+                <div class='max-w-[85%] md:max-w-[70%] flex flex-col items-end'>
+                    <div class='px-4 py-3.5 text-[13px] md:text-sm relative bg-gradient-to-br from-[#00f0ff] to-blue-600 text-slate-900 font-bold rounded-2xl rounded-br-sm shadow-[0_4px_20px_rgba(0,240,255,0.2)]'>
                         <div class='whitespace-pre-wrap break-words leading-relaxed'>${safeHtmlText}</div>
                     </div>
-                    <div class='flex items-center gap-1.5 mt-1 px-1 opacity-80'>
+                    <div class='flex items-center gap-2 mt-1.5 px-1 opacity-60'>
                         <i class='fas fa-check text-[10px] text-slate-500' title='Sent'></i>
-                        <span class='text-[9px] text-slate-500 font-medium'>${timeNow}</span>
+                        <span class='text-[10px] text-slate-500 font-mono font-bold tracking-tight'>${timeNow}</span>
                     </div>
                 </div>
             </div>`;
@@ -637,9 +636,9 @@ if ($active_chat_id) {
     }
 
     // Mobile Back Button Function
-    function showMobileSidebar() {
-        const btn = event?.currentTarget;
-        if (btn) btn.innerHTML = '<i class="fas fa-circle-notch fa-spin"></i>';
+    function showMobileSidebar(e) {
+        const btn = e?.currentTarget;
+        if (btn) btn.innerHTML = '<i class="fas fa-circle-notch fa-spin text-sm"></i>';
         
         const rightPane = document.getElementById('right-pane');
         const leftSidebar = document.getElementById('left-sidebar');
