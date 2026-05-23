@@ -68,17 +68,17 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['ajax_msg'])) {
                     $rich_context .= "Product Setup Steps: " . $order_check['user_instruction'];
                 }
 
-                // 🧠 CONVERSATIONAL MEMORY: Fetch last 3 messages for context
-                $stmt_mem = $pdo->prepare("SELECT sender_type, message FROM order_messages WHERE order_id = ? ORDER BY id DESC LIMIT 3");
+                // 🧠 DEEP CONVERSATIONAL MEMORY: Fetch last 10 messages for full context
+                $stmt_mem = $pdo->prepare("SELECT sender_type, message FROM order_messages WHERE order_id = ? ORDER BY id DESC LIMIT 10");
                 $stmt_mem->execute([$oid]);
                 $history = array_reverse($stmt_mem->fetchAll());
                 $history_context = "";
                 foreach($history as $h) {
-                    $role = ($h['sender_type'] === 'user') ? 'Customer' : 'Assistant';
+                    $role = ($h['sender_type'] === 'user') ? 'Customer' : 'Staff';
                     $history_context .= "{$role}: {$h['message']}\n";
                 }
 
-                $ai_msg = strip_tags(get_ai_response($msg, $rich_context . " | Recent History:\n" . $history_context));                
+                $ai_msg = strip_tags(get_ai_response($msg, $rich_context . " | FULL CONVERSATION HISTORY:\n" . $history_context));                
                 if (!empty($ai_msg)) {
                     $stmt = $pdo->prepare("INSERT INTO order_messages (order_id, sender_type, message) VALUES (?, 'admin', ?)");
                     $stmt->execute([$oid, $ai_msg]);
