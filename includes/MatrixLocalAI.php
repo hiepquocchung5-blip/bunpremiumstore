@@ -15,6 +15,17 @@ class MatrixLocalAI {
     private $document_vectors = [];
     private $doc_freq = [];
     private $file_path = "";
+    private $synonyms = [
+        'kpay' => 'kbzpay',
+        'kbz' => 'kbzpay',
+        'wave' => 'wavepay',
+        'wpay' => 'wavepay',
+        'cb' => 'cbpay',
+        'အဆင်မပြေ' => 'error',
+        'မရဘူး' => 'error',
+        'စျေး' => 'price',
+        'ဈေး' => 'price'
+    ];
 
     public function __construct($json_file) {
         $this->file_path = $json_file;
@@ -27,10 +38,26 @@ class MatrixLocalAI {
         }
     }
 
+    /**
+     * Advanced Tokenization: Unigrams + Bigrams
+     */
     private function tokenize($text) {
         $text = mb_strtolower($text, 'UTF-8');
+        // Apply Synonyms
+        foreach ($this->synonyms as $key => $val) {
+            $text = str_replace($key, $val, $text);
+        }
+        
         $text = preg_replace('/[^\p{L}\p{N}\s]/u', ' ', $text);
-        return preg_split('/\s+/u', $text, -1, PREG_SPLIT_NO_EMPTY);
+        $unigrams = preg_split('/\s+/u', $text, -1, PREG_SPLIT_NO_EMPTY);
+        
+        // Generate Bigrams for deeper context (e.g., "kbz pay" -> ["kbz", "pay", "kbz_pay"])
+        $bigrams = [];
+        for ($i = 0; $i < count($unigrams) - 1; $i++) {
+            $bigrams[] = $unigrams[$i] . '_' . $unigrams[$i+1];
+        }
+        
+        return array_merge($unigrams, $bigrams);
     }
 
     private function train() {
@@ -83,15 +110,15 @@ class MatrixLocalAI {
             $idf = isset($this->doc_freq[$word]) && $this->doc_freq[$word] > 0 
                     ? log($total_docs / $this->doc_freq[$word]) 
                     : 0;
-            $vector[$word] = $tf * $idf;
+            // Boost Bigrams (tokens with underscores) as they are higher value
+            $boost = (strpos($word, '_') !== false) ? 1.5 : 1.0;
+            $vector[$word] = ($tf * $idf) * $boost;
         }
         return $vector;
     }
 
     private function cosine_similarity($vec1, $vec2) {
-        $dot_product = 0;
-        $norm_a = 0;
-        $norm_b = 0;
+        $dot_product = 0; $norm_a = 0; $norm_b = 0;
         foreach ($this->vocabulary as $word) {
             $val1 = $vec1[$word] ?? 0;
             $val2 = $vec2[$word] ?? 0;
@@ -99,13 +126,9 @@ class MatrixLocalAI {
             $norm_a += $val1 * $val1;
             $norm_b += $val2 * $val2;
         }
-        if ($norm_a == 0 || $norm_b == 0) return 0;
-        return $dot_product / (sqrt($norm_a) * sqrt($norm_b));
+        return ($norm_a == 0 || $norm_b == 0) ? 0 : ($dot_product / (sqrt($norm_a) * sqrt($norm_b)));
     }
 
-    /**
-     * Predict the intent with full metadata support
-     */
     public function predict($text, $threshold = 0.25) {
         if (empty($this->training_data) || empty($this->vocabulary)) return false;
         $input_tokens = $this->tokenize($text);
@@ -114,15 +137,10 @@ class MatrixLocalAI {
         $total_docs = count($this->document_vectors);
         $input_vector = $this->calculate_tfidf($input_tokens, $total_docs);
 
-        $best_score = 0;
-        $winner = null;
-
+        $best_score = 0; $winner = null;
         foreach ($this->document_vectors as $doc) {
             $score = $this->cosine_similarity($input_vector, $doc['vector']);
-            if ($score > $best_score) {
-                $best_score = $score;
-                $winner = $doc;
-            }
+            if ($score > $best_score) { $best_score = $score; $winner = $doc; }
         }
 
         if ($best_score >= $threshold && $winner) {
@@ -133,40 +151,47 @@ class MatrixLocalAI {
                 'metadata' => $winner['metadata']
             ];
         }
+
+        // 📝 REINFORCEMENT: Log unrecognized pattern for admin training
+        $this->log_unrecognized($text);
         return false;
     }
 
-    /**
-     * ⚡️ REINFORCEMENT LEARNING ENGINE
-     * Teach the AI new patterns for a specific tag.
-     */
+    private function log_unrecognized($text) {
+        $log_file = dirname($this->file_path) . '/unrecognized_patterns.json';
+        $logs = file_exists($log_file) ? json_decode(file_get_contents($log_file), true) : [];
+        if (!is_array($logs)) $logs = [];
+        
+        $text = trim($text);
+        if (empty($text)) return;
+
+        $found = false;
+        foreach ($logs as &$entry) {
+            if ($entry['pattern'] === $text) { $entry['hits']++; $found = true; break; }
+        }
+        if (!$found) $logs[] = ['pattern' => $text, 'hits' => 1, 'last_seen' => date('Y-m-d H:i:s')];
+        
+        // Keep only top 100 patterns
+        usort($logs, function($a, $b) { return $b['hits'] <=> $a['hits']; });
+        $logs = array_slice($logs, 0, 100);
+        
+        file_put_contents($log_file, json_encode($logs, JSON_PRETTY_PRINT | JSON_UNESCAPED_UNICODE));
+    }
+
     public function learn($new_pattern, $target_tag) {
         $found = false;
         foreach ($this->training_data as &$intent) {
             if ($intent['tag'] === $target_tag) {
-                // Avoid duplicates
-                if (!in_array($new_pattern, $intent['patterns'])) {
-                    $intent['patterns'][] = $new_pattern;
-                }
-                $found = true;
-                break;
+                if (!in_array($new_pattern, $intent['patterns'])) $intent['patterns'][] = $new_pattern;
+                $found = true; break;
             }
         }
-
-        if ($found) {
-            $this->persist();
-            $this->train(); // Re-index the vectors
-            return true;
-        }
+        if ($found) { $this->persist(); $this->train(); return true; }
         return false;
     }
 
-    /**
-     * Persist the updated knowledge back to the JSON file
-     */
     private function persist() {
         if (empty($this->file_path)) return false;
-        $json_output = json_encode($this->training_data, JSON_PRETTY_PRINT | JSON_UNESCAPED_UNICODE);
-        return file_put_contents($this->file_path, $json_output);
+        return file_put_contents($this->file_path, json_encode($this->training_data, JSON_PRETTY_PRINT | JSON_UNESCAPED_UNICODE));
     }
 }

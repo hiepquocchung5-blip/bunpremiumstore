@@ -207,6 +207,40 @@ try {
             }
             break;
 
+        case '/missed':
+            if ($isAdmin) {
+                $log_file = __DIR__ . '/../includes/unrecognized_patterns.json';
+                if (file_exists($log_file)) {
+                    $logs = json_decode(file_get_contents($log_file), true);
+                    if ($logs) {
+                        $reply = "🕵️‍♂️ <b><u>TOP UNRECOGNIZED PATTERNS</u></b>\n\n";
+                        $count = 0;
+                        foreach ($logs as $log) {
+                            $reply .= "🔸 <code>{$log['pattern']}</code> (Hits: {$log['hits']})\n";
+                            if (++$count >= 10) break;
+                        }
+                        $reply .= "\n<i>Use <code>/train [Tag] [Pattern]</code> to teach these to Matrix Core.</i>";
+                    } else {
+                        $reply = "✅ <b>Intelligence Optimal:</b> No unrecognized patterns logged.";
+                    }
+                } else {
+                    $reply = "📁 <b>Log empty:</b> No data yet.";
+                }
+            }
+            break;
+
+        case '/clear_missed':
+            if ($isAdmin) {
+                $log_file = __DIR__ . '/../includes/unrecognized_patterns.json';
+                if (file_exists($log_file)) {
+                    unlink($log_file);
+                    $reply = "🧹 <b>LOG CLEARED</b>\nUnrecognized patterns have been reset.";
+                } else {
+                    $reply = "❌ <b>No log found.</b>";
+                }
+            }
+            break;
+
         case '/train':
             if ($isAdmin && !empty($argsStr)) {
                 $parts = explode(' ', $argsStr, 2);
@@ -239,6 +273,8 @@ try {
                     $reply .= "🔹 <code>/stats</code> - Store status\n";
                     $reply .= "🔹 <code>/pending</code> - See new orders\n";
                     $reply .= "🔹 <code>/train [Tag] [Msg]</code> - Teach AI\n";
+                    $reply .= "🔹 <code>/missed</code> - See what AI missed\n";
+                    $reply .= "🔹 <code>/clear_missed</code> - Reset missed log\n";
                     $reply .= "🔹 <code>/approve [ID]</code> - Confirm an order\n";
                     $reply .= "🔹 <code>/reply [ID] [Msg]</code> - Message a user\n";
                     $reply .= "🔹 <code>/aistatus</code> - Check AI health\n";
