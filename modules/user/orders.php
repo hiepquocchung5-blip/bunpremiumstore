@@ -101,15 +101,31 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['ajax_msg'])) {
                         trigger_push_alert($pdo, $user_id, "New reply from {$agent_name} 💬", $notif_body, $oid);
                     }                }
                 
-                // ⚡️ REAL-TIME TELEGRAM ALERT (Skip if AI handled it)
-                if (!$ai_responded && defined('TG_BOT_TOKEN') && defined('TG_ADMIN_CHAT_ID')) {
+                // ⚡️ REAL-TIME TELEGRAM ALERT (Always notify admin)
+                if (defined('TG_BOT_TOKEN') && defined('TG_ADMIN_CHAT_ID')) {
                     $admin_url = defined('ADMIN_URL') ? ADMIN_URL : BASE_URL . 'admin/';
-                    $priority_tag = $wants_human ? "🚨 <b>HIGH PRIORITY (Human Requested)</b>" : "💬 <b>New Message</b>";
-                    $tg_msg = "{$priority_tag}\n\n";
+                    
+                    if ($ai_responded) {
+                        $priority_tag = "🤖 <b>AI HANDLED</b> (Scotty)";
+                        $status_color = "🟢";
+                    } elseif ($wants_human) {
+                        $priority_tag = "🚨 <b>URGENT: HUMAN REQUESTED</b>";
+                        $status_color = "🔴";
+                    } else {
+                        $priority_tag = "💬 <b>NEW MESSAGE: AWAITING HUMAN</b>";
+                        $status_color = "🟡";
+                    }
+
+                    $tg_msg = "{$status_color} {$priority_tag}\n\n";
                     $tg_msg .= "🆔 <b>Order:</b> #{$oid} - {$order_check['item_name']}\n";
                     $tg_msg .= "👤 <b>User:</b> @{$order_check['username']}\n";
-                    $tg_msg .= "💬 <b>Message:</b> <i>" . htmlspecialchars($msg) . "</i>\n\n";
-                    $tg_msg .= "⚡️ <a href='{$admin_url}index.php?page=order_detail&id={$oid}'>Join Live Chat Now</a>";
+                    $tg_msg .= "💬 <b>User Sent:</b> <i>" . htmlspecialchars($msg) . "</i>\n";
+                    
+                    if ($ai_responded) {
+                        $tg_msg .= "🤖 <b>AI Reply:</b> <i>" . htmlspecialchars(mb_substr($ai_msg, 0, 100)) . (mb_strlen($ai_msg) > 100 ? '...' : '') . "</i>\n";
+                    }
+
+                    $tg_msg .= "\n⚡️ <a href='{$admin_url}index.php?page=order_detail&id={$oid}'>Open Live Chat</a>";
 
                     $admin_ids = array_map('trim', explode(',', TG_ADMIN_CHAT_ID));
                     foreach ($admin_ids as $adid) {

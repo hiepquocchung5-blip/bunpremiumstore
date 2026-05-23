@@ -438,6 +438,25 @@ STORE CONTEXT & CHAT HISTORY:
                 matrix_cache_set('ai_quota_cooldown', true, 60); // Cool down for 60s
             }
             error_log("Gemini Quota Exceeded (429). Falling back to human rules for 60s.");
+
+            // 🚨 NOTIFY ADMIN via Telegram
+            if (defined('TG_ADMIN_CHAT_ID') && !empty(TG_ADMIN_CHAT_ID) && function_exists('send_reply')) {
+                $masked_key = substr($api_key, 0, 4) . '...' . substr($api_key, -4);
+                $admin_msg = "⚠️ <b>AI QUOTA EXCEEDED (429)</b>\n";
+                $admin_msg .= "🌐 <b>Store:</b> " . (defined('BASE_URL') ? BASE_URL : 'Unknown') . "\n\n";
+                $admin_msg .= "👤 <b>User Input:</b> <code>" . htmlspecialchars($user_input) . "</code>\n";
+                if (!empty($context)) {
+                    $admin_msg .= "📝 <b>Context:</b> <code>" . htmlspecialchars($context) . "</code>\n";
+                }
+                $admin_msg .= "🔑 <b>Key:</b> <code>$masked_key</code>\n";
+                $admin_msg .= "⏳ <b>Cooldown:</b> 60 seconds\n\n";
+                $admin_msg .= "📝 Human fallback rules are now active.";
+                
+                $admin_ids = array_map('trim', explode(',', TG_ADMIN_CHAT_ID));
+                foreach ($admin_ids as $admin_id) {
+                    send_reply($admin_id, $admin_msg);
+                }
+            }
         }
         
         // Fallback to verified gemini-flash-latest on v1beta
