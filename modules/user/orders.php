@@ -54,7 +54,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['ajax_msg'])) {
                 foreach($ai_trigger_keywords as $k) { if(strpos(strtolower($msg), $k) !== false) { $should_ai_reply = true; break; } }
 
                 if($should_ai_reply) {
-                    $ai_msg = strip_tags(get_ai_response($msg));
+                    $ai_msg = strip_tags(get_ai_response($msg, "Item: " . ($order_check['item_name'] ?? 'Digital Asset')));
                     // Wait 2 seconds for "realistic" effect then inject
                     $stmt = $pdo->prepare("INSERT INTO order_messages (order_id, sender_type, message) VALUES (?, 'admin', ?)");
                     $stmt->execute([$oid, $ai_msg]);

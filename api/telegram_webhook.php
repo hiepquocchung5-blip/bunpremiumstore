@@ -158,7 +158,7 @@ try {
                     $reply .= "🆔 <b>Node:</b> <code>$chat_id</code>\nAccess Restricted.";
                 } else {
                     // Normal message from user -> AUTO REPLY BY MR. SCOTTY
-                    $reply = get_ai_response($text);
+                    $reply = get_ai_response($text, "User: @{$username}");
                     
                     // Also notify admins that a user is talking to Scotty
                     $admin_notify = "🤖 <b>Mr. Scotty</b> is handling 👤 @{$username}\n💬 <i>{$text}</i>";

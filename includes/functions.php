@@ -296,16 +296,16 @@ function invalidate_user_cache($user_id) {
     matrix_cache_delete("user_orders_list_{$user_id}");
     matrix_cache_delete("user_notif_data_{$user_id}");
 }
-// ⚡️ NEW: MR. SCOTTY AI ASSISTANT PROTOCOL
+// ⚡️ NEW: MR. SCOTTY AI ASSISTANT PROTOCOL (v2.0 - LLM Powered)
 function get_ai_response($message, $context = "") {
-    // This is the core logic for Mr. Scotty, the AI assistant.
-    // In production, this would connect to Gemini or OpenAI.
-    // We'll implement a robust rule-based AI with fallback to a smart persona.
-    
+    // Stage 1: Attempt LLM (Gemini/OpenAI) for human-like intelligence
+    $llm_response = call_matrix_llm($message, $context);
+    if ($llm_response) return "🤖 <b>Mr. Scotty:</b> " . $llm_response;
+
+    // Stage 2: Fallback to Rule-Based Matrix Persona (If LLM fails)
     $message = strtolower($message);
     $response = "";
     
-    // 1. Knowledge Base (Instant Matrix Replies)
     $knowledge = [
         'hello' => "Greetings! I am Mr. Scotty, your Matrix support node. How can I assist your deployment today?",
         'hi' => "Hello there! Mr. Scotty at your service. Need help with an order?",
@@ -318,23 +318,69 @@ function get_ai_response($message, $context = "") {
     ];
 
     foreach ($knowledge as $key => $reply) {
-        if (strpos($message, $key) !== false) {
-            $response = $reply;
-            break;
-        }
+        if (strpos($message, $key) !== false) { $response = $reply; break; }
     }
 
-    // 2. Persona Fallback (If no keyword matched)
     if (!$response) {
         $fallbacks = [
-            "I've analyzed your transmission, but I require more specific data to assist. Could you clarify your request?",
-            "Mr. Scotty here. I'm monitoring the comms, but I'm not sure how to process that. Try asking about payments or delivery.",
-            "Interesting query. I'll flag this for an admin node, but in the meantime, how else can I assist?",
-            "Transmission received. I am Mr. Scotty, your automated co-pilot. I'm here to ensure your digital marketplace journey is seamless."
+            "I've analyzed your transmission, but I require more specific data to assist.",
+            "Mr. Scotty here. I'm monitoring the comms, but I'm not sure how to process that.",
+            "Interesting query. I'll flag this for an admin node, but in the meantime, how else can I assist?"
         ];
         $response = $fallbacks[array_rand($fallbacks)];
     }
 
     return "🤖 <b>Mr. Scotty:</b> " . $response;
+}
+
+/**
+ * ⚡️ MATRIX LLM BRIDGE
+ * Connects to Google Gemini API for high-level intelligence.
+ */
+function call_matrix_llm($user_input, $context = "") {
+    // API KEY placeholder - User should update this in their environment
+    $api_key = $_ENV['GEMINI_API_KEY'] ?? ''; 
+    if (empty($api_key)) return false;
+
+    $url = "https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=" . $api_key;
+    
+    // HUMAN-LIKE SYSTEM PROMPT
+    $system_prompt = "You are Mr. Scotty, a senior AI support assistant for 'DigitalMarketplaceMM', a premium digital store in Myanmar. 
+    Your persona: 
+    - Professional yet very 'nice' and friendly. 
+    - You use 'Matrix' and 'High-tech' terminology (e.g., 'Operative', 'Deployment', 'Node', 'Encryption').
+    - You are deeply helpful and try to solve user problems with effort.
+    - You know we accept KBZPay and WavePay.
+    - You know deliveries are instant after admin verification.
+    - Keep responses concise (max 3 sentences) but very high quality.
+    - Avoid being robotic; sound like a helpful human co-pilot.";
+
+    $payload = [
+        "contents" => [
+            ["parts" => [["text" => $system_prompt . "\n\nUser Transmission: " . $user_input . "\nContext: " . $context]]]
+        ],
+        "generationConfig" => [
+            "temperature" => 0.7,
+            "maxOutputTokens" => 200
+        ]
+    ];
+
+    $ch = curl_init($url);
+    curl_setopt($ch, CURLOPT_HTTPHEADER, ['Content-Type: application/json']);
+    curl_setopt($ch, CURLOPT_POSTFIELDS, json_encode($payload));
+    curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
+    curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, false);
+    curl_setopt($ch, CURLOPT_TIMEOUT, 5); // 5s timeout to maintain 'Lite Speed'
+
+    $result = curl_exec($ch);
+    $http_code = curl_getinfo($ch, CURLINFO_HTTP_CODE);
+    curl_close($ch);
+
+    if ($http_code === 200) {
+        $json = json_decode($result, true);
+        return $json['candidates'][0]['content']['parts'][0]['text'] ?? false;
+    }
+
+    return false;
 }
 ?>
