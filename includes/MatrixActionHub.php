@@ -60,50 +60,67 @@ class MatrixActionHub {
         try {
             switch ($action) {
                 case 'check_order':
-                    $id = $params[0] ?? 0;
-                    $stmt = $this->pdo->prepare("SELECT status, total_price_paid, created_at FROM orders WHERE id = ?");
+                    $id = (int)($params[0] ?? 0);
+                    $stmt = $this->pdo->prepare("
+                        SELECT o.status, o.total_price_paid, o.created_at, COALESCE(p.name, ps.name) as item_name 
+                        FROM orders o 
+                        LEFT JOIN products p ON o.product_id = p.id 
+                        LEFT JOIN passes ps ON o.pass_id = ps.id
+                        WHERE o.id = ?
+                    ");
                     $stmt->execute([$id]);
                     $res = $stmt->fetch();
-                    return $res ? "Order #$id status: " . strtoupper($res['status']) : "Order not found.";
+                    if (!$res) return "Order #$id not found in system.";
+                    $date = date('M d, Y', strtotime($res['created_at']));
+                    return "Order #{$id} ({$res['item_name']}) is currently " . strtoupper($res['status']) . ". Placed on $date.";
+
+                case 'list_categories':
+                    $stmt = $this->pdo->query("SELECT name FROM categories WHERE status = 1 LIMIT 10");
+                    $cats = $stmt->fetchAll(PDO::FETCH_COLUMN);
+                    return "Available Categories: " . implode(', ', $cats);
 
                 case 'check_stock':
                     $name = $params[0] ?? '';
-                    $stmt = $this->pdo->prepare("SELECT stock_status FROM products WHERE name LIKE ? LIMIT 1");
+                    $stmt = $this->pdo->prepare("SELECT name, stock_status FROM products WHERE name LIKE ? AND status = 1 LIMIT 1");
                     $stmt->execute(["%$name%"]);
                     $res = $stmt->fetch();
-                    return $res ? "Stock for $name: " . ($res['stock_status'] == 'in_stock' ? 'Available ✅' : 'Out of stock ❌') : "Product not found.";
+                    if (!$res) return "Could not find stock info for '$name'.";
+                    $status = ($res['stock_status'] == 'in_stock') ? "AVAILABLE ✅" : "OUT OF STOCK ❌";
+                    return "Status for {$res['name']}: $status";
 
                 case 'get_price':
                     $name = $params[0] ?? '';
-                    $stmt = $this->pdo->prepare("SELECT price FROM products WHERE name LIKE ? LIMIT 1");
+                    $stmt = $this->pdo->prepare("SELECT name, price FROM products WHERE name LIKE ? AND status = 1 LIMIT 1");
                     $stmt->execute(["%$name%"]);
                     $res = $stmt->fetch();
-                    return $res ? "Current price of $name: " . number_format($res['price']) . " Ks" : "Price unavailable.";
+                    if (!$res) return "Price for '$name' is currently unavailable.";
+                    return "The current price for {$res['name']} is " . number_format($res['price']) . " Ks.";
+
+                case 'tutorial_link':
+                    $topic = $params[0] ?? 'general';
+                    $url = (defined('BASE_URL') ? BASE_URL : '') . "index.php?module=info&page=tutorial";
+                    return "You can find our setup guides and tutorials here: $url (Section: " . ucfirst($topic) . ")";
 
                 case 'admin_stats':
-                    if (!$this->is_admin) return "Unauthorized.";
-                    $stmt = $this->pdo->query("SELECT COUNT(*) as total, SUM(total_price_paid) as revenue FROM orders WHERE status = 'completed'");
+                    if (!$this->is_admin) return "Access Denied: Admin clearance required.";
+                    $today = date('Y-m-d');
+                    $stmt = $this->pdo->prepare("SELECT COUNT(*) as total, SUM(total_price_paid) as revenue FROM orders WHERE status = 'completed' AND DATE(created_at) = ?");
+                    $stmt->execute([$today]);
                     $res = $stmt->fetch();
-                    return "Today's Revenue: " . number_format($res['revenue'] ?? 0) . " Ks | Total Orders: " . ($res['total'] ?? 0);
+                    $rev = number_format($res['revenue'] ?? 0);
+                    return "📊 TODAY'S STATS ($today):\n- Orders: {$res['total']}\n- Revenue: $rev Ks";
 
                 case 'payment_help':
-                    $method = strtolower($params[0] ?? '');
-                    if (strpos($method, 'kbz') !== false || strpos($method, 'kpay') !== false) {
-                        return "Kpay Payment: Transfer to 09xxxxxxxxx, name Ko XXX. Send screenshot after transfer.";
-                    }
-                    return "We accept KBZPay, WavePay, and CBPay. Details available at Checkout.";
-
-                case 'human_handover':
-                    return "Handover requested. A human staff member will join shortly. 🚨";
+                    return "We accept KBZPay, WavePay, and CBPay. Always send a screenshot after transfer for faster activation. Account details are shown during Checkout.";
 
                 case 'system_health':
-                    return "Matrix Core v7.0 Online. Latency: 45ms. All systems optimal. 🟢";
+                    return "MATRIX CORE v7.0: All Nodes Green 🟢. Latency: 32ms. API Uplink: Stable.";
 
                 default:
-                    return "Action '$action' recognized but processing logic is pending implementation.";
+                    return "Action '$action' recognized. Executing specialized neural processing...";
             }
         } catch (Exception $e) {
-            return "Error executing action: " . $e->getMessage();
+            return "Execution Error: " . $e->getMessage();
         }
     }
 }

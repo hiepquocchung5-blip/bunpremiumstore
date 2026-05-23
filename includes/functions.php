@@ -411,10 +411,13 @@ CONTEXT & HISTORY:
             if ($hub) {
                 $tool_result = $hub->execute($action, $params);
                 
-                // Final inference with data
+                // Re-inject tool result into conversation
                 $final_payload = $payload;
                 $final_payload['contents'][] = ["role" => "model", "parts" => [["text" => $ai_output]]];
-                $final_payload['contents'][] = ["role" => "user", "parts" => [["text" => "TOOL RESULT: " . $tool_result . "\nNow give final answer in Burmese."]]];
+                $final_payload['contents'][] = [
+                    "role" => "user", 
+                    "parts" => [["text" => "SYSTEM (Verified Data): " . $tool_result . "\n\nAction complete. Now provide your final, warm, and data-rich response to the user in polite Burmese."]]
+                ];
                 
                 $ch = curl_init($url);
                 curl_setopt_array($ch, [

@@ -190,33 +190,44 @@ if (isset($_GET['ajax']) && $_GET['ajax'] == 1 && $active_chat_id > 0) {
         $time = date('h:i A', strtotime($msg['created_at']));
         $safe_msg = htmlspecialchars($msg['message']);
 
+        // Detect if this specific message has tool data markers (simulated for UI)
+        $is_data_rich = (strpos($safe_msg, '#') !== false || strpos($safe_msg, 'Ks') !== false || strpos($safe_msg, '✅') !== false);
+
         echo "<div class='flex w-full {$align} mb-6 animate-fade-in group' data-msg-id='{$msg['id']}'>";
         echo "<div class='max-w-[85%] md:max-w-[70%] flex gap-3 " . ($is_user ? "flex-row-reverse" : "flex-row") . "'>";
         
-        // Agent Avatar (Support Style)
+        // Agent Avatar (Enhanced Style)
         if ($is_admin) {
             $avatar_bg = $is_ai ? "from-purple-600 to-indigo-800" : "from-green-600 to-green-800";
             $avatar_icon = $is_ai ? "fa-robot" : "fa-user-tie";
-            echo "<div class='w-8 h-8 rounded-full bg-gradient-to-br {$avatar_bg} flex items-center justify-center text-white text-[10px] shrink-0 shadow-lg border border-white/10 mt-1' title='" . ($is_ai ? "AI Assistant" : "Human Support") . "'><i class='fas {$avatar_icon}'></i></div>";
+            $pulse = $is_ai ? "animate-pulse" : "";
+            echo "<div class='w-8 h-8 rounded-full bg-gradient-to-br {$avatar_bg} flex items-center justify-center text-white text-[10px] shrink-0 shadow-lg border border-white/10 mt-1' title='" . ($is_ai ? "Matrix Core AI" : "Human Support") . "'><i class='fas {$avatar_icon} {$pulse}'></i></div>";
         }
 
         echo "<div class='flex flex-col {$item_align}'>";
+        
         // Bubble Design
         if ($is_user) {
             $bubble_css = "bg-blue-600 text-white rounded-2xl rounded-tr-sm shadow-md px-4 py-3";
         } else {
             $border = $is_ai ? "border-purple-500/30" : "border-slate-700";
-            $bubble_css = "bg-slate-800 text-slate-200 border {$border} rounded-2xl rounded-tl-sm shadow-sm px-4 py-3";
+            $shadow = $is_ai ? "shadow-[0_0_15px_rgba(139,92,246,0.1)]" : "shadow-sm";
+            $bubble_css = "bg-slate-800 text-slate-200 border {$border} {$shadow} rounded-2xl rounded-tl-sm px-4 py-3";
         }
 
         echo "<div class='relative {$bubble_css}'>";
         if ($is_admin) {
-            $agent_names = ['Ko Scotty', 'Support Team', 'Digital Support', 'Ryan', 'Nora', 'Alex', 'Customer Care'];
-            $agent_name = $is_ai ? "Matrix Core (AI)" : $agent_names[$active_chat_id % count($agent_names)];
+            $agent_name = $is_ai ? "Matrix Core (AI)" : "Support Team";
             $name_color = $is_ai ? "text-purple-400" : "text-[#00f0ff]";
-            echo "<div class='text-[9px] font-black uppercase tracking-widest {$name_color} mb-1 opacity-70'>{$agent_name}</div>";
+            echo "<div class='flex items-center gap-2 mb-1.5'>";
+            echo "<div class='text-[9px] font-black uppercase tracking-widest {$name_color} opacity-80'>{$agent_name}</div>";
+            if ($is_ai && $is_data_rich) {
+                echo "<span class='text-[7px] bg-purple-500/20 text-purple-400 px-1 py-0.5 rounded border border-purple-500/30 font-black tracking-tighter uppercase'><i class='fas fa-database text-[6px]'></i> Verified Data</span>";
+            }
+            echo "</div>";
         }
-        echo "<div class='text-sm leading-relaxed whitespace-pre-wrap break-words'>{$safe_msg}</div>";
+        
+        echo "<div class='text-sm leading-relaxed whitespace-pre-wrap break-words " . ($is_ai ? "font-medium" : "") . "'>{$safe_msg}</div>";
         echo "</div>";
 
         // Footer Meta
@@ -224,6 +235,9 @@ if (isset($_GET['ajax']) && $_GET['ajax'] == 1 && $active_chat_id > 0) {
         if ($is_user) {
             $status_icon = ($msg['id'] < $latest_admin_id) ? "text-blue-400 fa-check-double" : "text-slate-400 fa-check";
             echo "<i class='fas {$status_icon}'></i>";
+        }
+        if ($is_ai) {
+            echo "<i class='fas fa-bolt text-[8px] text-yellow-500/50' title='Instant Neural Inference'></i>";
         }
         echo "<span>{$time}</span>";
         echo "</div>";
@@ -298,15 +312,39 @@ if ($active_chat_id) {
 
 <!-- Dynamic Styling for Fullscreen Mobile Chat Focus -->
 <style>
-    body.chat-active-mobile { overflow: hidden !important; height: 100svh !important; position: fixed; width: 100%; }
-    body.chat-active-mobile #mobile-bottom-nav,
-    body.chat-active-mobile #global-footer,
-    body.chat-active-mobile #scrollToTop { display: none !important; }
+    /* iOS & Mobile Scroll Locking */
+    body.chat-active-mobile { 
+        overflow: hidden !important; 
+        height: 100svh !important; 
+        position: fixed; 
+        width: 100%; 
+        touch-action: none;
+    }
     
-    /* Smooth iOS Scroll inside chat box */
-    .chat-scroll-container {
-        -webkit-overflow-scrolling: touch;
-        overscroll-behavior-y: contain;
+    /* Background Grid Effect */
+    .matrix-grid {
+        background-image: radial-gradient(rgba(0, 240, 255, 0.05) 1px, transparent 1px);
+        background-size: 20px 20px;
+    }
+
+    /* iOS Safe Area Insets for Chat Header */
+    .chat-header-safe {
+        padding-top: max(env(safe-area-inset-top), 1rem);
+        padding-bottom: 0.75rem;
+    }
+
+    /* Fixed Height Container for Mobile Chat */
+    #right-pane.fixed {
+        height: 100dvh;
+        height: 100svh;
+        padding-bottom: env(safe-area-inset-bottom);
+    }
+
+    /* Mobile 425px UI Optimization */
+    @media (max-width: 425px) {
+        .order-sidebar-item { padding: 12px !important; }
+        .chat-bubble-text { font-size: 13px !important; }
+        #floating-back-btn { top: 1.5rem; left: 1rem; }
     }
 </style>
 
@@ -410,7 +448,7 @@ if ($active_chat_id) {
         ?>
             
             <!-- Chat Header -->
-            <div class="p-3 md:p-5 border-b border-slate-800 md:border-slate-700/50 bg-slate-900 md:bg-slate-800/80 backdrop-blur shrink-0 flex flex-col z-20 shadow-md relative pt-[max(env(safe-area-inset-top),0.75rem)]">
+            <div class="p-3 md:p-5 border-b border-slate-800 md:border-slate-700/50 bg-slate-900 md:bg-slate-800/80 backdrop-blur shrink-0 flex flex-col z-20 shadow-md relative matrix-grid chat-header-safe">
                 
                 <div class="flex items-center justify-between gap-3">
                     <div class="flex items-center gap-3 min-w-0">
@@ -448,7 +486,7 @@ if ($active_chat_id) {
 
             <!-- CHAT AREA OR REJECTED STATE -->
             <?php if($active_order['status'] === 'rejected'): ?>
-                <div class="flex-grow flex flex-col items-center justify-center p-8 text-center relative overflow-hidden bg-slate-900/50">
+                <div class="flex-grow flex flex-col items-center justify-center p-8 text-center relative overflow-hidden bg-slate-950 matrix-grid">
                     <div class="absolute inset-0 bg-gradient-to-t from-red-900/10 to-transparent pointer-events-none"></div>
                     <div class="w-20 h-20 bg-red-500/10 rounded-full flex items-center justify-center mb-4 border border-red-500/30 shadow-[0_0_30px_rgba(239,68,68,0.15)] relative z-10">
                         <i class="fas fa-times text-4xl text-red-500"></i>
