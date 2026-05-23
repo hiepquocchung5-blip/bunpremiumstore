@@ -424,9 +424,9 @@ Context from Store: $context";
         $json = json_decode($result, true);
         return $json['candidates'][0]['content']['parts'][0]['text'] ?? false;
     } else {
-        // Fallback to 1.5-flash if 2.5 is not accessible
+        // Fallback to verified gemini-flash-latest if primary endpoint fails
         if ($http_code === 404) {
-            $url = "https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent";
+            $url = "https://generativelanguage.googleapis.com/v1beta/models/gemini-flash-latest:generateContent";
             $ch = curl_init($url);
             curl_setopt($ch, CURLOPT_HTTPHEADER, [
                 'Content-Type: application/json',
@@ -446,5 +446,29 @@ Context from Store: $context";
     }
 
     return false;
+}
+
+/**
+ * ⚡️ TELEGRAM COMMUNICATION PROTOCOL
+ * Sends a message to a specific Telegram chat/admin.
+ */
+function send_reply($chat_id, $text) {
+    if (!defined('TG_BOT_TOKEN') || empty(TG_BOT_TOKEN)) return false;
+    
+    $ch = curl_init("https://api.telegram.org/bot" . TG_BOT_TOKEN . "/sendMessage");
+    curl_setopt_array($ch, [
+        CURLOPT_POST => true, 
+        CURLOPT_RETURNTRANSFER => true, 
+        CURLOPT_SSL_VERIFYPEER => false,
+        CURLOPT_POSTFIELDS => [
+            'chat_id' => $chat_id, 
+            'text' => $text, 
+            'parse_mode' => 'HTML',
+            'disable_web_page_preview' => true
+        ]
+    ]);
+    $res = curl_exec($ch); 
+    curl_close($ch);
+    return $res;
 }
 ?>

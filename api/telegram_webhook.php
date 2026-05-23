@@ -248,18 +248,6 @@ try {
     error_log("Telegram Webhook Error: " . $e->getMessage());
 }
 
-/**
- * TELEGRAM COMMUNICATION PROTOCOLS
- */
-function send_reply($chat_id, $text) {
-    $ch = curl_init("https://api.telegram.org/bot" . TG_BOT_TOKEN . "/sendMessage");
-    curl_setopt_array($ch, [
-        CURLOPT_POST => true, CURLOPT_RETURNTRANSFER => true, CURLOPT_SSL_VERIFYPEER => false,
-        CURLOPT_POSTFIELDS => ['chat_id' => $chat_id, 'text' => $text, 'parse_mode' => 'HTML']
-    ]);
-    curl_exec($ch); curl_close($ch);
-}
-
 function trigger_push_alert($pdo, $user_id, $title, $body, $order_id) {
     $push_file = __DIR__ . '/../includes/PushService.php';
     if (file_exists($push_file)) {
