@@ -40,15 +40,7 @@ $transactions = $stmt->fetchAll();
 <div class="max-w-6xl mx-auto space-y-8">
     
     <!-- Hero / Stats -->
-    <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
-        <!-- Balance Card -->
-        <div class="glass p-6 rounded-2xl border border-gray-700 relative overflow-hidden group">
-            <div class="absolute right-0 top-0 p-4 opacity-5 group-hover:scale-110 transition"><i class="fas fa-wallet text-6xl text-green-500"></i></div>
-            <p class="text-xs font-bold text-gray-400 uppercase tracking-wider">Wallet Balance</p>
-            <h2 class="text-3xl font-bold text-white mt-1"><?php echo format_price($user_data['wallet_balance']); ?></h2>
-            <p class="text-green-400 text-xs mt-2 flex items-center gap-1"><i class="fas fa-arrow-up"></i> Earnings available</p>
-        </div>
-
+    <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
         <!-- Referral Link -->
         <div class="md:col-span-2 glass p-6 rounded-2xl border border-gray-700 flex flex-col justify-center">
             <h3 class="font-bold text-white mb-2 flex items-center gap-2">

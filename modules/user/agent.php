@@ -109,8 +109,8 @@ $active_pass = $stmt->fetch();
 // Fetch Payment Methods for Modal
 $payment_methods = $pdo->query("SELECT * FROM payment_methods WHERE is_active = 1")->fetchAll();
 
-// Fetch User Data for Referral Code & Wallet
-$stmt = $pdo->prepare("SELECT referral_code, wallet_balance FROM users WHERE id = ?");
+// Fetch User Data for Referral Code
+$stmt = $pdo->prepare("SELECT referral_code FROM users WHERE id = ?");
 $stmt->execute([$user_id]);
 $user_data = $stmt->fetch();
 

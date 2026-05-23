@@ -69,23 +69,8 @@ $recent_orders = $stmt->fetchAll();
     </div>
 
     <!-- Stats Grid -->
-    <div class="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
+    <div class="grid grid-cols-1 md:grid-cols-2 gap-6 mb-8">
         
-        <!-- Wallet Card (Neon Cyberpunk Vibe) -->
-        <div class="relative bg-slate-900/80 backdrop-blur-xl border border-[#00f0ff]/30 rounded-2xl p-6 overflow-hidden group hover:border-[#00f0ff]/60 transition-all duration-300 shadow-[0_0_15px_rgba(0,240,255,0.05)] hover:shadow-[0_0_25px_rgba(0,240,255,0.15)]">
-            <div class="absolute -right-6 -top-6 w-24 h-24 bg-[#00f0ff]/10 rounded-full blur-2xl group-hover:bg-[#00f0ff]/20 transition"></div>
-            <div class="flex justify-between items-start mb-4">
-                <div class="w-10 h-10 rounded-lg bg-[#00f0ff]/10 flex items-center justify-center border border-[#00f0ff]/20">
-                    <i class="fas fa-wallet text-[#00f0ff]"></i>
-                </div>
-                <span class="text-xs font-bold text-slate-400 uppercase tracking-wider bg-slate-800 px-2 py-1 rounded-md">Wallet</span>
-            </div>
-            <h3 class="text-3xl font-black text-white"><?php echo number_format($wallet_balance); ?> <span class="text-sm text-[#00f0ff]">MMK</span></h3>
-            <p class="text-xs text-slate-400 mt-2 flex items-center gap-1">
-                <i class="fas fa-arrow-up text-green-400"></i> Available for purchases
-            </p>
-        </div>
-
         <!-- Orders Card -->
         <div class="bg-slate-900/60 backdrop-blur-xl border border-slate-700/50 rounded-2xl p-6 hover:border-blue-500/30 transition-all duration-300 group">
             <div class="flex justify-between items-start mb-4">
