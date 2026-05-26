@@ -78,6 +78,22 @@ if (is_logged_in()) {
 <style>
     .no-scrollbar::-webkit-scrollbar { display: none; }
     .no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
+
+    .home-page-shell {
+        overflow-x: clip;
+        position: relative;
+    }
+
+    .home-slider-track {
+        overscroll-behavior-x: contain;
+        -webkit-overflow-scrolling: touch;
+        touch-action: pan-x;
+        scrollbar-width: none;
+    }
+
+    .home-slider-track::-webkit-scrollbar {
+        display: none;
+    }
     
     .glass-card {
         background: rgba(15, 23, 42, 0.6);
@@ -106,35 +122,35 @@ if (is_logged_in()) {
 </style>
 
 <!-- Top News Ticker -->
-<div class="w-full bg-slate-950 border-b border-blue-500/10 py-2 mb-6 relative">
-    <div class="whitespace-nowrap animate-marquee text-[10px] sm:text-xs text-blue-400 font-mono tracking-widest uppercase font-bold">
+<div class="w-full bg-slate-950 border-b border-blue-500/10 py-2 mb-4 sm:mb-6 relative overflow-hidden">
+    <div class="whitespace-nowrap animate-marquee text-[10px] sm:text-xs text-blue-400 font-mono tracking-widest uppercase font-bold px-4">
         🚀 System Online • Instant Delivery Enabled • 24/7 Support Available • New Products Added Daily • Secure Payments Active
     </div>
 </div>
 
-<div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pb-12">
+<div class="home-page-shell max-w-7xl mx-auto px-3 sm:px-6 lg:px-8 pb-10 sm:pb-12">
     
     <!-- User Greeting -->
-    <div class="mb-10 animate-fade-in-down">
-        <div class="flex flex-col md:flex-row md:items-end justify-between gap-6">
+    <div class="mb-8 sm:mb-10 animate-fade-in-down">
+        <div class="flex flex-col md:flex-row md:items-end justify-between gap-5 sm:gap-6">
             <div class="flex-1">
                 <div class="flex items-center gap-3 mb-2">
                     <span class="text-[10px] font-black text-slate-500 uppercase tracking-widest bg-slate-900/50 px-2.5 py-1 rounded-md border border-slate-800">Account Overview</span>
                     <div class="h-px bg-slate-800 flex-1 hidden md:block"></div>
                 </div>
-                <h2 class="text-3xl md:text-5xl font-black text-white tracking-tight leading-none">
+                <h2 class="text-2xl sm:text-3xl md:text-5xl font-black text-white tracking-tight leading-tight sm:leading-none">
                     Welcome back, <span class="text-blue-400"><?php echo htmlspecialchars($first_name); ?></span>
                 </h2>
-                <p class="text-slate-400 text-sm mt-3 font-medium">Your store dashboard is ready. View your products and orders below.</p>
+                <p class="text-slate-400 text-sm mt-3 font-medium max-w-2xl">Your store dashboard is ready. View your products and orders below.</p>
             </div>
 
             <?php if(is_logged_in()): ?>
-            <div class="flex items-center gap-4 bg-slate-900/50 border border-slate-700/50 p-2 rounded-2xl shadow-xl">
-                <div class="px-4 py-2 border-r border-slate-800">
+            <div class="flex flex-col sm:flex-row items-stretch sm:items-center gap-0 sm:gap-4 bg-slate-900/50 border border-slate-700/50 p-2 rounded-2xl shadow-xl w-full sm:w-auto overflow-hidden">
+                <div class="px-4 py-3 sm:py-2 border-b sm:border-b-0 sm:border-r border-slate-800 text-center sm:text-left">
                     <p class="text-[9px] text-slate-500 font-black uppercase tracking-widest mb-0.5">Pending Orders</p>
                     <p class="text-lg font-mono font-black text-yellow-500"><?php echo str_pad($user_stats['active_orders'], 2, '0', STR_PAD_LEFT); ?></p>
                 </div>
-                <div class="px-4 py-2">
+                <div class="px-4 py-3 sm:py-2 text-center sm:text-left">
                     <p class="text-[9px] text-slate-500 font-black uppercase tracking-widest mb-0.5">Your Discount</p>
                     <p class="text-lg font-mono font-black text-green-400"><?php echo $discount; ?>%</p>
                 </div>
@@ -145,7 +161,7 @@ if (is_logged_in()) {
 
     <!-- NOTIFICATION PROMPT -->
     <?php if(is_logged_in() && !$is_subscribed): ?>
-    <div class="mb-8 bg-blue-900/10 border border-blue-500/30 p-5 md:p-6 rounded-2xl flex flex-col sm:flex-row items-center justify-between gap-4 relative overflow-hidden">
+    <div class="mb-8 bg-blue-900/10 border border-blue-500/30 p-5 md:p-6 rounded-2xl flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-4 relative overflow-hidden">
         <div class="flex items-center gap-4 relative z-10 w-full sm:w-auto">
             <div class="w-12 h-12 bg-blue-500/10 rounded-full flex items-center justify-center text-blue-500 border border-blue-500/20 shrink-0">
                 <i class="fas fa-bell text-xl animate-pulse"></i>
@@ -155,7 +171,7 @@ if (is_logged_in()) {
                 <p class="text-xs text-slate-400">Turn on notifications to receive instant updates for your orders.</p>
             </div>
         </div>
-        <button onclick="initializeManualUplink(this)" class="w-full sm:w-auto bg-blue-600 hover:bg-blue-500 text-white font-bold px-6 py-3 rounded-xl transition transform active:scale-95 text-xs uppercase tracking-widest">
+        <button onclick="initializeManualUplink(this)" class="w-full sm:w-auto bg-blue-600 hover:bg-blue-500 text-white font-bold px-6 py-3 rounded-xl transition transform active:scale-95 text-xs uppercase tracking-widest sm:min-w-[180px]">
             Enable Now
         </button>
     </div>
@@ -177,25 +193,25 @@ if (is_logged_in()) {
 
     <!-- SECTION 1: Banner Slider -->
     <?php if(!empty($banners)): ?>
-    <div class="relative w-full aspect-video md:aspect-[21/9] lg:max-h-[500px] mb-12 rounded-[2rem] overflow-hidden group shadow-2xl bg-slate-900 border border-slate-700/50" id="heroSliderContainer">
-        <div class="flex h-full overflow-x-auto snap-x snap-mandatory no-scrollbar scroll-smooth" id="bannerSlider">
+    <div class="relative w-full aspect-[16/11] sm:aspect-[21/9] lg:max-h-[500px] mb-10 sm:mb-12 rounded-[1.5rem] sm:rounded-[2rem] overflow-hidden group shadow-2xl bg-slate-900 border border-slate-700/50" id="heroSliderContainer">
+        <div class="flex h-full overflow-x-auto snap-x snap-mandatory no-scrollbar scroll-smooth home-slider-track" id="bannerSlider">
             <?php foreach($banners as $index => $b): ?>
                 <div class="w-full h-full flex-shrink-0 snap-center relative overflow-hidden">
                     <a href="<?php echo $b['target_url'] ?: '#'; ?>" class="block w-full h-full">
                         <img src="<?php echo BASE_URL . $b['image_path']; ?>" class="w-full h-full object-cover animate-pan-image" loading="eager">
                         <div class="absolute inset-0 bg-gradient-to-t from-slate-950 via-slate-950/40 to-transparent opacity-90"></div>
                         
-                        <div class="absolute inset-0 flex flex-col justify-end p-6 md:p-16">
+                        <div class="absolute inset-0 flex flex-col justify-end p-4 sm:p-6 md:p-16">
                             <div class="animate-fade-in-up">
                                 <div class="flex items-center gap-2 mb-3">
-                                    <span class="w-8 h-0.5 bg-blue-500 rounded-full"></span>
+                                    <span class="w-6 sm:w-8 h-0.5 bg-blue-500 rounded-full"></span>
                                     <span class="text-[10px] md:text-xs text-blue-400 font-black uppercase tracking-[0.2em]"><?php echo $b['subtitle'] ?: 'Exclusive Digital Asset'; ?></span>
                                 </div>
-                                <h3 class="text-white text-3xl md:text-6xl font-black mb-4 leading-[0.9] tracking-tighter max-w-2xl">
+                                <h3 class="text-white text-2xl sm:text-4xl md:text-6xl font-black mb-3 sm:mb-4 leading-[0.95] tracking-tighter max-w-xl md:max-w-2xl">
                                     <?php echo htmlspecialchars($b['title']); ?>
                                 </h3>
-                                <div class="flex items-center gap-4 mt-6">
-                                    <span class="px-6 py-3 bg-white text-slate-950 font-black rounded-xl text-[10px] md:text-xs uppercase tracking-widest shadow-xl transform group-hover:scale-105 transition-all">Explore Now</span>
+                                <div class="flex flex-wrap items-center gap-3 sm:gap-4 mt-5 sm:mt-6">
+                                    <span class="px-5 sm:px-6 py-2.5 sm:py-3 bg-white text-slate-950 font-black rounded-xl text-[10px] md:text-xs uppercase tracking-widest shadow-xl transform group-hover:scale-105 transition-all">Explore Now</span>
                                     <span class="hidden md:flex items-center gap-2 text-slate-400 text-[10px] font-bold uppercase tracking-widest">
                                         <i class="fas fa-shield-alt text-green-500"></i> Instant Delivery
                                     </span>
@@ -208,7 +224,7 @@ if (is_logged_in()) {
         </div>
 
         <!-- Navigation Controls -->
-        <div class="absolute bottom-8 right-8 z-20 flex items-center gap-2">
+        <div class="absolute bottom-4 sm:bottom-8 right-4 sm:right-8 z-20 flex items-center gap-2">
             <?php foreach($banners as $index => $b): ?>
                 <button class="slider-dot w-2 h-2 rounded-full bg-white/20 transition-all duration-500 hover:bg-white/50" data-index="<?php echo $index; ?>"></button>
             <?php endforeach; ?>
@@ -223,7 +239,7 @@ if (is_logged_in()) {
 
     <!-- SECTION 2: Categories -->
     <div class="mb-16 relative">
-        <div class="flex items-end justify-between mb-6">
+        <div class="flex items-end justify-between gap-4 mb-5 sm:mb-6">
             <h2 class="text-2xl md:text-3xl font-black text-white tracking-tight">Categories</h2>
             <div class="hidden sm:flex gap-2">
                 <button id="catPrev" class="w-10 h-10 rounded-xl bg-slate-800 hover:bg-blue-600 text-slate-400 hover:text-white transition flex items-center justify-center shadow-lg"><i class="fas fa-angle-left"></i></button>
@@ -232,20 +248,20 @@ if (is_logged_in()) {
         </div>
 
         <div class="relative">
-            <div id="categorySlider" class="flex overflow-x-auto snap-x-mandatory gap-4 sm:gap-6 pb-6 no-scrollbar scroll-smooth">
+            <div id="categorySlider" class="flex overflow-x-auto snap-x snap-mandatory gap-3 sm:gap-4 md:gap-6 pb-4 sm:pb-6 no-scrollbar scroll-smooth home-slider-track">
                 <?php foreach($categories as $cat): ?>
-                    <a href="index.php?module=shop&page=category&id=<?php echo $cat['id']; ?>" class="snap-start shrink-0 w-[140px] sm:w-[180px] lg:w-[240px] glass-card rounded-3xl overflow-hidden group/cat relative flex flex-col justify-end aspect-[4/5] border border-slate-700/50 hover:border-blue-500/50">
+                    <a href="index.php?module=shop&page=category&id=<?php echo $cat['id']; ?>" class="snap-start shrink-0 w-[72vw] max-w-[220px] sm:w-[180px] lg:w-[240px] glass-card rounded-3xl overflow-hidden group/cat relative flex flex-col justify-end aspect-[3/4] border border-slate-700/50 hover:border-blue-500/50">
                         <?php if(!empty($cat['image_url'])): ?>
                             <img src="<?php echo BASE_URL . $cat['image_url']; ?>" class="absolute inset-0 w-full h-full object-cover opacity-70 group-hover/cat:opacity-100 transition-all duration-700 group-hover/cat:scale-110">
                         <?php else: ?>
                             <div class="absolute inset-0 bg-slate-800"></div>
                         <?php endif; ?>
                         <div class="absolute inset-0 bg-gradient-to-t from-slate-950 via-transparent to-transparent opacity-90"></div>
-                        <div class="relative z-10 p-5 md:p-6 text-center w-full">
+                        <div class="relative z-10 p-4 sm:p-5 md:p-6 text-center w-full">
                             <span class="inline-block px-2 py-0.5 bg-slate-900 border border-slate-700 rounded text-[9px] font-black text-slate-400 uppercase tracking-widest mb-2">
                                 <?php echo htmlspecialchars($cat['type']); ?>
                             </span>
-                            <h3 class="text-base sm:text-lg font-black text-white uppercase tracking-wide leading-tight"><?php echo htmlspecialchars($cat['name']); ?></h3>
+                            <h3 class="text-sm sm:text-base md:text-lg font-black text-white uppercase tracking-wide leading-tight"><?php echo htmlspecialchars($cat['name']); ?></h3>
                         </div>
                     </a>
                 <?php endforeach; ?>
@@ -264,7 +280,7 @@ if (is_logged_in()) {
             <span class="text-[10px] font-bold text-blue-400 uppercase tracking-widest border border-blue-500/30 px-3 py-1 rounded-full">Recommended</span>
         </div>
         
-        <div class="flex flex-col lg:flex-row gap-8">
+        <div class="flex flex-col lg:flex-row gap-6 md:gap-8">
             <?php if(!empty($best_sellers[0])): 
                 $f = $best_sellers[0];
             ?>
@@ -272,11 +288,11 @@ if (is_logged_in()) {
                 <div class="aspect-[16/9] md:aspect-auto md:h-[400px] relative">
                     <img src="<?php echo BASE_URL . ($f['image_path'] ?: $f['cat_image']); ?>" class="w-full h-full object-cover transition-all duration-700 group-hover:scale-105">
                     <div class="absolute inset-0 bg-gradient-to-r from-slate-950 via-transparent to-transparent"></div>
-                    <div class="absolute inset-0 p-8 md:p-12 flex flex-col justify-center max-w-lg">
+                    <div class="absolute inset-0 p-5 sm:p-8 md:p-12 flex flex-col justify-end sm:justify-center max-w-xl md:max-w-lg">
                         <span class="text-xs font-black text-blue-400 uppercase tracking-widest mb-2">Editor's Choice</span>
-                        <h3 class="text-3xl md:text-5xl font-black text-white mb-4 leading-none"><?php echo htmlspecialchars($f['name']); ?></h3>
-                        <p class="text-slate-400 text-sm mb-8 line-clamp-2">Our most reliable choice with instant delivery and full warranty.</p>
-                        <a href="index.php?module=shop&page=product&id=<?php echo $f['id']; ?>" class="w-fit px-8 py-4 bg-blue-600 hover:bg-blue-500 text-white font-black rounded-2xl transition-all uppercase tracking-widest text-xs shadow-lg shadow-blue-600/20">
+                        <h3 class="text-2xl sm:text-3xl md:text-5xl font-black text-white mb-3 sm:mb-4 leading-none"><?php echo htmlspecialchars($f['name']); ?></h3>
+                        <p class="text-slate-400 text-sm mb-6 sm:mb-8 line-clamp-2 max-w-md">Our most reliable choice with instant delivery and full warranty.</p>
+                        <a href="index.php?module=shop&page=product&id=<?php echo $f['id']; ?>" class="w-fit px-6 sm:px-8 py-3.5 sm:py-4 bg-blue-600 hover:bg-blue-500 text-white font-black rounded-2xl transition-all uppercase tracking-widest text-[10px] sm:text-xs shadow-lg shadow-blue-600/20">
                             Buy Now <i class="fas fa-arrow-right ml-2"></i>
                         </a>
                     </div>
@@ -288,13 +304,13 @@ if (is_logged_in()) {
                 <?php for($i=1; $i<min(3, count($best_sellers)); $i++): 
                     $p = $best_sellers[$i];
                 ?>
-                <a href="index.php?module=shop&page=product&id=<?php echo $p['id']; ?>" class="flex-1 bg-slate-900 border border-slate-700/50 rounded-3xl p-6 group hover:border-blue-500/50 transition-all relative overflow-hidden">
+                <a href="index.php?module=shop&page=product&id=<?php echo $p['id']; ?>" class="flex-1 bg-slate-900 border border-slate-700/50 rounded-3xl p-5 sm:p-6 group hover:border-blue-500/50 transition-all relative overflow-hidden">
                     <div class="flex items-center gap-4">
-                        <div class="w-16 h-16 rounded-2xl bg-slate-800 border border-slate-700 overflow-hidden shrink-0">
+                        <div class="w-14 h-14 sm:w-16 sm:h-16 rounded-2xl bg-slate-800 border border-slate-700 overflow-hidden shrink-0">
                             <img src="<?php echo BASE_URL . ($p['image_path'] ?: $p['cat_image']); ?>" class="w-full h-full object-cover grayscale group-hover:grayscale-0 transition-all duration-500">
                         </div>
                         <div>
-                            <h4 class="text-sm font-bold text-white mb-1 group-hover:text-blue-400 transition-colors"><?php echo htmlspecialchars($p['name']); ?></h4>
+                            <h4 class="text-sm sm:text-base font-bold text-white mb-1 group-hover:text-blue-400 transition-colors"><?php echo htmlspecialchars($p['name']); ?></h4>
                             <p class="text-[10px] text-slate-500 font-medium">Verified Product</p>
                         </div>
                     </div>
@@ -313,7 +329,7 @@ if (is_logged_in()) {
                 <i class="fas fa-stopwatch"></i> Limited Offers
             </div>
         </div>
-        <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
+        <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 sm:gap-6">
             <?php foreach($flash_sales as $product): 
                 include __DIR__ . '/product_card.php'; 
             endforeach; ?>
@@ -322,22 +338,22 @@ if (is_logged_in()) {
     <?php endif; ?>
 
     <!-- SECTION 4: Features -->
-    <div class="grid grid-cols-1 md:grid-cols-3 gap-6 mb-16 mt-10">
-        <div class="bg-slate-900/60 border border-slate-700/50 p-8 rounded-3xl flex flex-col items-center text-center gap-4">
+    <div class="grid grid-cols-1 md:grid-cols-3 gap-4 sm:gap-6 mb-16 mt-8 sm:mt-10">
+        <div class="bg-slate-900/60 border border-slate-700/50 p-6 sm:p-8 rounded-3xl flex flex-col items-center text-center gap-4">
             <div class="w-16 h-16 rounded-2xl bg-green-500/10 flex items-center justify-center text-green-500 text-3xl">
                 <i class="fas fa-bolt"></i>
             </div>
             <div class="text-sm font-black text-white uppercase tracking-widest">Instant Delivery</div>
             <p class="text-xs text-slate-400">Products are sent to you right after payment.</p>
         </div>
-        <div class="bg-slate-900/60 border border-slate-700/50 p-8 rounded-3xl flex flex-col items-center text-center gap-4">
+        <div class="bg-slate-900/60 border border-slate-700/50 p-6 sm:p-8 rounded-3xl flex flex-col items-center text-center gap-4">
             <div class="w-16 h-16 rounded-2xl bg-blue-500/10 flex items-center justify-center text-blue-500 text-3xl">
                 <i class="fas fa-check-circle"></i>
             </div>
             <div class="text-sm font-black text-white uppercase tracking-widest">100% Warranty</div>
             <p class="text-xs text-slate-400">We provide a full warranty for all purchases.</p>
         </div>
-        <div class="bg-slate-900/60 border border-slate-700/50 p-8 rounded-3xl flex flex-col items-center text-center gap-4">
+        <div class="bg-slate-900/60 border border-slate-700/50 p-6 sm:p-8 rounded-3xl flex flex-col items-center text-center gap-4">
             <div class="w-16 h-16 rounded-2xl bg-yellow-500/10 flex items-center justify-center text-yellow-500 text-3xl">
                 <i class="fas fa-wallet"></i>
             </div>
@@ -350,14 +366,14 @@ if (is_logged_in()) {
     <div class="mb-16">
         <div class="flex flex-col sm:flex-row justify-between items-start sm:items-end mb-8 gap-3">
             <div>
-                <h2 class="text-3xl md:text-4xl font-black text-white tracking-tight">Recent Arrivals</h2>
+                <h2 class="text-2xl sm:text-3xl md:text-4xl font-black text-white tracking-tight">Recent Arrivals</h2>
                 <p class="text-slate-400 text-sm font-medium">Check out our latest digital products</p>
             </div>
-            <a href="index.php?module=shop&page=search" class="text-blue-400 hover:text-white text-sm font-black bg-blue-500/10 hover:bg-blue-600 px-5 py-3 rounded-xl border border-blue-500/20 uppercase tracking-widest transition-all">
+            <a href="index.php?module=shop&page=search" class="text-blue-400 hover:text-white text-sm font-black bg-blue-500/10 hover:bg-blue-600 px-5 py-3 rounded-xl border border-blue-500/20 uppercase tracking-widest transition-all w-full sm:w-auto text-center">
                 View All <i class="fas fa-arrow-right ml-2"></i>
             </a>
         </div>
-        <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
+        <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-6">
             <?php foreach($recent_products as $product): 
                 include __DIR__ . '/product_card.php'; 
             endforeach; ?>
@@ -365,18 +381,18 @@ if (is_logged_in()) {
     </div>
 
     <!-- SECTION 6: Recent Sales (At Bottom) -->
-    <div class="bg-slate-900/60 backdrop-blur-xl border border-slate-700/50 rounded-3xl p-6 md:p-8 shadow-2xl group mb-12">
-        <div class="flex items-center justify-between mb-6">
+    <div class="bg-slate-900/60 backdrop-blur-xl border border-slate-700/50 rounded-3xl p-4 sm:p-6 md:p-8 shadow-2xl group mb-12">
+        <div class="flex items-center justify-between gap-4 mb-6">
             <h3 class="text-lg font-black text-white flex items-center gap-3 uppercase tracking-wider">
                 <i class="fas fa-history text-blue-400"></i> Recent Sales
             </h3>
             <span class="text-[10px] text-green-400 font-mono font-bold bg-green-500/10 px-3 py-1 rounded-full border border-green-500/20">LIVE</span>
         </div>
-        <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4" id="activityFeed">
+        <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3 sm:gap-4" id="activityFeed">
             <?php foreach($recent_activity as $act): 
                 $u_safe = substr($act['username'], 0, 1) . '***' . substr($act['username'], -1);
             ?>
-            <div class="flex items-center justify-between gap-4 p-4 bg-slate-800/40 rounded-2xl border border-slate-700/30">
+            <div class="flex items-center justify-between gap-3 sm:gap-4 p-3 sm:p-4 bg-slate-800/40 rounded-2xl border border-slate-700/30">
                 <div class="flex items-center gap-3 min-w-0">
                     <div class="w-8 h-8 rounded-full bg-slate-900 flex items-center justify-center border border-slate-700 text-blue-400 shrink-0">
                         <i class="fas fa-user text-xs"></i>
@@ -402,10 +418,13 @@ document.addEventListener('DOMContentLoaded', () => {
     const hDots = document.querySelectorAll('.slider-dot');
     const hProgress = document.getElementById('slideProgress');
     let hInterval, hTime = 6000;
+    let heroScrollTimer = null;
 
     const updateHero = (idx) => {
+        if (!hDots.length) return;
+        const safeIndex = Math.max(0, Math.min(idx, hDots.length - 1));
         hDots.forEach((dot, i) => {
-            if (i === idx) {
+            if (i === safeIndex) {
                 dot.className = 'slider-dot w-6 h-1.5 rounded-full bg-blue-500 transition-all duration-500 shadow-[0_0_10px_#3b82f6]';
             } else {
                 dot.className = 'slider-dot w-1.5 h-1.5 rounded-full bg-white/20 transition-all duration-500 hover:bg-white/40';
@@ -423,7 +442,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
     const moveHero = (next = true) => {
         if(!hSlider) return;
-        const w = hSlider.clientWidth;
+        const w = Math.max(1, hSlider.clientWidth);
         let nextIdx = Math.round(hSlider.scrollLeft / w) + (next ? 1 : -1);
         
         if (nextIdx >= hDots.length) nextIdx = 0;
@@ -438,7 +457,7 @@ document.addEventListener('DOMContentLoaded', () => {
         hDots.forEach((dot, idx) => {
             dot.onclick = () => {
                 clearInterval(hInterval);
-                hSlider.scrollTo({ left: idx * hSlider.clientWidth, behavior: 'smooth' });
+                hSlider.scrollTo({ left: idx * Math.max(1, hSlider.clientWidth), behavior: 'smooth' });
                 updateHero(idx);
                 hInterval = setInterval(() => moveHero(true), hTime);
             };
@@ -446,16 +465,11 @@ document.addEventListener('DOMContentLoaded', () => {
         
         // Sync dots on manual scroll
         hSlider.addEventListener('scroll', () => {
-            const idx = Math.round(hSlider.scrollLeft / hSlider.clientWidth);
-            hDots.forEach((dot, i) => {
-                if (i === idx) {
-                    dot.classList.add('w-6', 'bg-blue-500', 'shadow-[0_0_10px_#3b82f6]');
-                    dot.classList.remove('w-1.5', 'bg-white/20');
-                } else {
-                    dot.classList.remove('w-6', 'bg-blue-500', 'shadow-[0_0_10px_#3b82f6]');
-                    dot.classList.add('w-1.5', 'bg-white/20');
-                }
-            });
+            clearTimeout(heroScrollTimer);
+            heroScrollTimer = setTimeout(() => {
+                const idx = Math.round(hSlider.scrollLeft / Math.max(1, hSlider.clientWidth));
+                updateHero(idx);
+            }, 80);
         }, { passive: true });
 
         updateHero(0);
@@ -465,9 +479,17 @@ document.addEventListener('DOMContentLoaded', () => {
     const cSlider = document.getElementById('categorySlider');
     const cProgress = document.getElementById('catScrollProgress');
     if(cSlider && cProgress) {
-        cSlider.onscroll = () => cProgress.style.width = (cSlider.scrollLeft / (cSlider.scrollWidth - cSlider.clientWidth) * 100) + '%';
-        document.getElementById('catNext').onclick = () => cSlider.scrollBy({ left: 300, behavior: 'smooth' });
-        document.getElementById('catPrev').onclick = () => cSlider.scrollBy({ left: -300, behavior: 'smooth' });
+        const updateCategoryProgress = () => {
+            const max = cSlider.scrollWidth - cSlider.clientWidth;
+            cProgress.style.width = max > 0 ? ((cSlider.scrollLeft / max) * 100) + '%' : '0%';
+        };
+        cSlider.addEventListener('scroll', updateCategoryProgress, { passive: true });
+        updateCategoryProgress();
+
+        const catNext = document.getElementById('catNext');
+        const catPrev = document.getElementById('catPrev');
+        if(catNext) catNext.onclick = () => cSlider.scrollBy({ left: Math.max(260, cSlider.clientWidth * 0.8), behavior: 'smooth' });
+        if(catPrev) catPrev.onclick = () => cSlider.scrollBy({ left: -Math.max(260, cSlider.clientWidth * 0.8), behavior: 'smooth' });
     }
 
     // 3. ACTIVITY SIMULATOR

@@ -46,11 +46,11 @@ $product_url = "index.php?module=shop&page=product&id=" . $product['id'];
     </div>
 
     <!-- Card Body -->
-    <div class="p-5 md:p-6 flex-grow flex flex-col relative z-10">
+    <div class="p-4 sm:p-5 md:p-6 flex-grow flex flex-col relative z-10">
         
         <!-- Icon / Category Header -->
         <div class="flex items-start justify-between mb-4">
-            <div class="w-14 h-14 bg-slate-800 rounded-xl flex items-center justify-center text-2xl text-[#00f0ff] group-hover:scale-110 group-hover:shadow-[0_0_20px_rgba(0,240,255,0.3)] transition-all duration-500 border border-slate-600 shadow-inner overflow-hidden relative shrink-0">
+            <div class="w-12 h-12 sm:w-14 sm:h-14 bg-slate-800 rounded-xl flex items-center justify-center text-xl sm:text-2xl text-[#00f0ff] group-hover:scale-110 group-hover:shadow-[0_0_20px_rgba(0,240,255,0.3)] transition-all duration-500 border border-slate-600 shadow-inner overflow-hidden relative shrink-0">
                 <?php if($has_product_image): ?>
                     <img src="<?php echo BASE_URL . $product['image_path']; ?>" alt="<?php echo htmlspecialchars($product['name']); ?>" class="w-full h-full object-cover" loading="lazy">
                 <?php elseif($has_cat_image): ?>
@@ -66,7 +66,7 @@ $product_url = "index.php?module=shop&page=product&id=" . $product['id'];
         </div>
 
         <!-- Title -->
-        <h3 class="text-lg md:text-xl font-bold text-white mb-2 line-clamp-2 group-hover:text-[#00f0ff] transition-colors duration-300 leading-tight">
+        <h3 class="text-base sm:text-lg md:text-xl font-bold text-white mb-2 line-clamp-2 group-hover:text-[#00f0ff] transition-colors duration-300 leading-tight">
             <?php echo htmlspecialchars($product['name']); ?>
         </h3>
         
@@ -80,7 +80,7 @@ $product_url = "index.php?module=shop&page=product&id=" . $product['id'];
             <div>
                 <p class="text-[10px] text-slate-400 uppercase font-semibold tracking-wide mb-1">Price</p>
                 <div class="flex items-baseline gap-2">
-                    <span class="text-2xl font-black tracking-tight <?php echo ($product['sale_price']||$discount>0)?'text-yellow-400 drop-shadow-[0_0_8px_rgba(234,179,8,0.4)]':'text-white'; ?>">
+                    <span class="text-xl sm:text-2xl font-black tracking-tight <?php echo ($product['sale_price']||$discount>0)?'text-yellow-400 drop-shadow-[0_0_8px_rgba(234,179,8,0.4)]':'text-white'; ?>">
                         <?php echo format_price($final_price); ?>
                     </span>
                     
@@ -93,7 +93,7 @@ $product_url = "index.php?module=shop&page=product&id=" . $product['id'];
             </div>
             
             <!-- Animated Launch Button (User-Friendly CTA) -->
-            <span class="flex items-center gap-2 px-4 py-2.5 bg-slate-800 text-slate-300 group-hover:bg-gradient-to-r group-hover:from-blue-600 group-hover:to-[#00f0ff] group-hover:text-slate-900 rounded-xl shadow-md transition-all duration-500 border border-slate-600 group-hover:border-transparent group-hover:shadow-[0_0_15px_rgba(0,240,255,0.5)] font-bold text-xs shrink-0">
+            <span class="flex items-center gap-2 px-3 sm:px-4 py-2.5 bg-slate-800 text-slate-300 group-hover:bg-gradient-to-r group-hover:from-blue-600 group-hover:to-[#00f0ff] group-hover:text-slate-900 rounded-xl shadow-md transition-all duration-500 border border-slate-600 group-hover:border-transparent group-hover:shadow-[0_0_15px_rgba(0,240,255,0.5)] font-bold text-[10px] sm:text-xs shrink-0">
                 <span class="hidden sm:inline">Get It Now</span>
                 <span class="sm:hidden">Buy</span>
                 <i class="fas fa-arrow-right transform group-hover:rotate-[-45deg] group-hover:scale-110 transition-transform duration-500"></i>

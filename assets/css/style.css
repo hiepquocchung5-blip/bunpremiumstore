@@ -8,11 +8,16 @@
 }
 
 /* Base Font & Body */
+html {
+    overflow-x: clip;
+    overscroll-behavior-x: none;
+}
+
 body {
     background-color: #111827; /* Tailwind gray-900 */
     color: #f3f4f6;            /* Tailwind gray-100 */
     font-family: 'Inter', sans-serif;
-    overflow-x: hidden;
+    overflow-x: clip;
     /* Prevent iOS rubber band bounce on body */
     overscroll-behavior-y: none;
     -webkit-tap-highlight-color: transparent;
