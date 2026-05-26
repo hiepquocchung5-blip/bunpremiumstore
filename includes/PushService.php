@@ -15,11 +15,38 @@ class PushService {
     public function __construct($pdo) {
         $this->pdo = $pdo;
         
+        // ⚡️ MATRIX AUTO-HEALING: Load environment if missing (Critical for Admin Subdomains)
+        if (!defined('VAPID_PUBLIC_KEY') && !isset($_ENV['VAPID_PUBLIC_KEY'])) {
+            try {
+                if (file_exists(__DIR__ . '/../.env')) {
+                    $dotenv = \Dotenv\Dotenv::createImmutable(__DIR__ . '/../');
+                    $dotenv->safeLoad();
+                }
+            } catch (\Exception $e) {
+                // Ignore silent failures
+            }
+        }
+
+        $publicKey = defined('VAPID_PUBLIC_KEY') ? VAPID_PUBLIC_KEY : ($_ENV['VAPID_PUBLIC_KEY'] ?? '');
+        $privateKey = defined('VAPID_PRIVATE_KEY') ? VAPID_PRIVATE_KEY : ($_ENV['VAPID_PRIVATE_KEY'] ?? '');
+        $subject = defined('VAPID_SUBJECT') ? VAPID_SUBJECT : ($_ENV['VAPID_SUBJECT'] ?? '');
+
+        // 🛡️ CIRCUIT BREAKER: Prevent Cryptic 65-byte Errors
+        if (empty($publicKey) || empty($privateKey)) {
+            throw new \Exception("[VAPID] Uplink failed: Cryptographic keys are missing from environment.");
+        }
+
+        // Standardize Base64Url to Base64 before validation
+        $decodedKey = base64_decode(str_replace(['-', '_'], ['+', '/'], $publicKey));
+        if (strlen($decodedKey) !== 65) {
+             throw new \Exception("[VAPID] Integrity violation: Public key must be exactly 65 bytes when decoded.");
+        }
+
         $auth = [
             'VAPID' => [
-                'subject' => defined('VAPID_SUBJECT') ? VAPID_SUBJECT : ($_ENV['VAPID_SUBJECT'] ?? ''),
-                'publicKey' => defined('VAPID_PUBLIC_KEY') ? VAPID_PUBLIC_KEY : ($_ENV['VAPID_PUBLIC_KEY'] ?? ''),
-                'privateKey' => defined('VAPID_PRIVATE_KEY') ? VAPID_PRIVATE_KEY : ($_ENV['VAPID_PRIVATE_KEY'] ?? ''),
+                'subject' => $subject,
+                'publicKey' => $publicKey,
+                'privateKey' => $privateKey,
             ],
         ];
 

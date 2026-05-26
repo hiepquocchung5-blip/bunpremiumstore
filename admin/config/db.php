@@ -1,6 +1,15 @@
 <?php
 // admin/config/db.php
 
+// ⚡️ LOAD ENVIRONMENT ( पॉप्युलेट $_ENV from root .env )
+require_once dirname(__DIR__) . '/../vendor/autoload.php';
+try {
+    $dotenv = Dotenv\Dotenv::createImmutable(dirname(__DIR__) . '/../');
+    $dotenv->safeLoad();
+} catch (Exception $e) {
+    // Fails silently if .env is missing or unreadable
+}
+
 // Live Database Credentials
 define('DB_HOST', 'localhost');
 define('DB_USER', 'zpnpszw1_buns_sub_usr');
