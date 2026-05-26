@@ -732,6 +732,26 @@ if ($order['status'] === 'active' || $order['status'] === 'completed') {
         }
     }
 
+    async function readJsonResponse(response) {
+        const contentType = response.headers.get('content-type') || '';
+        const raw = await response.text();
+        if (!response.ok) {
+            throw new Error(raw || `HTTP ${response.status}`);
+        }
+        if (contentType.includes('application/json')) {
+            try {
+                return JSON.parse(raw);
+            } catch (err) {
+                throw new Error('Invalid JSON returned by server.');
+            }
+        }
+        try {
+            return JSON.parse(raw);
+        } catch (err) {
+            throw new Error('Invalid JSON returned by server.');
+        }
+    }
+
     const orderId = <?php echo $order_id; ?>;
     const isPassOrder = <?php echo $is_pass_order ? 'true' : 'false'; ?>;
 
@@ -757,7 +777,7 @@ if ($order['status'] === 'active' || $order['status'] === 'completed') {
                 body: formData,
                 headers: { 'X-Requested-With': 'XMLHttpRequest' }
             });
-            const data = await response.json();
+            const data = await readJsonResponse(response);
 
             if (data.success) {
                 // Update UI Lifecycle Tracker
@@ -929,8 +949,7 @@ if ($order['status'] === 'active' || $order['status'] === 'completed') {
                         body: formData,
                         headers: { 'X-Requested-With': 'XMLHttpRequest' }
                     });
-                    
-                    const data = await response.json();
+                    const data = await readJsonResponse(response);
                     if(!data.success) {
                         console.error('API Rejection:', data.error);
                     }
@@ -1012,7 +1031,7 @@ if ($order['status'] === 'active' || $order['status'] === 'completed') {
                 body: formData,
                 headers: { 'X-Requested-With': 'XMLHttpRequest' }
             });
-            const data = await response.json();
+            const data = await readJsonResponse(response);
 
             if (data.success && data.draft) {
                 if(chatInput) {

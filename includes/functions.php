@@ -125,6 +125,7 @@ function send_telegram_alert($order_id, $product_name, $price, $username) {
     $admin_ids = array_map('trim', explode(',', TG_ADMIN_CHAT_ID));
     $admin_url = defined('ADMIN_URL') ? ADMIN_URL : BASE_URL . 'admin/';
     $admin_url .= "index.php?page=order_detail&id=" . $order_id;
+    $base_url = defined('BASE_URL') ? rtrim(BASE_URL, '/') : 'https://digitalmarketplacemm.com';
 
     $txn_id = "N/A";
     $proof_path = "";
@@ -140,29 +141,52 @@ function send_telegram_alert($order_id, $product_name, $price, $username) {
         error_log('Telegram Alert DB Error: ' . $e->getMessage());
     }
 
-    $msg = "🆕 <b>New Order Node</b>\n";
-    $msg .= "━━━━━━━━━━━━━━━━\n";
-    $msg .= "🆔 <b>ID:</b> #{$order_id}\n";
-    $msg .= "👤 <b>User:</b> @{$username}\n";
-    $msg .= "📦 <b>Item:</b> {$product_name}\n";
-    $msg .= "💰 <b>Price:</b> " . number_format($price) . " Ks\n";
-    $msg .= "💳 <b>Txn:</b> <code>{$txn_id}</code>\n";
-    $msg .= "━━━━━━━━━━━━━━━━\n";
-    $msg .= "🔗 <a href='{$admin_url}'>View Order Terminal</a>";
+    $full_msg = "🆕 <b>New Order Node</b>\n";
+    $full_msg .= "━━━━━━━━━━━━━━━━\n";
+    $full_msg .= "🆔 <b>ID:</b> #{$order_id}\n";
+    $full_msg .= "👤 <b>User:</b> @{$username}\n";
+    $full_msg .= "📦 <b>Item:</b> {$product_name}\n";
+    $full_msg .= "💰 <b>Price:</b> " . number_format($price) . " Ks\n";
+    $full_msg .= "💳 <b>Txn:</b> <code>{$txn_id}</code>\n";
+    $full_msg .= "━━━━━━━━━━━━━━━━\n";
+    $full_msg .= "🔗 <a href='{$admin_url}'>View Order Terminal</a>";
+
+    $proof_url = '';
+    if (!empty($proof_path)) {
+        $proof_url = $base_url . '/' . ltrim($proof_path, '/');
+    }
 
     foreach ($admin_ids as $chat_id) {
         if (empty($chat_id)) continue;
-        $url = "https://api.telegram.org/bot{$token}/sendMessage";
-        $data = [
+        if (!empty($proof_url)) {
+            $photo_url = "https://api.telegram.org/bot{$token}/sendPhoto";
+            $photo_data = [
+                'chat_id' => $chat_id,
+                'photo' => $proof_url,
+                'caption' => "🖼 <b>Payment Screenshot</b>\nOrder #{$order_id} • @{$username}",
+                'parse_mode' => 'HTML'
+            ];
+
+            $ch = curl_init($photo_url);
+            curl_setopt($ch, CURLOPT_POST, true);
+            curl_setopt($ch, CURLOPT_POSTFIELDS, http_build_query($photo_data));
+            curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
+            curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, false);
+            curl_exec($ch);
+            curl_close($ch);
+        }
+
+        $text_url = "https://api.telegram.org/bot{$token}/sendMessage";
+        $text_data = [
             'chat_id' => $chat_id,
-            'text' => $msg,
+            'text' => $full_msg,
             'parse_mode' => 'HTML',
             'disable_web_page_preview' => true
         ];
 
-        $ch = curl_init($url);
+        $ch = curl_init($text_url);
         curl_setopt($ch, CURLOPT_POST, true);
-        curl_setopt($ch, CURLOPT_POSTFIELDS, http_build_query($data));
+        curl_setopt($ch, CURLOPT_POSTFIELDS, http_build_query($text_data));
         curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
         curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, false);
         curl_exec($ch);

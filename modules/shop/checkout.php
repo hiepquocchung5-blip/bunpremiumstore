@@ -641,6 +641,26 @@ $display_image = !empty($product['image_path']) ? BASE_URL . $product['image_pat
         });
     }
 
+    async function readJsonResponse(response) {
+        const contentType = response.headers.get('content-type') || '';
+        const raw = await response.text();
+        if (!response.ok) {
+            throw new Error(raw || `HTTP ${response.status}`);
+        }
+        if (contentType.includes('application/json')) {
+            try {
+                return JSON.parse(raw);
+            } catch (err) {
+                throw new Error('Invalid JSON returned by server.');
+            }
+        }
+        try {
+            return JSON.parse(raw);
+        } catch (err) {
+            throw new Error('Invalid JSON returned by server.');
+        }
+    }
+
     function applyCoupon() {
         const codeInput = document.getElementById('coupon_input');
         const msg = document.getElementById('coupon_msg');
@@ -657,7 +677,7 @@ $display_image = !empty($product['image_path']) ? BASE_URL . $product['image_pat
             credentials: 'omit', // No session required for coupon checking
             body: JSON.stringify({code: code})
         })
-        .then(res => res.json())
+        .then(res => readJsonResponse(res))
         .then(data => {
             msg.classList.remove('hidden', 'text-red-400', 'text-green-400');
             if(data.valid) {
