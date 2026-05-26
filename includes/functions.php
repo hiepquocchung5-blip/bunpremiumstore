@@ -562,6 +562,32 @@ function send_reply($chat_id, $text) {
 }
 
 /**
+ * ⚡️ TELEGRAM PHOTO PROTOCOL
+ * Sends an image to a specific Telegram chat/admin with an optional caption.
+ */
+function send_telegram_photo($chat_id, $photo_url, $caption = '') {
+    if (!defined('TG_BOT_TOKEN') || empty(TG_BOT_TOKEN) || empty($photo_url)) return false;
+
+    $ch = curl_init("https://api.telegram.org/bot" . TG_BOT_TOKEN . "/sendPhoto");
+    $payload = [
+        'chat_id' => $chat_id,
+        'photo' => $photo_url,
+        'parse_mode' => 'HTML',
+        'caption' => $caption
+    ];
+
+    curl_setopt_array($ch, [
+        CURLOPT_POST => true,
+        CURLOPT_RETURNTRANSFER => true,
+        CURLOPT_SSL_VERIFYPEER => false,
+        CURLOPT_POSTFIELDS => http_build_query($payload)
+    ]);
+    $res = curl_exec($ch);
+    curl_close($ch);
+    return $res;
+}
+
+/**
  * ⚡️ PUSH NOTIFICATION DISPATCHER
  * Sends a real-time web push alert to a user.
  */

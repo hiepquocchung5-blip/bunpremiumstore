@@ -141,17 +141,29 @@ try {
                     foreach ($orders as $o) {
                         $reply .= "🔹 <b>Order:</b> <code>{$o['id']}</code> | 👤 @{$o['username']}\n";
                         $reply .= "📦 {$o['item_name']}\n";
-                        if (!empty($o['image_path']) || !empty($o['cat_image'])) {
-                            $img_path = $o['image_path'] ?: $o['cat_image'];
-                            $reply .= "🖼 <code>" . htmlspecialchars($img_path) . "</code>\n";
-                        }
-                        if (!empty($o['proof_image_path'])) {
-                            $reply .= "🧾 <code>" . htmlspecialchars($o['proof_image_path']) . "</code>\n";
-                        }
                         $reply .= "💰 " . number_format($o['total_price_paid']) . " Ks\n";
                         $reply .= "━━━━━━━━━━━━━━━━\n";
                     }
                     $reply .= "\n<i>Type: /approve [ID], /reject [ID], or /reply [ID] [Msg]</i>";
+
+                    $base_url = defined('BASE_URL') ? rtrim(BASE_URL, '/') : 'https://digitalmarketplacemm.com';
+                    foreach ($orders as $o) {
+                        $order_caption = "🕒 <b>Pending Order #{$o['id']}</b>\n";
+                        $order_caption .= "👤 @{$o['username']}\n";
+                        $order_caption .= "📦 {$o['item_name']}\n";
+                        $order_caption .= "💰 " . number_format($o['total_price_paid']) . " Ks";
+
+                        if (!empty($o['image_path']) || !empty($o['cat_image'])) {
+                            $img_path = $o['image_path'] ?: $o['cat_image'];
+                            $img_url = $base_url . '/' . ltrim($img_path, '/');
+                            send_telegram_photo($chat_id, $img_url, $order_caption);
+                        }
+
+                        if (!empty($o['proof_image_path'])) {
+                            $proof_url = $base_url . '/' . ltrim($o['proof_image_path'], '/');
+                            send_telegram_photo($chat_id, $proof_url, "🧾 <b>Proof Screenshot</b>\nOrder #{$o['id']} • @{$o['username']}");
+                        }
+                    }
                 } else {
                     $reply = "✅ <b>All Clear:</b> No pending orders.";
                 }
