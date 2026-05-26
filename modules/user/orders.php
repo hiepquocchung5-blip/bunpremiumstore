@@ -129,8 +129,8 @@ if (isset($_GET['ajax']) && $_GET['ajax'] == 1 && $active_chat_id > 0) {
         exit;
     }
 
-    // Determine "Seen" status by finding the latest staff/bot reply ID
-    $stmt_seen = $pdo->prepare("SELECT MAX(id) FROM order_messages WHERE order_id = ? AND sender_type IN ('admin', 'admin_ai')");
+    // Determine "Seen" status by finding the latest human staff reply ID
+    $stmt_seen = $pdo->prepare("SELECT MAX(id) FROM order_messages WHERE order_id = ? AND sender_type = 'admin'");
     $stmt_seen->execute([$active_chat_id]);
     $latest_admin_id = $stmt_seen->fetchColumn() ?: 0;
 
@@ -143,6 +143,10 @@ if (isset($_GET['ajax']) && $_GET['ajax'] == 1 && $active_chat_id > 0) {
         $is_user = $msg['sender_type'] === 'user';
         $is_ai = $msg['sender_type'] === 'admin_ai';
         $is_admin = $msg['sender_type'] === 'admin' || $is_ai;
+
+        if ($is_ai) {
+            continue;
+        }
         
         $align = $is_user ? 'justify-end' : 'justify-start';
         $item_align = $is_user ? 'items-end' : 'items-start';
@@ -237,7 +241,7 @@ if (!$ordersList) {
         SELECT o.id, o.status, o.total_price_paid, o.created_at, o.pass_id,
                COALESCE(p.name, ps.name) as name, 
                p.image_path, c.image_url as cat_image,
-               (SELECT sender_type FROM order_messages WHERE order_id = o.id ORDER BY id DESC LIMIT 1) as last_sender
+               (SELECT sender_type FROM order_messages WHERE order_id = o.id AND sender_type = 'admin' ORDER BY id DESC LIMIT 1) as last_sender
         FROM orders o 
         LEFT JOIN products p ON o.product_id = p.id 
         LEFT JOIN categories c ON p.category_id = c.id
@@ -373,7 +377,7 @@ if ($active_chat_id) {
                             <?php if($isPass): ?>
                                 <span class="text-[8px] bg-yellow-500/20 text-yellow-500 px-1.5 py-0.5 rounded border border-yellow-500/30 uppercase font-black tracking-widest"><i class="fas fa-crown"></i> Pass</span>
                             <?php endif; ?>
-                            <?php if(!$isActive && in_array($ord['last_sender'] ?? '', ['admin', 'admin_ai'])): ?>
+                            <?php if(!$isActive && ($ord['last_sender'] ?? '') === 'admin'): ?>
                                 <span class="flex h-2 w-2 rounded-full bg-blue-500 animate-pulse shadow-[0_0_8px_#3b82f6]" title="New message"></span>
                             <?php endif; ?>
                         </div>

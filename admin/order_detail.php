@@ -279,7 +279,7 @@ if (isset($_GET['ajax']) && $_GET['ajax'] == 1) {
                 echo "<div class='max-w-[85%] sm:max-w-[75%] flex flex-col {$item_align}'>";
                 
                 if ($is_ai) {
-                    echo "<div class='flex items-center gap-1.5 mb-1 px-1 opacity-70'><i class='fas fa-robot text-[10px] text-purple-400'></i> <span class='text-[9px] font-black uppercase tracking-widest text-purple-400'>Matrix Core (AI)</span></div>";
+                    echo "<div class='flex items-center gap-1.5 mb-1 px-1 opacity-70'><i class='fas fa-robot text-[10px] text-purple-400'></i> <span class='text-[9px] font-black uppercase tracking-widest text-purple-400'>Support AI</span></div>";
                 }
 
                 echo "<div class='px-4 py-3 text-[13px] md:text-sm relative {$bubble_bg}'>";
