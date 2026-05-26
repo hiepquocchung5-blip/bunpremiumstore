@@ -287,6 +287,27 @@ function detect_intent($message) {
     return 'general';
 }
 
+function normalize_ai_reply($reply) {
+    $reply = trim((string)$reply);
+    if ($reply === '') return '';
+    $reply = preg_replace("/[ \t]+/u", ' ', $reply);
+    $reply = preg_replace("/\n{3,}/u", "\n\n", $reply);
+    return trim($reply);
+}
+
+function train_local_ai_example($tag, $pattern, $response = null, $reward = 1.0) {
+    $local_ai_path = __DIR__ . '/MatrixLocalAI.php';
+    $training_path = __DIR__ . '/ai_training.json';
+
+    if (!file_exists($local_ai_path) || !file_exists($training_path)) {
+        return false;
+    }
+
+    require_once $local_ai_path;
+    $localAI = new MatrixLocalAI($training_path);
+    return $localAI->teach($tag, $pattern, $response, $reward);
+}
+
 function get_ai_response($message, $context = "") {
     $intent = detect_intent($message);
 
@@ -302,7 +323,7 @@ function get_ai_response($message, $context = "") {
         $local_prediction = $localAI->predict($message, 0.25);
         if ($local_prediction && !empty($local_prediction['response'])) {
             // We can log the successful hit for future analytics here
-            return trim($local_prediction['response']);
+            return normalize_ai_reply($local_prediction['response']);
         }
     }
     
@@ -311,7 +332,7 @@ function get_ai_response($message, $context = "") {
     
     // 🛡️ AI CONFIDENCE SCORING (Optimized for Burmese Human Realism)
     if ($llm_response) {
-        $reply = trim($llm_response);
+        $reply = normalize_ai_reply($llm_response);
         $len = mb_strlen($reply, 'UTF-8');
         if (
             $len >= 2 && 
@@ -329,7 +350,7 @@ function get_ai_response($message, $context = "") {
         "ဟုတ်ကဲ့၊ စစ်ဆေးပေးနေပါတယ် ခဏလေးစောင့်ပေးပါနော်။",
         "မေးမြန်းပေးတဲ့အတွက် ကျေးဇူးပါ။ ဘာများထပ်ကူညီပေးရမလဲခင်ဗျာ။"
     ];
-    return trim($fallbacks[array_rand($fallbacks)]);
+    return normalize_ai_reply($fallbacks[array_rand($fallbacks)]);
 }
 
 /**
@@ -376,6 +397,8 @@ You have access to the following real-time tools:
 
 If you need data, output ONLY: [ACTION: action_name, PARAMS: value]
 Wait for the tool result, then provide your final answer in polite Burmese.
+
+If the user asks you to learn, remember, train, or teach a phrase, prefer the teach_local_ai tool with the shortest useful tag and pattern.
 
 CONTEXT & HISTORY:
 {$context}

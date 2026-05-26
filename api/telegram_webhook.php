@@ -207,6 +207,43 @@ try {
             }
             break;
 
+        case '/chat':
+            if ($isAdmin) {
+                if (empty($argsStr)) {
+                    $reply = "💬 <b><u>AI CHAT MODE</u></b>\n\n";
+                    $reply .= "Use <code>/chat your message</code> to talk with Matrix Core.\n";
+                    $reply .= "Use <code>/chat learn tag pattern | response</code> to reinforce local AI.\n";
+                    $reply .= "Example: <code>/chat learn greeting hello there | ဟုတ်ကဲ့ပါ၊ ဘာများကူညီပေးရမလဲခင်ဗျာ။</code>";
+                } elseif (preg_match('/^\s*(learn|teach|train)\s+(\S+)\s+(.+)$/isu', $argsStr, $m)) {
+                    $tag = trim($m[2]);
+                    $payload = trim($m[3]);
+                    $pattern = $payload;
+                    $response = null;
+
+                    if (strpos($payload, '|') !== false) {
+                        [$pattern, $response] = array_map('trim', explode('|', $payload, 2));
+                    }
+
+                    if ($tag === '' || $pattern === '') {
+                        $reply = "❌ <b>TRAINING FAILED</b>\n\nPlease provide both a tag and a pattern.";
+                    } else {
+                        if (train_local_ai_example($tag, $pattern, $response, 1.0)) {
+                            $reply = "🧠 <b>LOCAL AI REINFORCED</b>\n\nTag: <code>{$tag}</code>\nPattern: <i>" . htmlspecialchars($pattern) . "</i>";
+                        } else {
+                            $reply = "❌ <b>TRAINING FAILED</b>\n\nCould not reinforce the local model.";
+                        }
+                    }
+                } else {
+                    $ai_reply = get_ai_response($argsStr, "ADMIN_SESSION | TELEGRAM_CHAT");
+                    $reply = $ai_reply ? $ai_reply : "⚠️ AI is currently unavailable.";
+                }
+            } elseif (!empty($argsStr)) {
+                $reply = get_ai_response($argsStr, "TELEGRAM_CHAT");
+            } else {
+                $reply = get_ai_response($text, "TELEGRAM_CHAT");
+            }
+            break;
+
         case '/close':
             if ($isAdmin && is_numeric($arg)) {
                 $check = $pdo->prepare("SELECT user_id, COALESCE(p.name, ps.name) as item_name FROM orders o LEFT JOIN products p ON o.product_id = p.id LEFT JOIN passes ps ON o.pass_id = ps.id WHERE o.id = ?");
@@ -218,9 +255,11 @@ try {
                         ? $msgPayload
                         : "🔒 This support chat is now closed. If you need more help, please send a new message.";
 
+                    $pdo->prepare("UPDATE orders SET status = 'closed' WHERE id = ?")->execute([$arg]);
                     $pdo->prepare("INSERT INTO order_messages (order_id, sender_type, message) VALUES (?, 'admin', ?)")->execute([$arg, $close_text]);
 
                     invalidate_user_cache($ord['user_id']);
+                    trigger_push_alert($pdo, $ord['user_id'], "Support Chat Closed", "Order #$arg support chat has been closed.", $arg);
                     $reply = "🔒 <b>CHAT CLOSED</b>\n\nOrder <code>#$arg</code> has been closed.";
                 } else {
                     $reply = "⚠️ Order <code>#$arg</code> not found.";
@@ -294,10 +333,12 @@ try {
                     $reply .= "🔹 <code>/stats</code> - Store status\n";
                     $reply .= "🔹 <code>/pending</code> - See new orders\n";
                     $reply .= "🔹 <code>/train [Tag] [Msg]</code> - Teach AI\n";
+                    $reply .= "🔹 <code>/chat [Msg]</code> - Talk to AI / reinforce memory\n";
                     $reply .= "🔹 <code>/missed</code> - See what AI missed\n";
                     $reply .= "🔹 <code>/clear_missed</code> - Reset missed log\n";
                     $reply .= "🔹 <code>/approve [ID]</code> - Confirm an order\n";
                     $reply .= "🔹 <code>/reply [ID] [Msg]</code> - Message a user\n";
+                    $reply .= "🔹 <code>/close [ID] [Msg]</code> - Close a support chat\n";
                     $reply .= "🔹 <code>/aistatus</code> - Check AI health\n";
                     $reply .= "🔹 <code>/ping</code> - Check server speed\n";
                 } else {

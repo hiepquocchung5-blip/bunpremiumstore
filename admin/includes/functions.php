@@ -156,6 +156,8 @@ function format_status_badge($status) {
             return '<span class="px-2 py-1 rounded text-xs font-bold bg-yellow-500/20 text-yellow-400 uppercase tracking-wider">Pending</span>';
         case 'rejected':
             return '<span class="px-2 py-1 rounded text-xs font-bold bg-red-500/20 text-red-400 uppercase tracking-wider">Rejected</span>';
+        case 'closed':
+            return '<span class="px-2 py-1 rounded text-xs font-bold bg-slate-500/20 text-slate-300 uppercase tracking-wider">Closed</span>';
         default:
             return '<span class="px-2 py-1 rounded text-xs font-bold bg-gray-500/20 text-gray-400 uppercase tracking-wider">'.htmlspecialchars($status).'</span>';
     }

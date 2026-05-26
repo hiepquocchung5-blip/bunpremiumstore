@@ -51,7 +51,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['ajax_msg'])) {
         $stmt->execute([$oid, $user_id]);
         $order_check = $stmt->fetch();
         
-        if ($order_check && $msg !== '' && $order_check['status'] !== 'rejected') {
+        if ($order_check && $msg !== '' && !in_array($order_check['status'], ['rejected', 'closed'], true)) {
             try {
                 $pdo->exec("SET NAMES 'utf8mb4'");
                 $stmt = $pdo->prepare("INSERT INTO order_messages (order_id, sender_type, message) VALUES (?, 'user', ?)");
@@ -270,7 +270,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['message']) && !isset(
         $oid = (int)$_POST['order_id'];
         $stmt = $pdo->prepare("SELECT status FROM orders WHERE id = ? AND user_id = ?");
         $stmt->execute([$oid, $user_id]);
-        if ($stmt->fetch() && $msg !== '') {
+        $order_state = $stmt->fetchColumn();
+        if ($order_state && $msg !== '' && !in_array($order_state, ['rejected', 'closed'], true)) {
             $pdo->prepare("INSERT INTO order_messages (order_id, sender_type, message) VALUES (?, 'user', ?)")->execute([$oid, $msg]);
             invalidate_user_cache($user_id);
         }
@@ -511,15 +512,15 @@ if ($active_chat_id) {
             </div>
 
             <!-- CHAT AREA OR REJECTED STATE -->
-            <?php if($active_order['status'] === 'rejected'): ?>
+            <?php if($active_order['status'] === 'rejected' || $active_order['status'] === 'closed'): ?>
                 <div class="flex-grow flex flex-col items-center justify-center p-8 text-center relative overflow-hidden bg-slate-950 matrix-grid">
                     <div class="absolute inset-0 bg-gradient-to-t from-red-900/10 to-transparent pointer-events-none"></div>
                     <div class="w-20 h-20 bg-red-500/10 rounded-full flex items-center justify-center mb-4 border border-red-500/30 shadow-[0_0_30px_rgba(239,68,68,0.15)] relative z-10">
-                        <i class="fas fa-times text-4xl text-red-500"></i>
+                        <i class="fas fa-lock text-4xl text-red-500"></i>
                     </div>
-                    <h3 class="text-xl font-bold text-white mb-2 relative z-10 tracking-tight">Order Cancelled</h3>
+                    <h3 class="text-xl font-bold text-white mb-2 relative z-10 tracking-tight">Support Chat Closed</h3>
                     <p class="text-slate-400 text-sm max-w-sm mb-6 relative z-10 leading-relaxed">
-                        Payment verification failed. The secure chat has been closed.
+                        This thread has been closed by our team. Existing messages stay visible, but new AI replies are disabled.
                     </p>
                 </div>
             <?php else: ?>

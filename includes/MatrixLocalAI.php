@@ -39,6 +39,19 @@ class MatrixLocalAI {
     }
 
     /**
+     * Keep reply text clean and human-friendly.
+     */
+    public function normalize_response($response) {
+        $response = trim((string)$response);
+        if ($response === '') return '';
+
+        $response = preg_replace("/[ \t]+/u", ' ', $response);
+        $response = preg_replace("/\n{3,}/u", "\n\n", $response);
+
+        return trim($response);
+    }
+
+    /**
      * Advanced Tokenization: Unigrams + Bigrams
      */
     private function tokenize($text) {
@@ -73,6 +86,7 @@ class MatrixLocalAI {
             if (isset($item['reward']) && $item['reward'] < 0) continue;
 
             $tag = $item['tag'] ?? 'unknown';
+            $reward_units = max(1, (int) round($item['reward'] ?? 1));
             if (!isset($normalized_data[$tag])) {
                 $normalized_data[$tag] = [
                     'tag' => $tag,
@@ -90,14 +104,25 @@ class MatrixLocalAI {
             if (isset($item['patterns']) && is_array($item['patterns'])) {
                 $normalized_data[$tag]['patterns'] = array_merge($normalized_data[$tag]['patterns'], $item['patterns']);
                 if (isset($item['responses'])) {
-                    $normalized_data[$tag]['responses'] = array_merge($normalized_data[$tag]['responses'], (array)$item['responses']);
+                    foreach ((array)$item['responses'] as $response) {
+                        $response = $this->normalize_response($response);
+                        if ($response === '') continue;
+                        for ($i = 0; $i < $reward_units; $i++) {
+                            $normalized_data[$tag]['responses'][] = $response;
+                        }
+                    }
                 }
             } 
             // Handle Singular structure
             elseif (isset($item['pattern'])) {
                 $normalized_data[$tag]['patterns'][] = $item['pattern'];
                 if (isset($item['response'])) {
-                    $normalized_data[$tag]['responses'][] = $item['response'];
+                    $response = $this->normalize_response($item['response']);
+                    if ($response !== '') {
+                        for ($i = 0; $i < $reward_units; $i++) {
+                            $normalized_data[$tag]['responses'][] = $response;
+                        }
+                    }
                 }
             }
         }
@@ -106,7 +131,6 @@ class MatrixLocalAI {
         foreach ($normalized_data as $tag => $intent) {
             // Remove duplicate patterns to keep the model lean
             $intent['patterns'] = array_unique($intent['patterns']);
-            $intent['responses'] = array_unique($intent['responses']);
 
             foreach ($intent['patterns'] as $pattern) {
                 $tokens = $this->tokenize($pattern);
@@ -181,10 +205,14 @@ class MatrixLocalAI {
         }
 
         if ($best_score >= $threshold && $winner) {
+            $responses = array_values(array_filter(array_map([$this, 'normalize_response'], (array)$winner['responses'])));
+            if (empty($responses)) {
+                return false;
+            }
             return [
                 'score' => round($best_score, 4),
                 'tag' => $winner['tag'],
-                'response' => $winner['responses'][array_rand($winner['responses'])],
+                'response' => $responses[array_rand($responses)],
                 'metadata' => $winner['metadata']
             ];
         }
@@ -216,15 +244,61 @@ class MatrixLocalAI {
     }
 
     public function learn($new_pattern, $target_tag) {
+        return $this->teach($target_tag, $new_pattern);
+    }
+
+    /**
+     * Reinforce the local model with a new pattern/response example.
+     */
+    public function teach($target_tag, $new_pattern, $response = null, $reward = 1.0) {
+        $target_tag = trim((string)$target_tag);
+        $new_pattern = trim((string)$new_pattern);
+        $response = $response !== null ? $this->normalize_response($response) : null;
+
+        if ($target_tag === '' || $new_pattern === '') return false;
+
         $found = false;
         foreach ($this->training_data as &$intent) {
-            if ($intent['tag'] === $target_tag) {
-                if (!in_array($new_pattern, $intent['patterns'])) $intent['patterns'][] = $new_pattern;
-                $found = true; break;
+            if (($intent['tag'] ?? null) === $target_tag) {
+                if (!isset($intent['patterns']) || !is_array($intent['patterns'])) {
+                    $intent['patterns'] = [];
+                }
+                if (!in_array($new_pattern, $intent['patterns'], true)) {
+                    $intent['patterns'][] = $new_pattern;
+                }
+
+                if ($response !== null && $response !== '') {
+                    if (!isset($intent['responses']) || !is_array($intent['responses'])) {
+                        $intent['responses'] = [];
+                    }
+                    if (!in_array($response, $intent['responses'], true)) {
+                        $intent['responses'][] = $response;
+                    }
+                }
+
+                $intent['reward'] = max(0, (float)($intent['reward'] ?? 1.0)) + max(0, (float)$reward);
+                $found = true;
+                break;
             }
         }
-        if ($found) { $this->persist(); $this->train(); return true; }
-        return false;
+
+        if (!$found) {
+            $this->training_data[] = [
+                'tag' => $target_tag,
+                'pattern' => $new_pattern,
+                'response' => $response ?: 'ဟုတ်ကဲ့ခင်ဗျာ၊ သိပါတယ်။',
+                'reward' => max(0, (float)$reward),
+                'metadata' => [
+                    'icon' => 'ti-star',
+                    'color' => '#3b82f6',
+                    'bg' => '#0f172a'
+                ]
+            ];
+        }
+
+        $this->persist();
+        $this->train();
+        return true;
     }
 
     private function persist() {

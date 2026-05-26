@@ -45,6 +45,8 @@ class MatrixActionHub {
             "verify_receipt" => "Validate a transaction ID format. Params: [tid]",
             "calc_discount" => "Calculate price after discount. Params: [price, code]",
             "system_health" => "Check AI and server uplink status.",
+            "teach_local_ai" => "Teach the local AI a new pattern. Params: [tag, pattern, optional response]",
+            "polish_reply" => "Clean and normalize a drafted AI reply. Params: [text]",
             "admin_stats" => "ADMIN ONLY: Sales overview.",
             "admin_coupon" => "ADMIN ONLY: Create temp coupon. Params: [pct]",
             "admin_broadcast" => "ADMIN ONLY: Send alert to all users."
@@ -115,6 +117,35 @@ class MatrixActionHub {
 
                 case 'system_health':
                     return "MATRIX CORE v7.0: All Nodes Green 🟢. Latency: 32ms. API Uplink: Stable.";
+
+                case 'teach_local_ai':
+                    $tag = trim($params[0] ?? '');
+                    $pattern = trim($params[1] ?? '');
+                    $response = trim($params[2] ?? '');
+
+                    if ($tag === '' || $pattern === '') {
+                        return "Teach request rejected. Please provide both a tag and pattern.";
+                    }
+
+                    $local_ai_path = __DIR__ . '/MatrixLocalAI.php';
+                    $training_path = __DIR__ . '/ai_training.json';
+                    if (!file_exists($local_ai_path) || !file_exists($training_path)) {
+                        return "Local AI training files are unavailable.";
+                    }
+
+                    require_once $local_ai_path;
+                    $localAI = new MatrixLocalAI($training_path);
+                    $ok = $localAI->teach($tag, $pattern, $response !== '' ? $response : null);
+                    return $ok
+                        ? "Local AI reinforced successfully for tag '{$tag}'."
+                        : "Local AI teaching failed for tag '{$tag}'.";
+
+                case 'polish_reply':
+                    $text = trim(implode(', ', $params));
+                    if ($text === '') return "No text provided to polish.";
+                    $text = preg_replace("/[ \t]+/u", ' ', $text);
+                    $text = preg_replace("/\n{3,}/u", "\n\n", $text);
+                    return trim($text);
 
                 default:
                     return "Action '$action' recognized. Executing specialized neural processing...";
