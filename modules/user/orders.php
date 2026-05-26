@@ -7,6 +7,19 @@ if (!is_logged_in()) redirect('index.php?module=auth&page=login');
 $user_id = $_SESSION['user_id'];
 $active_chat_id = isset($_GET['view_chat']) ? (int)$_GET['view_chat'] : 0;
 
+function matrix_message_delivery_state(array $message, int $latest_admin_id): array {
+    if (($message['sender_type'] ?? '') !== 'user') {
+        return ['label' => '', 'icon' => ''];
+    }
+
+    $is_seen = $latest_admin_id > 0 && (int)$message['id'] < $latest_admin_id;
+
+    return [
+        'label' => $is_seen ? 'Seen' : 'Delivered',
+        'icon' => $is_seen ? 'fa-check-double text-blue-400' : 'fa-check text-slate-400'
+    ];
+}
+
 // =====================================================================================
 // 1. AJAX ENDPOINTS (Polling & Message Sending)
 // =====================================================================================
@@ -189,6 +202,7 @@ if (isset($_GET['ajax']) && $_GET['ajax'] == 1 && $active_chat_id > 0) {
         $item_align = $is_user ? 'items-end' : 'items-start';
         $time = date('h:i A', strtotime($msg['created_at']));
         $safe_msg = htmlspecialchars($msg['message']);
+        $delivery_state = matrix_message_delivery_state($msg, (int)$latest_admin_id);
 
         // Detect if this specific message has tool data markers (simulated for UI)
         $is_data_rich = (strpos($safe_msg, '#') !== false || strpos($safe_msg, 'Ks') !== false || strpos($safe_msg, '✅') !== false);
@@ -233,8 +247,10 @@ if (isset($_GET['ajax']) && $_GET['ajax'] == 1 && $active_chat_id > 0) {
         // Footer Meta
         echo "<div class='flex items-center gap-2 mt-1.5 px-1 opacity-50 text-[10px] font-mono'>";
         if ($is_user) {
-            $status_icon = ($msg['id'] < $latest_admin_id) ? "text-blue-400 fa-check-double" : "text-slate-400 fa-check";
-            echo "<i class='fas {$status_icon}'></i>";
+            echo "<span class='inline-flex items-center gap-1 uppercase tracking-widest'>";
+            echo "<i class='fas {$delivery_state['icon']}'></i>";
+            echo "<span>{$delivery_state['label']}</span>";
+            echo "</span>";
         }
         if ($is_ai) {
             echo "<i class='fas fa-bolt text-[8px] text-yellow-500/50' title='Instant Neural Inference'></i>";
@@ -662,8 +678,9 @@ if ($active_chat_id) {
                     <div class='px-4 py-3 bg-blue-600 text-white rounded-2xl rounded-tr-sm shadow-md'>
                         <div class='text-sm leading-relaxed whitespace-pre-wrap break-words'>${safeHtmlText}</div>
                     </div>
-                    <div class='flex items-center gap-2 mt-1.5 px-1 opacity-50 text-[10px] font-mono'>
+                    <div class='flex items-center gap-2 mt-1.5 px-1 opacity-50 text-[10px] font-mono uppercase tracking-widest'>
                         <i class='fas fa-check'></i>
+                        <span>Sent</span>
                         <span>${timeNow}</span>
                     </div>
                 </div>

@@ -207,6 +207,27 @@ try {
             }
             break;
 
+        case '/close':
+            if ($isAdmin && is_numeric($arg)) {
+                $check = $pdo->prepare("SELECT user_id, COALESCE(p.name, ps.name) as item_name FROM orders o LEFT JOIN products p ON o.product_id = p.id LEFT JOIN passes ps ON o.pass_id = ps.id WHERE o.id = ?");
+                $check->execute([$arg]);
+                $ord = $check->fetch();
+
+                if ($ord) {
+                    $close_text = !empty($msgPayload)
+                        ? $msgPayload
+                        : "🔒 This support chat is now closed. If you need more help, please send a new message.";
+
+                    $pdo->prepare("INSERT INTO order_messages (order_id, sender_type, message) VALUES (?, 'admin', ?)")->execute([$arg, $close_text]);
+
+                    invalidate_user_cache($ord['user_id']);
+                    $reply = "🔒 <b>CHAT CLOSED</b>\n\nOrder <code>#$arg</code> has been closed.";
+                } else {
+                    $reply = "⚠️ Order <code>#$arg</code> not found.";
+                }
+            }
+            break;
+
         case '/missed':
             if ($isAdmin) {
                 $log_file = __DIR__ . '/../includes/unrecognized_patterns.json';
