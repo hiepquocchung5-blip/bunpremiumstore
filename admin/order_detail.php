@@ -167,7 +167,74 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['ajax_msg'])) {
     exit;
 }
 
-// C. Handle Live Chat Polling (AJAX GET)
+// C. Draft AI Support Reply (Admin-Only)
+if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['ajax_ai_draft'])) {
+    if (ob_get_length()) ob_clean();
+    header('Content-Type: application/json');
+
+    $draft_order_id = isset($_POST['order_id']) ? (int)$_POST['order_id'] : 0;
+    if ($draft_order_id <= 0) {
+        echo json_encode(['success' => false, 'error' => 'Invalid order ID.']);
+        exit;
+    }
+
+    try {
+        $stmt = $pdo->prepare("
+            SELECT o.id, o.status, o.created_at, o.total_price_paid, 
+                   u.username, u.full_name, u.email, 
+                   COALESCE(p.name, ps.name) as item_name,
+                   p.user_instruction
+            FROM orders o
+            JOIN users u ON o.user_id = u.id
+            LEFT JOIN products p ON o.product_id = p.id
+            LEFT JOIN passes ps ON o.pass_id = ps.id
+            WHERE o.id = ?
+        ");
+        $stmt->execute([$draft_order_id]);
+        $ord = $stmt->fetch();
+
+        if (!$ord) {
+            echo json_encode(['success' => false, 'error' => 'Order not found.']);
+            exit;
+        }
+
+        $stmt_mem = $pdo->prepare("SELECT sender_type, message FROM order_messages WHERE order_id = ? ORDER BY id DESC LIMIT 12");
+        $stmt_mem->execute([$draft_order_id]);
+        $history = array_reverse($stmt_mem->fetchAll());
+        $history_context = "";
+        foreach ($history as $h) {
+            $role = in_array($h['sender_type'], ['admin', 'admin_ai'], true) ? 'Support' : 'Customer';
+            $history_context .= "{$role}: {$h['message']}\n";
+        }
+
+        $support_context = "Support Agent Draft Request | ";
+        $support_context .= "Customer: @{$ord['username']} ({$ord['full_name']}) | ";
+        $support_context .= "Item: " . ($ord['item_name'] ?? 'Digital Asset') . " | ";
+        $support_context .= "Order Status: " . strtoupper($ord['status']) . " | ";
+        $support_context .= "Order ID: #{$draft_order_id} | ";
+        $support_context .= "Amount: " . number_format($ord['total_price_paid']) . " Ks | ";
+        if (!empty($ord['user_instruction'])) {
+            $support_context .= "Product Steps: " . $ord['user_instruction'];
+        }
+
+        $prompt = "Draft a short, polite, human-sounding customer support reply in Burmese. Do not mention AI. Keep it useful and concise.";
+        $reply = get_ai_response($prompt, $support_context . " | HISTORY:\n" . $history_context);
+        $reply = normalize_ai_reply($reply);
+
+        if ($reply === '') {
+            $reply = "ဟုတ်ကဲ့ခင်ဗျာ၊ စစ်ဆေးပေးနေပါတယ်။ ခဏလေးစောင့်ပေးပါနော်။";
+        }
+
+        echo json_encode(['success' => true, 'draft' => $reply]);
+        exit;
+    } catch (Exception $e) {
+        error_log("AI Draft Error: " . $e->getMessage());
+        echo json_encode(['success' => false, 'error' => 'Unable to generate support draft.']);
+        exit;
+    }
+}
+
+// D. Handle Live Chat Polling (AJAX GET)
 if (isset($_GET['ajax']) && $_GET['ajax'] == 1) {
     if (ob_get_length()) ob_clean();
     header("Cache-Control: no-store, no-cache, must-revalidate, max-age=0");
@@ -594,6 +661,11 @@ if ($order['status'] === 'active' || $order['status'] === 'completed') {
                             <i class="fas fa-magic text-sm"></i>
                         </button>
 
+                        <!-- Support AI Draft -->
+                        <button type="button" onclick="draftSupportReply(this)" class="w-10 h-10 md:w-11 md:h-11 rounded-full bg-slate-700 text-[#00f0ff] hover:text-slate-900 hover:bg-[#00f0ff] flex items-center justify-center shrink-0 transition shadow-sm border border-slate-600" title="Draft Support Reply">
+                            <i class="fas fa-robot text-sm"></i>
+                        </button>
+
                         <!-- Auto-expanding Textarea Wrapper -->
                         <div class="flex-grow relative bg-slate-900 border border-slate-600 rounded-[20px] focus-within:border-[#00f0ff] focus-within:shadow-[0_0_15px_rgba(0,240,255,0.2)] transition-all flex items-end overflow-hidden min-h-[44px]">
                             
@@ -921,6 +993,42 @@ if ($order['status'] === 'active' || $order['status'] === 'completed') {
                 wrapper.classList.add('border-purple-500', 'shadow-[0_0_20px_rgba(168,85,247,0.4)]');
                 setTimeout(() => wrapper.classList.remove('border-purple-500', 'shadow-[0_0_20px_rgba(168,85,247,0.4)]'), 600);
             }
+        }
+    }
+
+    async function draftSupportReply(btn) {
+        if(!orderId) return;
+
+        const originalHtml = btn ? btn.innerHTML : '';
+        if (btn) btn.innerHTML = '<i class="fas fa-circle-notch fa-spin text-sm"></i>';
+
+        try {
+            const formData = new FormData();
+            formData.append('ajax_ai_draft', '1');
+            formData.append('order_id', orderId);
+
+            const response = await fetch(`index.php?page=order_detail&id=${orderId}`, {
+                method: 'POST',
+                body: formData,
+                headers: { 'X-Requested-With': 'XMLHttpRequest' }
+            });
+            const data = await response.json();
+
+            if (data.success && data.draft) {
+                if(chatInput) {
+                    chatInput.value = data.draft;
+                    chatInput.focus();
+                    chatInput.style.height = 'auto';
+                    chatInput.style.height = chatInput.scrollHeight + 'px';
+                }
+            } else {
+                alert('AI draft failed: ' + (data.error || 'Unknown error'));
+            }
+        } catch(err) {
+            console.error(err);
+            alert('AI draft failed. Please try again.');
+        } finally {
+            if (btn) btn.innerHTML = originalHtml;
         }
     }
 

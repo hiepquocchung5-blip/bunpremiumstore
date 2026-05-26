@@ -67,61 +67,11 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['ajax_msg'])) {
                 $wants_human = false;
                 foreach($human_keywords as $hk) { if(strpos(strtolower($msg), $hk) !== false) { $wants_human = true; break; } }
 
-                // 🤖 AI SUPPORT PROTOCOL: Advanced Autonomous Intelligence
-                $ai_responded = false;
-                
-                // ⏱ ANTI-SPAM GUARD: Prevent hammering free API quota (Max 1 call per 6s)
-                $last_ai_time = $_SESSION['last_ai_call_time'] ?? 0;
-                $can_call_ai = (time() - $last_ai_time) > 6;
-
-                if ($can_call_ai) {
-                    $_SESSION['last_ai_call_time'] = time();
-                    
-                    // RICH CONTEXT: Scotty now sees everything about the user and the order!
-                    $rich_context = "Customer: @{$order_check['username']} ({$order_check['full_name']}) | ";
-                    $rich_context .= "Item: " . ($order_check['item_name'] ?? 'Digital Asset') . " | ";
-                    $rich_context .= "Order Status: " . strtoupper($order_check['status']) . " | ";
-                    $rich_context .= "Order ID: #{$oid} | ";
-                    $rich_context .= "Payment: " . ($order_check['payment_method'] ?? 'Not specified') . " | ";
-                    
-                    if (!empty($order_check['user_instruction'])) {
-                        $rich_context .= "Product Setup Steps: " . $order_check['user_instruction'];
-                    }
-
-                    // 🧠 DEEP CONVERSATIONAL MEMORY: Fetch last 10 messages for full context
-                    $stmt_mem = $pdo->prepare("SELECT sender_type, message FROM order_messages WHERE order_id = ? ORDER BY id DESC LIMIT 10");
-                    $stmt_mem->execute([$oid]);
-                    $history = array_reverse($stmt_mem->fetchAll());
-                    $history_context = "";
-                    foreach($history as $h) {
-                        $role = ($h['sender_type'] === 'user') ? 'Customer' : 'Staff';
-                        $history_context .= "{$role}: {$h['message']}\n";
-                    }
-
-                    $ai_msg = strip_tags(get_ai_response($msg, $rich_context . " | FULL CONVERSATION HISTORY:\n" . $history_context));
-
-                    if (!empty($ai_msg)) {
-                        // Determine Agent Name deterministically
-                        $agent_names = ['Ko Scotty', 'Support Team', 'Digital Support', 'Ryan', 'Nora', 'Alex', 'Customer Care'];
-                        $agent_name = $agent_names[$oid % count($agent_names)];
-
-                        $stmt = $pdo->prepare("INSERT INTO order_messages (order_id, sender_type, message) VALUES (?, 'admin_ai', ?)");
-                        $stmt->execute([$oid, $ai_msg]);
-                        $ai_responded = true;
-
-                        // ⚡️ REAL-TIME WEB PUSH (Notify User)
-                        $notif_body = mb_substr($ai_msg, 0, 50) . (mb_strlen($ai_msg) > 50 ? '...' : '');
-                        trigger_push_alert($pdo, $user_id, "New reply from {$agent_name} 💬", $notif_body, $oid);
-                    }                }
-                
                 // ⚡️ REAL-TIME TELEGRAM ALERT (Always notify admin)
                 if (defined('TG_BOT_TOKEN') && defined('TG_ADMIN_CHAT_ID')) {
                     $admin_url = defined('ADMIN_URL') ? ADMIN_URL : BASE_URL . 'admin/';
-                    
-                    if ($ai_responded) {
-                        $priority_tag = "🤖 <b>AI HANDLED</b> (Scotty)";
-                        $status_color = "🟢";
-                    } elseif ($wants_human) {
+
+                    if ($wants_human) {
                         $priority_tag = "🚨 <b>URGENT: HUMAN REQUESTED</b>";
                         $status_color = "🔴";
                     } else {
@@ -133,10 +83,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['ajax_msg'])) {
                     $tg_msg .= "🆔 <b>Order:</b> #{$oid} - {$order_check['item_name']}\n";
                     $tg_msg .= "👤 <b>User:</b> @{$order_check['username']}\n";
                     $tg_msg .= "💬 <b>User Sent:</b> <i>" . htmlspecialchars($msg) . "</i>\n";
-                    
-                    if ($ai_responded) {
-                        $tg_msg .= "🤖 <b>AI Reply:</b> <i>" . htmlspecialchars(mb_substr($ai_msg, 0, 100)) . (mb_strlen($ai_msg) > 100 ? '...' : '') . "</i>\n";
-                    }
 
                     $tg_msg .= "\n⚡️ <a href='{$admin_url}index.php?page=order_detail&id={$oid}'>Open Live Chat</a>";
 
@@ -183,7 +129,7 @@ if (isset($_GET['ajax']) && $_GET['ajax'] == 1 && $active_chat_id > 0) {
         exit;
     }
 
-    // Determine "Seen" status by finding the latest Admin/AI reply ID
+    // Determine "Seen" status by finding the latest staff/bot reply ID
     $stmt_seen = $pdo->prepare("SELECT MAX(id) FROM order_messages WHERE order_id = ? AND sender_type IN ('admin', 'admin_ai')");
     $stmt_seen->execute([$active_chat_id]);
     $latest_admin_id = $stmt_seen->fetchColumn() ?: 0;
@@ -231,7 +177,7 @@ if (isset($_GET['ajax']) && $_GET['ajax'] == 1 && $active_chat_id > 0) {
 
         echo "<div class='relative {$bubble_css}'>";
         if ($is_admin) {
-            $agent_name = $is_ai ? "Matrix Core (AI)" : "Support Team";
+            $agent_name = $is_ai ? "Support Bot" : "Support Team";
             $name_color = $is_ai ? "text-purple-400" : "text-[#00f0ff]";
             echo "<div class='flex items-center gap-2 mb-1.5'>";
             echo "<div class='text-[9px] font-black uppercase tracking-widest {$name_color} opacity-80'>{$agent_name}</div>";
