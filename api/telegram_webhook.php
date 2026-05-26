@@ -127,10 +127,9 @@ try {
             if ($isAdmin) {
                 $stmt = $pdo->query("
                     SELECT o.id, o.total_price_paid, u.username, COALESCE(p.name, ps.name) as item_name,
-                           p.image_path, c.image_url as cat_image, o.proof_image_path
+                           o.proof_image_path
                     FROM orders o JOIN users u ON o.user_id = u.id
                     LEFT JOIN products p ON o.product_id = p.id
-                    LEFT JOIN categories c ON p.category_id = c.id
                     LEFT JOIN passes ps ON o.pass_id = ps.id
                     WHERE o.status = 'pending' ORDER BY o.id DESC LIMIT 10
                 ");
@@ -148,20 +147,14 @@ try {
 
                     $base_url = defined('BASE_URL') ? rtrim(BASE_URL, '/') : 'https://digitalmarketplacemm.com';
                     foreach ($orders as $o) {
-                        $order_caption = "🕒 <b>Pending Order #{$o['id']}</b>\n";
-                        $order_caption .= "👤 @{$o['username']}\n";
-                        $order_caption .= "📦 {$o['item_name']}\n";
-                        $order_caption .= "💰 " . number_format($o['total_price_paid']) . " Ks";
-
-                        if (!empty($o['image_path']) || !empty($o['cat_image'])) {
-                            $img_path = $o['image_path'] ?: $o['cat_image'];
-                            $img_url = $base_url . '/' . ltrim($img_path, '/');
-                            send_telegram_photo($chat_id, $img_url, $order_caption);
-                        }
-
                         if (!empty($o['proof_image_path'])) {
                             $proof_url = $base_url . '/' . ltrim($o['proof_image_path'], '/');
-                            send_telegram_photo($chat_id, $proof_url, "🧾 <b>Proof Screenshot</b>\nOrder #{$o['id']} • @{$o['username']}");
+                            $proof_caption = "🧾 <b>Proof Screenshot</b>\n";
+                            $proof_caption .= "🔹 Order #{$o['id']}\n";
+                            $proof_caption .= "👤 @{$o['username']}\n";
+                            $proof_caption .= "📦 {$o['item_name']}\n";
+                            $proof_caption .= "💰 " . number_format($o['total_price_paid']) . " Ks";
+                            send_telegram_photo($chat_id, $proof_url, $proof_caption);
                         }
                     }
                 } else {

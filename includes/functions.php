@@ -151,13 +151,14 @@ function send_telegram_alert($order_id, $product_name, $price, $username) {
         error_log('Telegram Alert DB Error: ' . $e->getMessage());
     }
 
-    $full_msg = "🆕 <b>New Order Node</b>\n";
+    $full_msg = "🆕 <b>New Order Alert</b>\n";
     $full_msg .= "━━━━━━━━━━━━━━━━\n";
     $full_msg .= "🆔 <b>ID:</b> #{$order_id}\n";
     $full_msg .= "👤 <b>User:</b> @{$username}\n";
     $full_msg .= "📦 <b>Item:</b> {$product_name}\n";
     $full_msg .= "💰 <b>Price:</b> " . number_format($price) . " Ks\n";
     $full_msg .= "💳 <b>Txn:</b> <code>{$txn_id}</code>\n";
+    $full_msg .= "📌 <b>Status:</b> Awaiting review\n";
     if (!empty($proof_path)) {
         $full_msg .= "🧾 <b>Proof Path:</b> <code>" . htmlspecialchars($proof_path) . "</code>\n";
     }
@@ -179,44 +180,23 @@ function send_telegram_alert($order_id, $product_name, $price, $username) {
     foreach ($admin_ids as $chat_id) {
         if (empty($chat_id)) continue;
         if (!empty($order_image_url)) {
-            $product_caption = "🖼 <b>Product Mini Info</b>\n";
+            $product_caption = "🖼 <b>Product Preview</b>\n";
             $product_caption .= "Order #{$order_id} • @{$username}\n";
             $product_caption .= "📦 {$product_name}\n";
-            $product_caption .= "💰 " . number_format($price) . " Ks";
-
-            $product_photo_url = "https://api.telegram.org/bot{$token}/sendPhoto";
-            $product_photo_data = [
-                'chat_id' => $chat_id,
-                'photo' => $order_image_url,
-                'caption' => $product_caption,
-                'parse_mode' => 'HTML'
-            ];
-
-            $ch = curl_init($product_photo_url);
-            curl_setopt($ch, CURLOPT_POST, true);
-            curl_setopt($ch, CURLOPT_POSTFIELDS, http_build_query($product_photo_data));
-            curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
-            curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, false);
-            curl_exec($ch);
-            curl_close($ch);
+            $product_caption .= "💰 " . number_format($price) . " Ks\n";
+            $product_caption .= "📌 Tap to open preview";
+            send_telegram_photo($chat_id, $order_image_url, $product_caption);
         }
 
         if (!empty($proof_url)) {
-            $photo_url = "https://api.telegram.org/bot{$token}/sendPhoto";
-            $photo_data = [
-                'chat_id' => $chat_id,
-                'photo' => $proof_url,
-                'caption' => "🖼 <b>Payment Screenshot</b>\nOrder #{$order_id} • @{$username}\n" . (!empty($proof_path) ? "🧾 <code>" . htmlspecialchars($proof_path) . "</code>" : ""),
-                'parse_mode' => 'HTML'
-            ];
-
-            $ch = curl_init($photo_url);
-            curl_setopt($ch, CURLOPT_POST, true);
-            curl_setopt($ch, CURLOPT_POSTFIELDS, http_build_query($photo_data));
-            curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
-            curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, false);
-            curl_exec($ch);
-            curl_close($ch);
+            $proof_caption = "🧾 <b>Payment Proof</b>\n";
+            $proof_caption .= "Order #{$order_id} • @{$username}\n";
+            $proof_caption .= "📦 {$product_name}\n";
+            $proof_caption .= "💰 " . number_format($price) . " Ks";
+            if (!empty($proof_path)) {
+                $proof_caption .= "\n🧾 <code>" . htmlspecialchars($proof_path) . "</code>";
+            }
+            send_telegram_photo($chat_id, $proof_url, $proof_caption);
         }
 
         $text_url = "https://api.telegram.org/bot{$token}/sendMessage";
