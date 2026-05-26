@@ -129,13 +129,23 @@ function send_telegram_alert($order_id, $product_name, $price, $username) {
 
     $txn_id = "N/A";
     $proof_path = "";
+    $product_image_path = "";
+    $category_image_path = "";
 
     try {
-        $stmt = $pdo->prepare("SELECT transaction_last_6, proof_image_path FROM orders WHERE id = ?");
+        $stmt = $pdo->prepare("
+            SELECT o.transaction_last_6, o.proof_image_path, p.image_path as product_image_path, c.image_url as category_image_path
+            FROM orders o
+            LEFT JOIN products p ON o.product_id = p.id
+            LEFT JOIN categories c ON p.category_id = c.id
+            WHERE o.id = ?
+        ");
         $stmt->execute([$order_id]);
         if ($row = $stmt->fetch()) {
             $txn_id = $row['transaction_last_6'];
             $proof_path = $row['proof_image_path'];
+            $product_image_path = $row['product_image_path'] ?? '';
+            $category_image_path = $row['category_image_path'] ?? '';
         }
     } catch (Exception $e) {
         error_log('Telegram Alert DB Error: ' . $e->getMessage());
@@ -148,6 +158,9 @@ function send_telegram_alert($order_id, $product_name, $price, $username) {
     $full_msg .= "📦 <b>Item:</b> {$product_name}\n";
     $full_msg .= "💰 <b>Price:</b> " . number_format($price) . " Ks\n";
     $full_msg .= "💳 <b>Txn:</b> <code>{$txn_id}</code>\n";
+    if (!empty($proof_path)) {
+        $full_msg .= "🧾 <b>Proof Path:</b> <code>" . htmlspecialchars($proof_path) . "</code>\n";
+    }
     $full_msg .= "━━━━━━━━━━━━━━━━\n";
     $full_msg .= "🔗 <a href='{$admin_url}'>View Order Terminal</a>";
 
@@ -156,14 +169,44 @@ function send_telegram_alert($order_id, $product_name, $price, $username) {
         $proof_url = $base_url . '/' . ltrim($proof_path, '/');
     }
 
+    $order_image_url = '';
+    if (!empty($product_image_path)) {
+        $order_image_url = $base_url . '/' . ltrim($product_image_path, '/');
+    } elseif (!empty($category_image_path)) {
+        $order_image_url = $base_url . '/' . ltrim($category_image_path, '/');
+    }
+
     foreach ($admin_ids as $chat_id) {
         if (empty($chat_id)) continue;
+        if (!empty($order_image_url)) {
+            $product_caption = "🖼 <b>Product Mini Info</b>\n";
+            $product_caption .= "Order #{$order_id} • @{$username}\n";
+            $product_caption .= "📦 {$product_name}\n";
+            $product_caption .= "💰 " . number_format($price) . " Ks";
+
+            $product_photo_url = "https://api.telegram.org/bot{$token}/sendPhoto";
+            $product_photo_data = [
+                'chat_id' => $chat_id,
+                'photo' => $order_image_url,
+                'caption' => $product_caption,
+                'parse_mode' => 'HTML'
+            ];
+
+            $ch = curl_init($product_photo_url);
+            curl_setopt($ch, CURLOPT_POST, true);
+            curl_setopt($ch, CURLOPT_POSTFIELDS, http_build_query($product_photo_data));
+            curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
+            curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, false);
+            curl_exec($ch);
+            curl_close($ch);
+        }
+
         if (!empty($proof_url)) {
             $photo_url = "https://api.telegram.org/bot{$token}/sendPhoto";
             $photo_data = [
                 'chat_id' => $chat_id,
                 'photo' => $proof_url,
-                'caption' => "🖼 <b>Payment Screenshot</b>\nOrder #{$order_id} • @{$username}",
+                'caption' => "🖼 <b>Payment Screenshot</b>\nOrder #{$order_id} • @{$username}\n" . (!empty($proof_path) ? "🧾 <code>" . htmlspecialchars($proof_path) . "</code>" : ""),
                 'parse_mode' => 'HTML'
             ];
 

@@ -126,9 +126,12 @@ try {
         case '/pending':
             if ($isAdmin) {
                 $stmt = $pdo->query("
-                    SELECT o.id, o.total_price_paid, u.username, COALESCE(p.name, ps.name) as item_name
+                    SELECT o.id, o.total_price_paid, u.username, COALESCE(p.name, ps.name) as item_name,
+                           p.image_path, c.image_url as cat_image, o.proof_image_path
                     FROM orders o JOIN users u ON o.user_id = u.id
-                    LEFT JOIN products p ON o.product_id = p.id LEFT JOIN passes ps ON o.pass_id = ps.id
+                    LEFT JOIN products p ON o.product_id = p.id
+                    LEFT JOIN categories c ON p.category_id = c.id
+                    LEFT JOIN passes ps ON o.pass_id = ps.id
                     WHERE o.status = 'pending' ORDER BY o.id DESC LIMIT 10
                 ");
                 $orders = $stmt->fetchAll();
@@ -138,6 +141,13 @@ try {
                     foreach ($orders as $o) {
                         $reply .= "🔹 <b>Order:</b> <code>{$o['id']}</code> | 👤 @{$o['username']}\n";
                         $reply .= "📦 {$o['item_name']}\n";
+                        if (!empty($o['image_path']) || !empty($o['cat_image'])) {
+                            $img_path = $o['image_path'] ?: $o['cat_image'];
+                            $reply .= "🖼 <code>" . htmlspecialchars($img_path) . "</code>\n";
+                        }
+                        if (!empty($o['proof_image_path'])) {
+                            $reply .= "🧾 <code>" . htmlspecialchars($o['proof_image_path']) . "</code>\n";
+                        }
                         $reply .= "💰 " . number_format($o['total_price_paid']) . " Ks\n";
                         $reply .= "━━━━━━━━━━━━━━━━\n";
                     }
