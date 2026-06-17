@@ -122,99 +122,69 @@ if (is_logged_in()) {
 </style>
 
 <!-- Top News Ticker -->
-<div class="w-full bg-slate-950 border-b border-blue-500/10 py-2 mb-4 sm:mb-6 relative overflow-hidden">
-    <div class="whitespace-nowrap animate-marquee text-[10px] sm:text-xs text-blue-400 font-mono tracking-widest uppercase font-bold px-4">
-        🚀 System Online • Instant Delivery Enabled • 24/7 Support Available • New Products Added Daily • Secure Payments Active
+<div class="w-full bg-slate-900 border-b border-white/5 py-2.5 mb-6 relative overflow-hidden">
+    <div class="whitespace-nowrap animate-marquee text-[10px] text-blue-400 font-bold tracking-widest uppercase px-4 flex items-center gap-2">
+        <svg
+            xmlns="http://www.w3.org/2000/svg"
+            class="w-4 h-4 text-blue-400"
+            fill="currentColor"
+            viewBox="0 0 24 24"
+        >
+            <path d="M12 2L14.9 8.6L22 9.3L16.8 13.9L18.4 21L12 17.2L5.6 21L7.2 13.9L2 9.3L9.1 8.6L12 2Z"/>
+        </svg>
+
+        Welcome to DigitalMM • Instant Delivery • 24/7 Support • New Items Added Daily • Secure Payments Active
     </div>
 </div>
 
-<div class="home-page-shell max-w-7xl mx-auto px-3 sm:px-6 lg:px-8 pb-10 sm:pb-12">
+<div class="home-page-shell max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pb-16">
     
     <!-- User Greeting -->
-    <div class="mb-8 sm:mb-10 animate-fade-in-down">
-        <div class="flex flex-col md:flex-row md:items-end justify-between gap-5 sm:gap-6">
+    <div class="mb-12">
+        <div class="flex flex-col md:flex-row md:items-end justify-between gap-6">
             <div class="flex-1">
-                <div class="flex items-center gap-3 mb-2">
-                    <span class="text-[10px] font-black text-slate-500 uppercase tracking-widest bg-slate-900/50 px-2.5 py-1 rounded-md border border-slate-800">Account Overview</span>
-                    <div class="h-px bg-slate-800 flex-1 hidden md:block"></div>
+                <div class="flex items-center gap-3 mb-4">
+                    <span class="text-[10px] font-bold text-slate-500 uppercase tracking-widest bg-slate-800/50 px-3 py-1 rounded-full border border-white/5">Personal Hub</span>
                 </div>
-                <h2 class="text-2xl sm:text-3xl md:text-5xl font-black text-white tracking-tight leading-tight sm:leading-none">
-                    Welcome back, <span class="text-blue-400"><?php echo htmlspecialchars($first_name); ?></span>
+                <h2 class="text-3xl md:text-5xl font-bold text-white tracking-tight leading-tight">
+                    Hello, <span class="text-blue-500"><?php echo htmlspecialchars($first_name); ?></span>
                 </h2>
-                <p class="text-slate-400 text-sm mt-3 font-medium max-w-2xl">Your store dashboard is ready. View your products and orders below.</p>
+                <p class="text-slate-400 text-sm mt-4 font-medium max-w-2xl leading-relaxed">Discover the best digital deals, handpicked just for you. Your next favorite game or tool is just a click away.</p>
             </div>
 
             <?php if(is_logged_in()): ?>
-            <div class="flex flex-col sm:flex-row items-stretch sm:items-center gap-0 sm:gap-4 bg-slate-900/50 border border-slate-700/50 p-2 rounded-2xl shadow-xl w-full sm:w-auto overflow-hidden">
-                <div class="px-4 py-3 sm:py-2 border-b sm:border-b-0 sm:border-r border-slate-800 text-center sm:text-left">
-                    <p class="text-[9px] text-slate-500 font-black uppercase tracking-widest mb-0.5">Pending Orders</p>
-                    <p class="text-lg font-mono font-black text-yellow-500"><?php echo str_pad($user_stats['active_orders'], 2, '0', STR_PAD_LEFT); ?></p>
+            <div class="flex items-center gap-4 bg-slate-800/30 border border-white/5 p-2 rounded-2xl shadow-xl">
+                <div class="px-5 py-2 border-r border-white/5">
+                    <p class="text-[9px] text-slate-500 font-bold uppercase tracking-widest mb-1">Orders</p>
+                    <p class="text-lg font-bold text-white"><?php echo $user_stats['active_orders']; ?></p>
                 </div>
-                <div class="px-4 py-3 sm:py-2 text-center sm:text-left">
-                    <p class="text-[9px] text-slate-500 font-black uppercase tracking-widest mb-0.5">Your Discount</p>
-                    <p class="text-lg font-mono font-black text-green-400"><?php echo $discount; ?>%</p>
+                <div class="px-5 py-2">
+                    <p class="text-[9px] text-slate-500 font-bold uppercase tracking-widest mb-1">Discount</p>
+                    <p class="text-lg font-bold text-emerald-400"><?php echo $discount; ?>%</p>
                 </div>
             </div>
             <?php endif; ?>
         </div>
     </div>
 
-    <!-- NOTIFICATION PROMPT -->
-    <?php if(is_logged_in() && !$is_subscribed): ?>
-    <div class="mb-8 bg-blue-900/10 border border-blue-500/30 p-5 md:p-6 rounded-2xl flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-4 relative overflow-hidden">
-        <div class="flex items-center gap-4 relative z-10 w-full sm:w-auto">
-            <div class="w-12 h-12 bg-blue-500/10 rounded-full flex items-center justify-center text-blue-500 border border-blue-500/20 shrink-0">
-                <i class="fas fa-bell text-xl animate-pulse"></i>
-            </div>
-            <div>
-                <h3 class="font-black text-white text-base md:text-lg">Enable Updates</h3>
-                <p class="text-xs text-slate-400">Turn on notifications to receive instant updates for your orders.</p>
-            </div>
-        </div>
-        <button onclick="initializeManualUplink(this)" class="w-full sm:w-auto bg-blue-600 hover:bg-blue-500 text-white font-bold px-6 py-3 rounded-xl transition transform active:scale-95 text-xs uppercase tracking-widest sm:min-w-[180px]">
-            Enable Now
-        </button>
-    </div>
-    <script>
-        function initializeManualUplink(btn) {
-            btn.innerHTML = 'Loading...';
-            if (typeof window.registerServiceWorker === 'function') {
-                window.registerServiceWorker(true).then(() => {
-                    btn.closest('.rounded-2xl').remove();
-                    alert("Notifications Enabled! You will now receive order updates.");
-                }).catch(err => {
-                    btn.innerHTML = 'Error';
-                    alert("Please allow notifications in your browser settings and try again.");
-                });
-            }
-        }
-    </script>
-    <?php endif; ?>
-
     <!-- SECTION 1: Banner Slider -->
     <?php if(!empty($banners)): ?>
-    <div class="relative w-full aspect-[16/11] sm:aspect-[21/9] lg:max-h-[500px] mb-10 sm:mb-12 rounded-[1.5rem] sm:rounded-[2rem] overflow-hidden group shadow-2xl bg-slate-900 border border-slate-700/50" id="heroSliderContainer">
+    <div class="relative w-full aspect-[16/9] lg:max-h-[500px] mb-16 rounded-[2rem] overflow-hidden group shadow-2xl bg-slate-900 border border-white/5" id="heroSliderContainer">
         <div class="flex h-full overflow-x-auto snap-x snap-mandatory no-scrollbar scroll-smooth home-slider-track" id="bannerSlider">
             <?php foreach($banners as $index => $b): ?>
                 <div class="w-full h-full flex-shrink-0 snap-center relative overflow-hidden">
                     <a href="<?php echo $b['target_url'] ?: '#'; ?>" class="block w-full h-full">
-                        <img src="<?php echo BASE_URL . $b['image_path']; ?>" class="w-full h-full object-cover animate-pan-image" loading="eager">
-                        <div class="absolute inset-0 bg-gradient-to-t from-slate-950 via-slate-950/40 to-transparent opacity-90"></div>
+                        <img src="<?php echo BASE_URL . $b['image_path']; ?>" class="w-full h-full object-cover transition-transform duration-[10s] group-hover:scale-110" loading="eager">
+                        <div class="absolute inset-0 bg-gradient-to-t from-[#0b0f1a] via-transparent to-transparent opacity-80"></div>
                         
-                        <div class="absolute inset-0 flex flex-col justify-end p-4 sm:p-6 md:p-16">
-                            <div class="animate-fade-in-up">
-                                <div class="flex items-center gap-2 mb-3">
-                                    <span class="w-6 sm:w-8 h-0.5 bg-blue-500 rounded-full"></span>
-                                    <span class="text-[10px] md:text-xs text-blue-400 font-black uppercase tracking-[0.2em]"><?php echo $b['subtitle'] ?: 'Exclusive Digital Asset'; ?></span>
-                                </div>
-                                <h3 class="text-white text-2xl sm:text-4xl md:text-6xl font-black mb-3 sm:mb-4 leading-[0.95] tracking-tighter max-w-xl md:max-w-2xl">
+                        <div class="absolute inset-0 flex flex-col justify-end p-8 md:p-16">
+                            <div class="max-w-2xl">
+                                <span class="inline-block px-3 py-1 bg-blue-600 text-white text-[10px] font-bold uppercase tracking-widest rounded-lg mb-4">Featured</span>
+                                <h3 class="text-white text-3xl md:text-6xl font-bold mb-6 leading-tight tracking-tight">
                                     <?php echo htmlspecialchars($b['title']); ?>
                                 </h3>
-                                <div class="flex flex-wrap items-center gap-3 sm:gap-4 mt-5 sm:mt-6">
-                                    <span class="px-5 sm:px-6 py-2.5 sm:py-3 bg-white text-slate-950 font-black rounded-xl text-[10px] md:text-xs uppercase tracking-widest shadow-xl transform group-hover:scale-105 transition-all">Explore Now</span>
-                                    <span class="hidden md:flex items-center gap-2 text-slate-400 text-[10px] font-bold uppercase tracking-widest">
-                                        <i class="fas fa-shield-alt text-green-500"></i> Instant Delivery
-                                    </span>
+                                <div class="flex items-center gap-4">
+                                    <span class="px-8 py-3 bg-white text-black font-bold rounded-xl text-sm transition-transform hover:scale-105 active:scale-95 shadow-xl">Explore Deals</span>
                                 </div>
                             </div>
                         </div>
@@ -223,77 +193,65 @@ if (is_logged_in()) {
             <?php endforeach; ?>
         </div>
 
-        <!-- Navigation Controls -->
-        <div class="absolute bottom-4 sm:bottom-8 right-4 sm:right-8 z-20 flex items-center gap-2">
+        <!-- Navigation -->
+        <div class="absolute bottom-8 right-8 z-20 flex items-center gap-3">
             <?php foreach($banners as $index => $b): ?>
-                <button class="slider-dot w-2 h-2 rounded-full bg-white/20 transition-all duration-500 hover:bg-white/50" data-index="<?php echo $index; ?>"></button>
+                <button class="slider-dot w-2 h-2 rounded-full bg-white/20 transition-all duration-300" data-index="<?php echo $index; ?>"></button>
             <?php endforeach; ?>
-        </div>
-
-        <!-- Progress Bar -->
-        <div class="absolute bottom-0 left-0 w-full h-1 bg-white/5">
-            <div id="slideProgress" class="h-full bg-blue-500 w-0"></div>
         </div>
     </div>
     <?php endif; ?>
 
     <!-- SECTION 2: Categories -->
-    <div class="mb-16 relative">
-        <div class="flex items-end justify-between gap-4 mb-5 sm:mb-6">
-            <h2 class="text-2xl md:text-3xl font-black text-white tracking-tight">Categories</h2>
-            <div class="hidden sm:flex gap-2">
-                <button id="catPrev" class="w-10 h-10 rounded-xl bg-slate-800 hover:bg-blue-600 text-slate-400 hover:text-white transition flex items-center justify-center shadow-lg"><i class="fas fa-angle-left"></i></button>
-                <button id="catNext" class="w-10 h-10 rounded-xl bg-slate-800 hover:bg-blue-600 text-slate-400 hover:text-white transition flex items-center justify-center shadow-lg"><i class="fas fa-angle-right"></i></button>
+    <div class="mb-20">
+        <div class="flex items-end justify-between mb-8">
+            <h2 class="text-2xl font-bold text-white tracking-tight">Browse Categories</h2>
+            <div class="flex gap-2">
+                <button id="catPrev" class="w-11 h-11 rounded-xl bg-slate-800 hover:bg-slate-700 text-white transition flex items-center justify-center border border-white/5"><i class="fas fa-chevron-left text-sm"></i></button>
+                <button id="catNext" class="w-11 h-11 rounded-xl bg-slate-800 hover:bg-slate-700 text-white transition flex items-center justify-center border border-white/5"><i class="fas fa-chevron-right text-sm"></i></button>
             </div>
         </div>
 
         <div class="relative">
-            <div id="categorySlider" class="flex overflow-x-auto snap-x snap-mandatory gap-3 sm:gap-4 md:gap-6 pb-4 sm:pb-6 no-scrollbar scroll-smooth home-slider-track">
+            <div id="categorySlider" class="flex overflow-x-auto gap-6 pb-6 no-scrollbar scroll-smooth">
                 <?php foreach($categories as $cat): ?>
-                    <a href="index.php?module=shop&page=category&id=<?php echo $cat['id']; ?>" class="snap-start shrink-0 w-[72vw] max-w-[220px] sm:w-[180px] lg:w-[240px] glass-card rounded-3xl overflow-hidden group/cat relative flex flex-col justify-end aspect-[3/4] border border-slate-700/50 hover:border-blue-500/50">
-                        <?php if(!empty($cat['image_url'])): ?>
-                            <img src="<?php echo BASE_URL . $cat['image_url']; ?>" class="absolute inset-0 w-full h-full object-cover opacity-70 group-hover/cat:opacity-100 transition-all duration-700 group-hover/cat:scale-110">
-                        <?php else: ?>
-                            <div class="absolute inset-0 bg-slate-800"></div>
-                        <?php endif; ?>
-                        <div class="absolute inset-0 bg-gradient-to-t from-slate-950 via-transparent to-transparent opacity-90"></div>
-                        <div class="relative z-10 p-4 sm:p-5 md:p-6 text-center w-full">
-                            <span class="inline-block px-2 py-0.5 bg-slate-900 border border-slate-700 rounded text-[9px] font-black text-slate-400 uppercase tracking-widest mb-2">
-                                <?php echo htmlspecialchars($cat['type']); ?>
-                            </span>
-                            <h3 class="text-sm sm:text-base md:text-lg font-black text-white uppercase tracking-wide leading-tight"><?php echo htmlspecialchars($cat['name']); ?></h3>
+                    <a href="index.php?module=shop&page=category&id=<?php echo $cat['id']; ?>" class="shrink-0 w-44 md:w-56 bg-slate-800/50 rounded-[2rem] p-6 border border-white/5 hover:border-blue-500/30 hover:bg-slate-800 transition-all group">
+                        <div class="w-16 h-16 bg-slate-900 rounded-2xl flex items-center justify-center mb-6 shadow-lg group-hover:scale-110 transition-transform overflow-hidden border border-white/5">
+                            <?php if(!empty($cat['image_url'])): ?>
+                                <img src="<?php echo BASE_URL . $cat['image_url']; ?>" class="w-full h-full object-cover">
+                            <?php else: ?>
+                                <i class="fas fa-th-large text-blue-400"></i>
+                            <?php endif; ?>
                         </div>
+                        <h3 class="text-white font-bold text-lg mb-2 truncate"><?php echo htmlspecialchars($cat['name']); ?></h3>
+                        <p class="text-slate-500 text-xs line-clamp-2"><?php echo htmlspecialchars($cat['description']); ?></p>
                     </a>
                 <?php endforeach; ?>
-            </div>
-            <div class="absolute -bottom-2 left-0 w-full h-1 bg-slate-800/50 rounded-full overflow-hidden">
-                <div id="catScrollProgress" class="h-full bg-blue-500 w-0 transition-all duration-150"></div>
             </div>
         </div>
     </div>
 
     <!-- SECTION: Staff Picks -->
-    <div class="mb-16">
-        <div class="flex items-center gap-4 mb-8">
-            <h2 class="text-2xl md:text-3xl font-black text-white tracking-tight">Staff Picks</h2>
-            <div class="h-px bg-slate-800 flex-1"></div>
-            <span class="text-[10px] font-bold text-blue-400 uppercase tracking-widest border border-blue-500/30 px-3 py-1 rounded-full">Recommended</span>
+    <div class="mb-20">
+        <div class="flex items-center gap-4 mb-10">
+            <h2 class="text-2xl font-bold text-white tracking-tight">Our Recommendations</h2>
+            <div class="h-px bg-white/5 flex-1"></div>
         </div>
         
-        <div class="flex flex-col lg:flex-row gap-6 md:gap-8">
+        <div class="flex flex-col lg:flex-row gap-8">
             <?php if(!empty($best_sellers[0])): 
                 $f = $best_sellers[0];
             ?>
-            <div class="lg:w-2/3 relative group rounded-3xl overflow-hidden border border-slate-700/50 shadow-2xl bg-slate-900">
-                <div class="aspect-[16/9] md:aspect-auto md:h-[400px] relative">
-                    <img src="<?php echo BASE_URL . ($f['image_path'] ?: $f['cat_image']); ?>" class="w-full h-full object-cover transition-all duration-700 group-hover:scale-105">
-                    <div class="absolute inset-0 bg-gradient-to-r from-slate-950 via-transparent to-transparent"></div>
-                    <div class="absolute inset-0 p-5 sm:p-8 md:p-12 flex flex-col justify-end sm:justify-center max-w-xl md:max-w-lg">
-                        <span class="text-xs font-black text-blue-400 uppercase tracking-widest mb-2">Editor's Choice</span>
-                        <h3 class="text-2xl sm:text-3xl md:text-5xl font-black text-white mb-3 sm:mb-4 leading-none"><?php echo htmlspecialchars($f['name']); ?></h3>
-                        <p class="text-slate-400 text-sm mb-6 sm:mb-8 line-clamp-2 max-w-md">Our most reliable choice with instant delivery and full warranty.</p>
-                        <a href="index.php?module=shop&page=product&id=<?php echo $f['id']; ?>" class="w-fit px-6 sm:px-8 py-3.5 sm:py-4 bg-blue-600 hover:bg-blue-500 text-white font-black rounded-2xl transition-all uppercase tracking-widest text-[10px] sm:text-xs shadow-lg shadow-blue-600/20">
-                            Buy Now <i class="fas fa-arrow-right ml-2"></i>
+            <div class="lg:w-2/3 relative group rounded-[2.5rem] overflow-hidden border border-white/5 shadow-2xl bg-slate-900">
+                <div class="aspect-[16/9] md:aspect-auto md:h-[450px] relative">
+                    <img src="<?php echo BASE_URL . ($f['image_path'] ?: $f['cat_image']); ?>" class="w-full h-full object-cover transition-transform duration-700 group-hover:scale-105">
+                    <div class="absolute inset-0 bg-gradient-to-r from-[#0b0f1a] via-transparent to-transparent"></div>
+                    <div class="absolute inset-0 p-8 md:p-16 flex flex-col justify-end md:justify-center max-w-xl">
+                        <span class="text-[10px] font-bold text-blue-400 uppercase tracking-[0.2em] mb-4">Top Rated Choice</span>
+                        <h3 class="text-3xl md:text-5xl font-bold text-white mb-6 leading-tight"><?php echo htmlspecialchars($f['name']); ?></h3>
+                        <p class="text-slate-400 text-sm mb-8 leading-relaxed line-clamp-2">Experience the best quality digital service with our most popular pick. Trusted by thousands of happy customers.</p>
+                        <a href="index.php?module=shop&page=product&id=<?php echo $f['id']; ?>" class="w-fit px-10 py-4 bg-blue-600 hover:bg-blue-500 text-white font-bold rounded-2xl transition-all shadow-xl shadow-blue-500/20 active:scale-95">
+                            View Product
                         </a>
                     </div>
                 </div>
@@ -304,15 +262,13 @@ if (is_logged_in()) {
                 <?php for($i=1; $i<min(3, count($best_sellers)); $i++): 
                     $p = $best_sellers[$i];
                 ?>
-                <a href="index.php?module=shop&page=product&id=<?php echo $p['id']; ?>" class="flex-1 bg-slate-900 border border-slate-700/50 rounded-3xl p-5 sm:p-6 group hover:border-blue-500/50 transition-all relative overflow-hidden">
-                    <div class="flex items-center gap-4">
-                        <div class="w-14 h-14 sm:w-16 sm:h-16 rounded-2xl bg-slate-800 border border-slate-700 overflow-hidden shrink-0">
-                            <img src="<?php echo BASE_URL . ($p['image_path'] ?: $p['cat_image']); ?>" class="w-full h-full object-cover grayscale group-hover:grayscale-0 transition-all duration-500">
-                        </div>
-                        <div>
-                            <h4 class="text-sm sm:text-base font-bold text-white mb-1 group-hover:text-blue-400 transition-colors"><?php echo htmlspecialchars($p['name']); ?></h4>
-                            <p class="text-[10px] text-slate-500 font-medium">Verified Product</p>
-                        </div>
+                <a href="index.php?module=shop&page=product&id=<?php echo $p['id']; ?>" class="flex-1 bg-slate-800/30 border border-white/5 rounded-[2rem] p-6 group hover:border-blue-500/30 transition-all flex items-center gap-6">
+                    <div class="w-20 h-20 rounded-2xl bg-slate-900 border border-white/5 overflow-hidden shrink-0 shadow-lg">
+                        <img src="<?php echo BASE_URL . ($p['image_path'] ?: $p['cat_image']); ?>" class="w-full h-full object-cover opacity-80 group-hover:opacity-100 transition-opacity">
+                    </div>
+                    <div class="min-w-0">
+                        <h4 class="text-white font-bold mb-1 truncate group-hover:text-blue-400 transition-colors"><?php echo htmlspecialchars($p['name']); ?></h4>
+                        <p class="text-slate-500 text-xs font-medium">Customer Favorite</p>
                     </div>
                 </a>
                 <?php endfor; ?>
@@ -363,47 +319,44 @@ if (is_logged_in()) {
     </div>
 
     <!-- SECTION 5: Recent Arrivals -->
-    <div class="mb-16">
-        <div class="flex flex-col sm:flex-row justify-between items-start sm:items-end mb-8 gap-3">
+    <div class="mb-20">
+        <div class="flex items-end justify-between mb-10">
             <div>
-                <h2 class="text-2xl sm:text-3xl md:text-4xl font-black text-white tracking-tight">Recent Arrivals</h2>
-                <p class="text-slate-400 text-sm font-medium">Check out our latest digital products</p>
+                <h2 class="text-2xl font-bold text-white tracking-tight">New Arrivals</h2>
+                <p class="text-slate-500 text-sm mt-2">Explore the latest additions to our store</p>
             </div>
-            <a href="index.php?module=shop&page=search" class="text-blue-400 hover:text-white text-sm font-black bg-blue-500/10 hover:bg-blue-600 px-5 py-3 rounded-xl border border-blue-500/20 uppercase tracking-widest transition-all w-full sm:w-auto text-center">
-                View All <i class="fas fa-arrow-right ml-2"></i>
+            <a href="index.php?module=shop&page=search" class="text-blue-400 hover:text-white text-sm font-bold transition flex items-center gap-2">
+                Browse All <i class="fas fa-arrow-right text-[10px]"></i>
             </a>
         </div>
-        <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-6">
+        <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-8">
             <?php foreach($recent_products as $product): 
                 include __DIR__ . '/product_card.php'; 
             endforeach; ?>
         </div>
     </div>
 
-    <!-- SECTION 6: Recent Sales (At Bottom) -->
-    <div class="bg-slate-900/60 backdrop-blur-xl border border-slate-700/50 rounded-3xl p-4 sm:p-6 md:p-8 shadow-2xl group mb-12">
-        <div class="flex items-center justify-between gap-4 mb-6">
-            <h3 class="text-lg font-black text-white flex items-center gap-3 uppercase tracking-wider">
-                <i class="fas fa-history text-blue-400"></i> Recent Sales
+    <!-- SECTION 6: Recent Activity -->
+    <div class="bg-slate-800/30 border border-white/5 rounded-[2.5rem] p-10">
+        <div class="flex items-center justify-between mb-10">
+            <h3 class="text-xl font-bold text-white flex items-center gap-4">
+                <i class="fas fa-shopping-bag text-blue-500"></i> Recent Purchases
             </h3>
-            <span class="text-[10px] text-green-400 font-mono font-bold bg-green-500/10 px-3 py-1 rounded-full border border-green-500/20">LIVE</span>
+            <span class="flex items-center gap-2 text-emerald-400 text-[10px] font-bold uppercase tracking-widest bg-emerald-500/10 px-3 py-1 rounded-full border border-emerald-500/20">
+                <span class="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse"></span> Live
+            </span>
         </div>
-        <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3 sm:gap-4" id="activityFeed">
+        <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6" id="activityFeed">
             <?php foreach($recent_activity as $act): 
                 $u_safe = substr($act['username'], 0, 1) . '***' . substr($act['username'], -1);
             ?>
-            <div class="flex items-center justify-between gap-3 sm:gap-4 p-3 sm:p-4 bg-slate-800/40 rounded-2xl border border-slate-700/30">
-                <div class="flex items-center gap-3 min-w-0">
-                    <div class="w-8 h-8 rounded-full bg-slate-900 flex items-center justify-center border border-slate-700 text-blue-400 shrink-0">
-                        <i class="fas fa-user text-xs"></i>
-                    </div>
-                    <div class="min-w-0">
-                        <p class="text-xs font-bold text-slate-200 truncate">Customer <span class="text-blue-400">@<?php echo $u_safe; ?></span></p>
-                        <p class="text-[10px] text-slate-500 truncate">Bought <b><?php echo htmlspecialchars($act['item_name']); ?></b></p>
-                    </div>
+            <div class="flex items-center gap-5 p-5 bg-slate-900/40 rounded-2xl border border-white/5">
+                <div class="w-10 h-10 rounded-full bg-slate-800 flex items-center justify-center text-slate-500 text-sm shrink-0">
+                    <i class="fas fa-user"></i>
                 </div>
-                <div class="text-right shrink-0">
-                    <span class="text-[9px] text-slate-600 font-mono"><?php echo date('H:i', strtotime($act['created_at'])); ?></span>
+                <div class="min-w-0">
+                    <p class="text-sm font-bold text-slate-200 truncate">Customer <span class="text-blue-400">@<?php echo $u_safe; ?></span></p>
+                    <p class="text-[11px] text-slate-500 mt-0.5 truncate">Purchased <b><?php echo htmlspecialchars($act['item_name']); ?></b></p>
                 </div>
             </div>
             <?php endforeach; ?>

@@ -284,108 +284,106 @@ if ($_SESSION['login_attempts'] >= 5 && time() < $_SESSION['login_lockout']) {
         .animation-delay-4000 { animation-delay: 4s; }
     </style>
 </head>
-<body class="flex items-center justify-center relative overflow-hidden px-4 py-8 md:p-4">
+<body class="flex items-center justify-center relative overflow-hidden px-4 py-12">
     
-    <!-- Animated Cyberpunk Background -->
-    <div class="fixed inset-0 w-full h-full bg-slate-950 -z-20"></div>
-    <div class="fixed top-0 -left-4 w-72 h-72 bg-blue-600 rounded-full mix-blend-multiply filter blur-[128px] opacity-40 animate-blob -z-10"></div>
-    <div class="fixed top-0 -right-4 w-72 h-72 bg-purple-600 rounded-full mix-blend-multiply filter blur-[128px] opacity-40 animate-blob animation-delay-2000 -z-10"></div>
-    <div class="fixed -bottom-8 left-20 w-72 h-72 bg-[#00f0ff] rounded-full mix-blend-multiply filter blur-[128px] opacity-20 animate-blob animation-delay-4000 -z-10"></div>
+    <!-- Background Effects -->
+    <div class="fixed inset-0 w-full h-full bg-[#0b0f1a] -z-20"></div>
+    <div class="fixed top-0 left-0 w-full h-full -z-10 opacity-30">
+        <div class="absolute top-[-10%] left-[-10%] w-[50%] h-[50%] bg-blue-600/20 rounded-full blur-[120px]"></div>
+        <div class="absolute bottom-[-10%] right-[-10%] w-[50%] h-[50%] bg-indigo-600/20 rounded-full blur-[120px]"></div>
+    </div>
 
-    <!-- Main Container -->
-    <div class="w-full max-w-md glass p-6 md:p-8 rounded-3xl relative z-10 w-full transform transition-all">
+    <!-- Container -->
+    <div class="w-full max-w-md space-y-10 relative z-10">
         
         <!-- Header -->
-        <div class="text-center mb-8">
-            <a href="index.php" class="inline-block mb-4 group">
-                <div class="w-16 h-16 bg-slate-900 border border-[#00f0ff]/30 rounded-2xl flex items-center justify-center mx-auto shadow-[0_0_15px_rgba(0,240,255,0.2)] group-hover:shadow-[0_0_25px_rgba(0,240,255,0.4)] transition duration-300">
-                    <i class="fas fa-bolt text-3xl text-[#00f0ff]"></i>
+        <div class="text-center">
+            <a href="index.php" class="inline-flex items-center gap-3 mb-8 group">
+                <div class="w-12 h-12 bg-blue-600 rounded-2xl flex items-center justify-center text-white shadow-lg transition-transform group-hover:rotate-12">
+                    <i class="fas fa-shopping-bag"></i>
                 </div>
+                <span class="text-2xl font-bold text-white">Digital<span class="text-blue-500">MM</span></span>
             </a>
-            <h2 class="text-3xl font-black tracking-tight text-white mb-1">Access Portal</h2>
-            <p class="text-slate-400 text-sm">Secure entry to DigitalMarketplaceMM</p>
+            <h2 class="text-3xl font-bold text-white tracking-tight">Welcome Back</h2>
+            <p class="text-slate-500 mt-3">Log in to your account to continue</p>
         </div>
         
-        <!-- Alerts -->
-        <?php if($error): ?>
-            <div class="bg-red-900/20 border border-red-500/50 text-red-400 p-4 rounded-xl mb-6 text-sm backdrop-blur-md shadow-lg">
-                <div class="flex items-start gap-3">
-                    <i class="fas fa-exclamation-triangle text-lg mt-0.5 shrink-0"></i>
-                    <span class="font-medium leading-snug"><?php echo htmlspecialchars($error); ?></span>
+        <div class="bg-slate-800/20 rounded-[2.5rem] p-8 md:p-10 border border-white/5 shadow-2xl backdrop-blur-xl">
+            <!-- Alerts -->
+            <?php if($error): ?>
+                <div class="bg-rose-500/10 border border-rose-500/20 text-rose-400 p-4 rounded-2xl mb-8 text-sm flex items-start gap-3">
+                    <i class="fas fa-exclamation-circle mt-0.5"></i>
+                    <span><?php echo htmlspecialchars($error); ?></span>
                 </div>
+            <?php endif; ?>
+
+            <?php if($success && !$show_verify_modal): ?>
+                <div class="bg-emerald-500/10 border border-emerald-500/20 text-emerald-400 p-4 rounded-2xl mb-8 text-sm flex items-start gap-3">
+                    <i class="fas fa-check-circle mt-0.5"></i>
+                    <span><?php echo $success; ?></span>
+                </div>
+            <?php endif; ?>
+
+            <!-- Social Login -->
+            <?php if(!empty($google_client_id)): ?>
+            <a href="<?php echo $google_login_url; ?>" class="w-full bg-white text-black font-bold py-4 px-4 rounded-2xl shadow-lg transition-all hover:bg-slate-100 active:scale-95 flex items-center justify-center gap-3 mb-8">
+                <img src="https://www.svgrepo.com/show/475656/google-color.svg" class="w-5 h-5" alt="Google">
+                <span class="text-sm">Continue with Google</span>
+            </a>
+
+            <div class="flex items-center gap-4 mb-8">
+                <div class="h-px bg-white/5 flex-1"></div>
+                <span class="text-[10px] text-slate-600 font-bold uppercase tracking-widest">or email</span>
+                <div class="h-px bg-white/5 flex-1"></div>
+            </div>
+            <?php endif; ?>
+
+            <!-- Form -->
+            <form method="POST" class="space-y-6">
+                <input type="hidden" name="csrf_token" value="<?php echo generate_csrf_token(); ?>">
                 
-                <?php if($unverified_email_attempt): ?>
-                    <div class="mt-4 pt-3 border-t border-red-500/30">
-                        <a href="index.php?module=auth&page=verify_resend&email=<?php echo urlencode($unverified_email_attempt); ?>" 
-                           class="block w-full bg-red-600 hover:bg-red-500 text-white text-center py-3 rounded-lg text-sm font-bold transition shadow-lg flex items-center justify-center gap-2">
-                           <i class="fas fa-paper-plane"></i> Dispatch New Code
-                        </a>
+                <div class="space-y-2">
+                    <label class="text-[10px] font-bold text-slate-500 uppercase tracking-widest ml-1">Email Address</label>
+                    <div class="relative">
+                        <input type="email" name="email" placeholder="name@example.com" required autocomplete="email"
+                               class="w-full bg-slate-900/40 border border-white/5 rounded-2xl py-4 pl-12 pr-4 text-white focus:border-blue-500 outline-none transition-all placeholder-slate-600">
+                        <i class="fas fa-envelope absolute left-4 top-1/2 -translate-y-1/2 text-slate-600 text-sm"></i>
                     </div>
-                <?php endif; ?>
-            </div>
-        <?php endif; ?>
+                </div>
 
-        <?php if($success && !$show_verify_modal): ?>
-            <div class="bg-green-900/20 border border-green-500/50 text-green-400 p-4 rounded-xl mb-6 text-sm flex items-center gap-3 backdrop-blur-md shadow-lg">
-                <i class="fas fa-shield-check text-xl shrink-0"></i>
-                <span class="font-medium leading-snug"><?php echo $success; ?></span>
-            </div>
-        <?php endif; ?>
+                <div class="space-y-2">
+                    <div class="flex justify-between items-center px-1">
+                        <label class="text-[10px] font-bold text-slate-500 uppercase tracking-widest">Password</label>
+                        <a href="index.php?module=auth&page=forgot_password" class="text-[10px] font-bold text-blue-500 hover:text-blue-400 uppercase tracking-widest">Forgot?</a>
+                    </div>
+                    <div class="relative">
+                        <input type="password" name="password" placeholder="••••••••" required autocomplete="current-password"
+                               class="w-full bg-slate-900/40 border border-white/5 rounded-2xl py-4 pl-12 pr-4 text-white focus:border-blue-500 outline-none transition-all placeholder-slate-600">
+                        <i class="fas fa-lock absolute left-4 top-1/2 -translate-y-1/2 text-slate-600 text-sm"></i>
+                    </div>
+                </div>
 
-        <!-- Google OAuth Button -->
-        <?php if(!empty($google_client_id)): ?>
-        <a href="<?php echo $google_login_url; ?>" class="w-full bg-slate-800 border border-slate-600 hover:border-slate-500 hover:bg-slate-700 text-white font-bold py-3.5 px-4 rounded-xl shadow-lg transition transform active:scale-[0.98] flex items-center justify-center gap-3 mb-6 group">
-            <img src="https://www.svgrepo.com/show/475656/google-color.svg" class="w-5 h-5 transition-transform group-hover:scale-110" alt="Google">
-            <span class="text-sm tracking-wide">Sync with Google</span>
-        </a>
+                <div class="flex items-center px-1">
+                    <label class="flex items-center gap-3 cursor-pointer group">
+                        <input type="checkbox" name="remember" class="w-5 h-5 rounded-lg border-white/10 bg-slate-900 text-blue-600 focus:ring-blue-500 focus:ring-offset-slate-900 transition-all">
+                        <span class="text-xs text-slate-500 group-hover:text-slate-300 transition-colors">Remember me</span>
+                    </label>
+                </div>
 
-        <!-- Divider -->
-        <div class="flex items-center gap-4 mb-6">
-            <div class="h-px bg-slate-700/80 flex-1"></div>
-            <span class="text-[10px] text-slate-500 uppercase font-black tracking-widest">Or standard login</span>
-            <div class="h-px bg-slate-700/80 flex-1"></div>
+                <button type="submit" class="w-full bg-blue-600 hover:bg-blue-500 text-white font-bold py-4 rounded-2xl shadow-lg shadow-blue-500/20 transition-all active:scale-95 flex justify-center items-center gap-2">
+                    <span>Sign In</span>
+                    <i class="fas fa-arrow-right text-xs"></i>
+                </button>
+            </form>
         </div>
-        <?php endif; ?>
 
-        <!-- Login Form -->
-        <form method="POST" class="space-y-5">
-            <input type="hidden" name="csrf_token" value="<?php echo generate_csrf_token(); ?>">
-            
-            <div class="input-group">
-                <input type="email" name="email" placeholder="Secure Comm (Email)" required autocomplete="email"
-                       class="input-field w-full bg-slate-900/60 border border-slate-600 rounded-xl py-4 text-white focus:border-[#00f0ff] outline-none placeholder-slate-500 backdrop-blur-sm">
-                <i class="fas fa-envelope input-icon"></i>
-            </div>
-
-            <div class="input-group">
-                <input type="password" name="password" placeholder="Password" required autocomplete="current-password"
-                       class="input-field w-full bg-slate-900/60 border border-slate-600 rounded-xl py-4 text-white focus:border-[#00f0ff] outline-none placeholder-slate-500 backdrop-blur-sm">
-                <i class="fas fa-lock input-icon"></i>
-            </div>
-
-            <div class="flex justify-between items-center px-1">
-                <label class="flex items-center gap-2 cursor-pointer select-none group">
-                    <div class="relative flex items-center">
-                        <input type="checkbox" name="remember" class="w-4 h-4 rounded border-slate-600 bg-slate-800 text-[#00f0ff] focus:ring-[#00f0ff] focus:ring-offset-slate-900 cursor-pointer transition">
-                    </div>
-                    <span class="text-xs text-slate-400 group-hover:text-white transition font-medium">Keep Connection</span>
-                </label>
-                <a href="index.php?module=auth&page=forgot_password" class="text-xs text-[#00f0ff] hover:text-white transition font-bold tracking-wide">Recover Key</a>
-            </div>
-
-            <button type="submit" class="w-full bg-gradient-to-r from-blue-600 to-[#00f0ff] hover:from-blue-500 hover:to-[#00f0ff] text-slate-900 font-black py-4 rounded-xl shadow-[0_0_20px_rgba(0,240,255,0.2)] hover:shadow-[0_0_30px_rgba(0,240,255,0.4)] transform transition active:scale-[0.98] text-sm uppercase tracking-widest mt-2 flex justify-center items-center gap-2">
-                <span>Initialize Login</span>
-                <i class="fas fa-sign-in-alt"></i>
-            </button>
-        </form>
-
-        <!-- Footer Links -->
-        <div class="mt-8 pt-6 border-t border-slate-700/50 text-center space-y-4">
-            <p class="text-sm text-slate-400 font-medium">
-                No identity yet? <a href="index.php?module=auth&page=register" class="text-[#00f0ff] font-bold hover:underline ml-1">Deploy New User</a>
+        <!-- Footer -->
+        <div class="text-center space-y-6">
+            <p class="text-sm text-slate-500">
+                Don't have an account? <a href="index.php?module=auth&page=register" class="text-blue-500 font-bold hover:underline">Sign up for free</a>
             </p>
-            <a href="index.php" class="inline-flex items-center gap-2 text-xs text-slate-500 hover:text-white transition group font-bold uppercase tracking-wider">
-                <i class="fas fa-home group-hover:-translate-x-1 transition-transform"></i> Return to Hub
+            <a href="index.php" class="inline-flex items-center gap-2 text-xs font-bold text-slate-600 hover:text-white transition uppercase tracking-widest">
+                <i class="fas fa-home"></i> Back to Home
             </a>
         </div>
     </div>

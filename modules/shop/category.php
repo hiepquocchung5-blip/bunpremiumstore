@@ -22,12 +22,11 @@ if ($cat_id > 0) {
     if (!$current_category) {
         echo "
         <div class='flex flex-col items-center justify-center min-h-[60vh] text-center px-4 relative'>
-            <div class='absolute inset-0 bg-red-500/10 blur-3xl rounded-full w-64 h-64 mx-auto'></div>
-            <i class='fas fa-database text-7xl mb-4 text-red-500 relative z-10 animate-pulse'></i>
-            <h2 class='text-3xl font-black text-white mb-2 relative z-10'>Sector Offline</h2>
-            <p class='text-slate-400 max-w-md mb-6 relative z-10'>The requested category matrix could not be located in the database.</p>
-            <a href='index.php' class='bg-gradient-to-r from-blue-600 to-[#00f0ff] hover:from-blue-500 hover:to-[#00f0ff] text-slate-900 font-black px-8 py-3 rounded-xl shadow-[0_0_20px_rgba(0,240,255,0.3)] transition transform hover:-translate-y-1 relative z-10'>
-                Return to Hub
+            <i class='fas fa-exclamation-circle text-7xl mb-6 text-rose-500 relative z-10'></i>
+            <h2 class='text-3xl font-bold text-white mb-4 relative z-10'>Category Not Found</h2>
+            <p class='text-slate-400 max-w-md mb-8 relative z-10'>The category you are looking for does not exist or has been removed.</p>
+            <a href='index.php' class='bg-blue-600 hover:bg-blue-500 text-white font-bold px-8 py-4 rounded-2xl transition-all shadow-lg active:scale-95'>
+                Return to Home
             </a>
         </div>";
         return;
@@ -35,10 +34,10 @@ if ($cat_id > 0) {
 } else {
     $current_category = [
         'id' => 0,
-        'name' => 'Global Store Network',
-        'type' => 'omni',
+        'name' => 'All Products',
+        'type' => 'Store',
         'image_url' => null,
-        'description' => 'Browse all active digital assets, trending items, and recommended nodes across every sector in the network.'
+        'description' => 'Browse our complete catalog of digital goods, subscriptions, and tools.'
     ];
 }
 
@@ -121,190 +120,151 @@ function get_page_url($page_num) {
 ?>
 
 <style>
-    @keyframes blob {
-        0% { transform: translate(0px, 0px) scale(1); }
-        33% { transform: translate(30px, -50px) scale(1.1); }
-        66% { transform: translate(-20px, 20px) scale(0.9); }
-        100% { transform: translate(0px, 0px) scale(1); }
-    }
-    .animate-blob { animation: blob 7s infinite; }
-    .animation-delay-2000 { animation-delay: 2s; }
-    .animation-delay-4000 { animation-delay: 4s; }
     .hide-scrollbar::-webkit-scrollbar { display: none; }
     .hide-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
 </style>
 
-<!-- Animated Background -->
-<div class="fixed inset-0 w-full h-full bg-slate-950 -z-20 pointer-events-none"></div>
-<div class="fixed top-0 -left-4 w-96 h-96 bg-blue-600 rounded-full mix-blend-multiply filter blur-[128px] opacity-20 animate-blob -z-10 pointer-events-none"></div>
-<div class="fixed top-40 -right-4 w-96 h-96 bg-[#00f0ff] rounded-full mix-blend-multiply filter blur-[128px] opacity-10 animate-blob animation-delay-2000 -z-10 pointer-events-none"></div>
+<!-- Background -->
+<div class="fixed inset-0 w-full h-full bg-[#0b0f1a] -z-20"></div>
+<div class="fixed top-0 left-0 w-full h-full -z-10 opacity-20 pointer-events-none">
+    <div class="absolute top-[-10%] left-[-10%] w-[50%] h-[50%] bg-blue-600/20 rounded-full blur-[120px]"></div>
+</div>
 
-<div class="max-w-7xl mx-auto px-4 relative z-0 pb-12">
+<div class="max-w-7xl mx-auto px-6 relative z-0 pb-16 pt-8">
     
     <!-- Breadcrumb Navigation -->
-    <div class="mb-4 flex items-center justify-between">
-        <div class="flex items-center gap-2 text-xs font-bold uppercase tracking-widest text-slate-500">
-            <a href="index.php" class="hover:text-[#00f0ff] transition flex items-center gap-1.5"><i class="fas fa-home"></i> Hub</a>
+    <div class="mb-8 flex items-center justify-between">
+        <div class="flex items-center gap-3 text-xs font-bold text-slate-500">
+            <a href="index.php" class="hover:text-blue-400 transition"><i class="fas fa-home"></i></a>
             <i class="fas fa-chevron-right text-[8px] opacity-50"></i>
-            <a href="index.php?module=shop&page=search" class="hover:text-[#00f0ff] transition hidden sm:inline">Store</a>
-            <i class="fas fa-chevron-right text-[8px] opacity-50 hidden sm:inline"></i>
-            <span class="text-[#00f0ff] truncate max-w-[150px] sm:max-w-none"><?php echo htmlspecialchars($current_category['name']); ?></span>
+            <span class="text-blue-400 truncate max-w-[200px] md:max-w-none"><?php echo htmlspecialchars($current_category['name']); ?></span>
         </div>
         
-        <button id="mobileSidebarToggle" class="lg:hidden bg-slate-800 border border-slate-700 text-white px-3 py-1.5 rounded-lg text-xs font-bold flex items-center gap-2 hover:bg-slate-700 transition">
-            <i class="fas fa-bars"></i> Directory
+        <button id="mobileSidebarToggle" class="lg:hidden bg-slate-800/50 border border-white/5 text-white px-4 py-2 rounded-xl text-xs font-bold flex items-center gap-2 hover:bg-slate-800 transition">
+            <i class="fas fa-filter"></i> Filters
         </button>
     </div>
 
-    <div class="grid grid-cols-1 lg:grid-cols-4 gap-6 lg:gap-8">
+    <div class="grid grid-cols-1 lg:grid-cols-4 gap-8">
         
         <!-- LEFT SIDEBAR -->
-        <div id="categorySidebar" class="hidden lg:block lg:col-span-1 space-y-6 z-40 fixed inset-0 lg:static lg:bg-transparent bg-slate-950/90 backdrop-blur-sm lg:backdrop-blur-none overflow-y-auto lg:overflow-visible hide-scrollbar pt-20 lg:pt-0 px-4 lg:px-0">
-            <div class="bg-slate-900/90 backdrop-blur-xl border border-slate-700/50 lg:rounded-2xl rounded-xl p-5 shadow-2xl lg:sticky lg:top-24 max-w-sm mx-auto lg:max-w-none">
-                <div class="flex items-center justify-between mb-4 border-b border-slate-700/50 pb-3">
-                    <h3 class="font-bold text-white flex items-center gap-2 text-sm uppercase tracking-widest">
-                        <i class="fas fa-network-wired text-[#00f0ff]"></i> Sector Directory
+        <div id="categorySidebar" class="hidden lg:block lg:col-span-1 z-40 fixed inset-0 lg:static bg-slate-950/90 backdrop-blur-md lg:bg-transparent lg:backdrop-blur-none overflow-y-auto lg:overflow-visible hide-scrollbar pt-24 lg:pt-0 px-6 lg:px-0">
+            
+            <div class="bg-slate-800/20 border border-white/5 rounded-[2rem] p-6 lg:sticky lg:top-24 max-w-sm mx-auto lg:max-w-none shadow-xl">
+                <div class="flex items-center justify-between mb-6 border-b border-white/5 pb-4">
+                    <h3 class="font-bold text-white text-sm uppercase tracking-widest">
+                        Categories
                     </h3>
-                    <button id="closeSidebarBtn" class="lg:hidden text-slate-400 hover:text-white"><i class="fas fa-times"></i></button>
+                    <button id="closeSidebarBtn" class="lg:hidden text-slate-500 hover:text-white transition"><i class="fas fa-times text-xl"></i></button>
                 </div>
                 
-                <ul class="space-y-1.5">
+                <ul class="space-y-2">
                     <li>
-                        <a href="index.php?module=shop&page=category" class="flex items-center justify-between p-3 rounded-xl transition-all duration-300 group <?php echo $cat_id == 0 ? 'bg-[#00f0ff]/10 border border-[#00f0ff]/30 shadow-[0_0_15px_rgba(0,240,255,0.05)]' : 'hover:bg-slate-800 border border-transparent'; ?>">
-                            <div class="flex items-center gap-3">
-                                <div class="w-8 h-8 rounded-lg flex items-center justify-center overflow-hidden <?php echo $cat_id == 0 ? 'bg-[#00f0ff] text-slate-900 shadow-[0_0_10px_rgba(0,240,255,0.5)]' : 'bg-slate-800 text-slate-400 group-hover:text-[#00f0ff] transition-colors'; ?>"><i class="fas fa-globe text-sm"></i></div>
-                                <span class="font-bold text-sm <?php echo $cat_id == 0 ? 'text-white' : 'text-slate-300 group-hover:text-white transition-colors'; ?>">All Products</span>
-                            </div>
+                        <a href="index.php?module=shop&page=category" class="flex items-center justify-between p-3 rounded-xl transition-all <?php echo $cat_id == 0 ? 'bg-blue-600 text-white' : 'text-slate-400 hover:bg-white/5 hover:text-white'; ?>">
+                            <span class="font-bold text-sm">All Products</span>
                         </a>
                     </li>
-                    <li class="my-2 border-b border-slate-700/50"></li>
                     <?php foreach($all_categories as $cat): ?>
                         <li>
-                            <a href="index.php?module=shop&page=category&id=<?php echo $cat['id']; ?>" class="flex items-center justify-between p-3 rounded-xl transition-all duration-300 group <?php echo $cat['id'] == $cat_id ? 'bg-[#00f0ff]/10 border border-[#00f0ff]/30 shadow-[0_0_15px_rgba(0,240,255,0.05)]' : 'hover:bg-slate-800 border border-transparent'; ?>">
-                                <div class="flex items-center gap-3">
-                                    <div class="w-8 h-8 rounded-lg flex items-center justify-center overflow-hidden <?php echo $cat['id'] == $cat_id ? 'bg-[#00f0ff] text-slate-900 shadow-[0_0_10px_rgba(0,240,255,0.5)]' : 'bg-slate-800 text-slate-400 group-hover:text-[#00f0ff] transition-colors'; ?>">
-                                        <?php if(!empty($cat['image_url'])): ?>
-                                            <img src="<?php echo BASE_URL . $cat['image_url']; ?>" alt="<?php echo htmlspecialchars($cat['name']); ?>" class="w-full h-full object-cover">
-                                        <?php else: ?><i class="fas fa-folder text-sm"></i><?php endif; ?>
-                                    </div>
-                                    <span class="font-bold text-sm <?php echo $cat['id'] == $cat_id ? 'text-white' : 'text-slate-300 group-hover:text-white transition-colors'; ?>"><?php echo htmlspecialchars($cat['name']); ?></span>
-                                </div>
-                                <span class="text-[10px] font-mono font-bold px-2 py-0.5 rounded <?php echo $cat['id'] == $cat_id ? 'bg-[#00f0ff]/20 text-[#00f0ff]' : 'bg-slate-800 text-slate-500'; ?>"><?php echo $cat['count']; ?></span>
+                            <a href="index.php?module=shop&page=category&id=<?php echo $cat['id']; ?>" class="flex items-center justify-between p-3 rounded-xl transition-all <?php echo $cat['id'] == $cat_id ? 'bg-blue-600 text-white' : 'text-slate-400 hover:bg-white/5 hover:text-white'; ?>">
+                                <span class="font-bold text-sm"><?php echo htmlspecialchars($cat['name']); ?></span>
+                                <span class="text-[10px] font-bold px-2 py-0.5 rounded-full <?php echo $cat['id'] == $cat_id ? 'bg-white/20 text-white' : 'bg-slate-800/50 text-slate-500'; ?>"><?php echo $cat['count']; ?></span>
                             </a>
                         </li>
                     <?php endforeach; ?>
                 </ul>
-
-                <?php if($discount == 0): ?>
-                    <div class="mt-6 p-4 rounded-xl bg-gradient-to-br from-yellow-900/40 to-yellow-600/10 border border-yellow-500/30 text-center relative overflow-hidden group">
-                        <div class="absolute -right-4 -top-4 w-16 h-16 bg-yellow-500/20 rounded-full blur-xl group-hover:bg-yellow-500/30 transition duration-500"></div>
-                        <i class="fas fa-crown text-yellow-500 text-2xl mb-2 relative z-10"></i>
-                        <h4 class="text-white font-bold text-sm relative z-10">Become an Agent</h4>
-                        <a href="index.php?module=user&page=agent" class="mt-3 inline-block w-full bg-yellow-500 hover:bg-yellow-400 text-slate-900 font-bold py-2 rounded-lg text-xs uppercase tracking-wider transition shadow-lg relative z-10">Learn More</a>
-                    </div>
-                <?php endif; ?>
             </div>
         </div>
 
         <!-- RIGHT MAIN -->
-        <div class="lg:col-span-3 space-y-6">
+        <div class="lg:col-span-3 space-y-8">
             
-            <!-- Dynamic Hero -->
-            <div class="relative rounded-2xl md:rounded-3xl overflow-hidden border border-[#00f0ff]/20 shadow-[0_10px_30px_rgba(0,0,0,0.5)] bg-slate-900/80 backdrop-blur-xl">
-                <div class="absolute inset-0 bg-[url('data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iNDAiIGhlaWdodD0iNDAiIHhtbG5zPSJodHRwOi8vd3d3LnczLm9yZy8yMDAwL3N2ZyI+PGRlZnM+PHBhdHRlcm4gaWQ9ImdyaWQiIHdpZHRoPSI0MCIgaGVpZ2h0PSI0MCIgcGF0dGVyblVuaXRzPSJ1c2VyU3BhY2VPblVzZSI+PHBhdGggZD0iTSAwIDEwIEwgNDAgMTAgTSAxMCAwIEwgMTAgNDAiIGZpbGw9Im5vbmUiIHN0cm9rZT0icmdiYSgwLCAyNDAsIDI1NSwgMC4wNSkiIHN0cm9rZS13aWR0aD0iMSIvPjwvcGF0dGVybj48L2RlZnM+PHJlY3Qgd2lkdGg9IjEwMCUiIGhlaWdodD0iMTAwJSIgZmlsbD0idXJsKCNncmlkKSIvPjwvc3ZnPg==')] opacity-50"></div>
-                <div class="absolute -right-10 -top-10 md:-right-20 md:-top-20 w-40 h-40 md:w-64 md:h-64 bg-[#00f0ff]/10 rounded-full blur-3xl pointer-events-none"></div>
-                
-                <div class="relative p-5 md:p-10 flex flex-col sm:flex-row items-center sm:items-start gap-4 md:gap-6 text-center sm:text-left">
-                    <div class="w-16 h-16 md:w-20 md:h-20 bg-slate-900 rounded-xl md:rounded-2xl flex items-center justify-center shadow-[0_0_20px_rgba(0,240,255,0.2)] border border-[#00f0ff]/40 shrink-0 relative overflow-hidden">
-                        <div class="absolute inset-0 bg-gradient-to-br from-blue-600/20 to-[#00f0ff]/20"></div>
-                        <?php if(!empty($current_category['image_url'])): ?>
-                            <img src="<?php echo BASE_URL . $current_category['image_url']; ?>" alt="<?php echo htmlspecialchars($current_category['name']); ?>" class="w-full h-full object-cover relative z-10">
-                        <?php else: ?>
-                            <i class="fas fa-folder text-3xl md:text-4xl text-[#00f0ff] relative z-10 drop-shadow-[0_0_10px_rgba(0,240,255,0.8)]"></i>
-                        <?php endif; ?>
-                    </div>
-                    <div class="flex-1">
-                        <div class="flex items-center justify-center sm:justify-start gap-2 md:gap-3 mb-2">
-                            <span class="text-[8px] md:text-[9px] font-black text-slate-500 uppercase tracking-widest bg-slate-950/50 px-2 py-0.5 rounded border border-slate-700/50"><?php echo htmlspecialchars($current_category['type']); ?> Matrix</span>
-                            <span class="text-[8px] md:text-[9px] font-black text-green-400 uppercase tracking-widest bg-green-500/10 px-2 py-0.5 rounded border border-green-500/30 flex items-center gap-1"><span class="w-1 h-1 md:w-1.5 md:h-1.5 rounded-full bg-green-500 animate-pulse"></span> Online</span>
-                        </div>
-                        <h1 class="text-2xl md:text-4xl font-black text-white mb-1 md:mb-2 tracking-tight"><?php echo htmlspecialchars($current_category['name']); ?></h1>
-                        <p class="text-slate-400 text-xs md:text-sm leading-relaxed max-w-2xl hidden sm:block"><?php echo htmlspecialchars($current_category['description']); ?></p>
-                    </div>
+            <!-- Category Header -->
+            <div class="bg-slate-800/20 border border-white/5 rounded-[2.5rem] p-8 md:p-12 shadow-xl flex flex-col md:flex-row items-center md:items-start gap-8 text-center md:text-left">
+                <div class="w-24 h-24 bg-slate-900 rounded-[1.5rem] flex items-center justify-center border border-white/10 shrink-0 overflow-hidden shadow-lg">
+                    <?php if(!empty($current_category['image_url'])): ?>
+                        <img src="<?php echo BASE_URL . $current_category['image_url']; ?>" alt="<?php echo htmlspecialchars($current_category['name']); ?>" class="w-full h-full object-cover">
+                    <?php else: ?>
+                        <i class="fas fa-layer-group text-4xl text-blue-400"></i>
+                    <?php endif; ?>
+                </div>
+                <div>
+                    <h1 class="text-3xl md:text-4xl font-bold text-white mb-3 tracking-tight"><?php echo htmlspecialchars($current_category['name']); ?></h1>
+                    <p class="text-slate-500 text-sm leading-relaxed max-w-2xl"><?php echo htmlspecialchars($current_category['description']); ?></p>
                 </div>
             </div>
 
             <!-- Global View Extras -->
             <?php if (!empty($trending_products)): ?>
-                <div class="mb-6 md:mb-8 pt-2 md:pt-4">
-                    <div class="flex items-center gap-2 md:gap-3 mb-4 md:mb-6">
-                        <div class="w-8 h-8 md:w-10 md:h-10 rounded-lg md:rounded-xl bg-orange-500/10 flex items-center justify-center border border-orange-500/20"><i class="fas fa-fire text-orange-500 text-base md:text-lg"></i></div>
-                        <h3 class="text-lg md:text-xl font-black text-white tracking-tight">Trending Nodes</h3>
+                <div class="mb-12">
+                    <div class="flex items-center gap-3 mb-6">
+                        <div class="w-10 h-10 rounded-xl bg-orange-500/10 flex items-center justify-center border border-orange-500/20"><i class="fas fa-fire text-orange-500 text-lg"></i></div>
+                        <h3 class="text-xl font-bold text-white tracking-tight">Trending Items</h3>
                     </div>
-                    <div class="flex overflow-x-auto pb-4 -mx-4 px-4 sm:mx-0 sm:px-0 sm:grid sm:grid-cols-2 xl:grid-cols-3 gap-4 md:gap-6 relative z-10 hide-scrollbar snap-x">
+                    <div class="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-8">
                         <?php foreach($trending_products as $product): ?>
-                            <div class="min-w-[260px] sm:min-w-0 snap-center"><?php include __DIR__ . '/../home/product_card.php'; ?></div>
+                            <?php include __DIR__ . '/../home/product_card.php'; ?>
                         <?php endforeach; ?>
                     </div>
                 </div>
             <?php endif; ?>
             
             <?php if(!empty($recommended_products)): ?>
-                <div class="mb-6 md:mb-10 border-t border-slate-700/50 pt-6 md:pt-8">
-                    <div class="flex items-center gap-2 md:gap-3 mb-4 md:mb-6">
-                        <div class="w-8 h-8 md:w-10 md:h-10 rounded-lg md:rounded-xl bg-yellow-500/10 flex items-center justify-center border border-yellow-500/20"><i class="fas fa-star text-yellow-400 text-base md:text-lg"></i></div>
-                        <h3 class="text-lg md:text-xl font-black text-white tracking-tight">Recommended Deals</h3>
+                <div class="mb-12 border-t border-white/5 pt-8">
+                    <div class="flex items-center gap-3 mb-6">
+                        <div class="w-10 h-10 rounded-xl bg-yellow-500/10 flex items-center justify-center border border-yellow-500/20"><i class="fas fa-star text-yellow-400 text-lg"></i></div>
+                        <h3 class="text-xl font-bold text-white tracking-tight">Recommended Deals</h3>
                     </div>
-                    <div class="flex overflow-x-auto pb-4 -mx-4 px-4 sm:mx-0 sm:px-0 sm:grid sm:grid-cols-2 xl:grid-cols-3 gap-4 md:gap-6 relative z-10 hide-scrollbar snap-x">
+                    <div class="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-8">
                         <?php foreach($recommended_products as $product): ?>
-                            <div class="min-w-[260px] sm:min-w-0 snap-center"><?php include __DIR__ . '/../home/product_card.php'; ?></div>
+                            <?php include __DIR__ . '/../home/product_card.php'; ?>
                         <?php endforeach; ?>
                     </div>
                 </div>
-                <div class="flex items-center gap-2 md:gap-3 mb-4 md:mb-6 border-t border-slate-700/50 pt-6 md:pt-8">
-                    <div class="w-8 h-8 md:w-10 md:h-10 rounded-lg md:rounded-xl bg-[#00f0ff]/10 flex items-center justify-center border border-[#00f0ff]/20"><i class="fas fa-layer-group text-[#00f0ff] text-base md:text-lg"></i></div>
-                    <h3 class="text-lg md:text-xl font-black text-white tracking-tight">All Active Deployments</h3>
+                <div class="flex items-center gap-3 mb-8 border-t border-white/5 pt-8">
+                    <div class="w-10 h-10 rounded-xl bg-blue-500/10 flex items-center justify-center border border-blue-500/20"><i class="fas fa-layer-group text-blue-400 text-lg"></i></div>
+                    <h3 class="text-xl font-bold text-white tracking-tight">All Products</h3>
                 </div>
             <?php endif; ?>
 
             <!-- Toolbar (Sorting, Filters & Meta) -->
-            <div class="bg-slate-900/60 backdrop-blur-md border border-slate-700/50 rounded-xl p-3 flex flex-col md:flex-row justify-between items-center gap-4 z-10 relative">
-                <p class="text-[10px] md:text-xs text-slate-400 font-medium">
-                    Showing <span class="text-white font-bold"><?php echo min($total_items, $offset + 1); ?> - <?php echo min($total_items, $offset + $items_per_page); ?></span> of <span class="text-[#00f0ff] font-bold"><?php echo $total_items; ?></span>
+            <div class="bg-slate-800/20 border border-white/5 rounded-2xl p-4 flex flex-col md:flex-row justify-between items-center gap-4 z-10 relative">
+                <p class="text-xs text-slate-400 font-medium">
+                    Showing <span class="text-white font-bold"><?php echo min($total_items, $offset + 1); ?> - <?php echo min($total_items, $offset + $items_per_page); ?></span> of <span class="text-blue-400 font-bold"><?php echo $total_items; ?></span>
                 </p>
                 
-                <form id="filterForm" method="GET" class="flex flex-wrap items-center justify-center gap-2 w-full md:w-auto">
+                <form id="filterForm" method="GET" class="flex flex-wrap items-center justify-center gap-3 w-full md:w-auto">
                     <input type="hidden" name="module" value="shop">
                     <input type="hidden" name="page" value="category">
                     <?php if($cat_id): ?><input type="hidden" name="id" value="<?php echo $cat_id; ?>"><?php endif; ?>
                     
-                    <select name="region" onchange="document.getElementById('filterForm').submit()" class="bg-slate-800 border border-slate-600 rounded-lg px-2 py-1.5 md:px-3 text-[10px] md:text-xs text-white focus:border-[#00f0ff] outline-none cursor-pointer appearance-none">
-                        <option value="0">Global Region</option>
+                    <select name="region" onchange="document.getElementById('filterForm').submit()" class="bg-slate-900 border border-white/10 rounded-xl px-4 py-2 text-xs text-white focus:border-blue-500 outline-none cursor-pointer appearance-none">
+                        <option value="0">All Regions</option>
                         <?php foreach($all_regions as $r): ?>
                             <option value="<?php echo $r['id']; ?>" <?php echo $region_filter == $r['id'] ? 'selected' : ''; ?>><?php echo htmlspecialchars($r['name']); ?></option>
                         <?php endforeach; ?>
                     </select>
 
-                    <select name="sort" onchange="document.getElementById('filterForm').submit()" class="bg-slate-800 border border-slate-600 rounded-lg px-2 py-1.5 md:px-3 text-[10px] md:text-xs text-white focus:border-[#00f0ff] outline-none cursor-pointer appearance-none">
-                        <option value="newest" <?php echo $sort == 'newest' ? 'selected' : ''; ?>>Newest</option>
-                        <option value="price_asc" <?php echo $sort == 'price_asc' ? 'selected' : ''; ?>>Price (Low-High)</option>
-                        <option value="price_desc" <?php echo $sort == 'price_desc' ? 'selected' : ''; ?>>Price (High-Low)</option>
-                        <option value="name_asc" <?php echo $sort == 'name_asc' ? 'selected' : ''; ?>>A-Z</option>
+                    <select name="sort" onchange="document.getElementById('filterForm').submit()" class="bg-slate-900 border border-white/10 rounded-xl px-4 py-2 text-xs text-white focus:border-blue-500 outline-none cursor-pointer appearance-none">
+                        <option value="newest" <?php echo $sort == 'newest' ? 'selected' : ''; ?>>Newest First</option>
+                        <option value="price_asc" <?php echo $sort == 'price_asc' ? 'selected' : ''; ?>>Price: Low to High</option>
+                        <option value="price_desc" <?php echo $sort == 'price_desc' ? 'selected' : ''; ?>>Price: High to Low</option>
+                        <option value="name_asc" <?php echo $sort == 'name_asc' ? 'selected' : ''; ?>>Name: A to Z</option>
                     </select>
                 </form>
             </div>
 
             <!-- Main Product Grid -->
             <?php if (empty($products)): ?>
-                <div class="glass p-8 md:p-12 rounded-2xl md:rounded-3xl text-center border border-slate-700/50 bg-slate-900/60 backdrop-blur-xl shadow-2xl relative z-10">
-                    <div class="w-16 h-16 md:w-24 md:h-24 bg-slate-800 rounded-full flex items-center justify-center mx-auto mb-4 md:mb-6 shadow-inner border border-slate-700">
-                        <i class="fas fa-ghost text-3xl md:text-5xl text-slate-600"></i>
+                <div class="bg-slate-800/20 p-12 md:p-20 rounded-[2.5rem] text-center border border-white/5 shadow-2xl relative z-10">
+                    <div class="w-24 h-24 bg-slate-900 rounded-full flex items-center justify-center mx-auto mb-6 shadow-inner border border-white/10 text-slate-700">
+                        <i class="fas fa-box-open text-4xl"></i>
                     </div>
-                    <h3 class="text-xl md:text-2xl font-black text-white mb-2 tracking-tight">Sector Empty</h3>
-                    <p class="text-slate-400 max-w-sm mx-auto mb-6 md:mb-8 text-xs md:text-sm leading-relaxed">No digital assets are currently active in this view with the selected filters.</p>
+                    <h3 class="text-2xl font-bold text-white mb-3 tracking-tight">No Products Found</h3>
+                    <p class="text-slate-500 max-w-sm mx-auto mb-8 text-sm leading-relaxed">There are currently no items available in this category with the selected filters.</p>
                 </div>
             <?php else: ?>
-                <div class="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-4 md:gap-6 relative z-10">
+                <div class="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-8 relative z-10">
                     <?php foreach($products as $product): ?>
                         <?php include __DIR__ . '/../home/product_card.php'; ?>
                     <?php endforeach; ?>
@@ -313,27 +273,27 @@ function get_page_url($page_num) {
 
             <!-- Pagination -->
             <?php if ($total_pages > 1): ?>
-                <div class="flex justify-center items-center gap-2 mt-10 relative z-10">
+                <div class="flex justify-center items-center gap-3 mt-16 relative z-10">
                     <?php if ($current_page > 1): ?>
-                        <a href="<?php echo get_page_url($current_page - 1); ?>" class="w-10 h-10 bg-slate-800 hover:bg-[#00f0ff] hover:text-slate-900 border border-slate-700 rounded-xl flex items-center justify-center text-slate-400 transition-colors shadow-lg"><i class="fas fa-chevron-left text-sm"></i></a>
+                        <a href="<?php echo get_page_url($current_page - 1); ?>" class="w-12 h-12 bg-slate-800/50 hover:bg-blue-600 border border-white/5 hover:border-transparent rounded-2xl flex items-center justify-center text-white transition-all shadow-lg"><i class="fas fa-chevron-left"></i></a>
                     <?php endif; ?>
                     
                     <div class="hidden sm:flex gap-2">
                         <?php for ($i = 1; $i <= $total_pages; $i++): ?>
                             <?php if ($i == 1 || $i == $total_pages || ($i >= $current_page - 1 && $i <= $current_page + 1)): ?>
-                                <a href="<?php echo get_page_url($i); ?>" class="w-10 h-10 <?php echo $i == $current_page ? 'bg-[#00f0ff] text-slate-900 font-black shadow-[0_0_15px_rgba(0,240,255,0.4)] border-transparent' : 'bg-slate-800 hover:bg-slate-700 text-white border border-slate-700 font-bold'; ?> rounded-xl flex items-center justify-center transition-all text-sm"><?php echo $i; ?></a>
+                                <a href="<?php echo get_page_url($i); ?>" class="w-12 h-12 <?php echo $i == $current_page ? 'bg-blue-600 text-white font-bold shadow-lg shadow-blue-500/20' : 'bg-slate-800/50 hover:bg-slate-700 text-slate-400 hover:text-white border border-white/5'; ?> rounded-2xl flex items-center justify-center transition-all text-sm"><?php echo $i; ?></a>
                             <?php elseif ($i == $current_page - 2 || $i == $current_page + 2): ?>
-                                <span class="w-10 h-10 flex items-center justify-center text-slate-500">...</span>
+                                <span class="w-12 h-12 flex items-center justify-center text-slate-600">...</span>
                             <?php endif; ?>
                         <?php endfor; ?>
                     </div>
                     
-                    <div class="sm:hidden flex items-center px-4 text-xs font-bold text-slate-400">
+                    <div class="sm:hidden flex items-center px-4 text-sm font-bold text-slate-400">
                         Page <?php echo $current_page; ?> of <?php echo $total_pages; ?>
                     </div>
 
                     <?php if ($current_page < $total_pages): ?>
-                        <a href="<?php echo get_page_url($current_page + 1); ?>" class="w-10 h-10 bg-slate-800 hover:bg-[#00f0ff] hover:text-slate-900 border border-slate-700 rounded-xl flex items-center justify-center text-slate-400 transition-colors shadow-lg"><i class="fas fa-chevron-right text-sm"></i></a>
+                        <a href="<?php echo get_page_url($current_page + 1); ?>" class="w-12 h-12 bg-slate-800/50 hover:bg-blue-600 border border-white/5 hover:border-transparent rounded-2xl flex items-center justify-center text-white transition-all shadow-lg"><i class="fas fa-chevron-right"></i></a>
                     <?php endif; ?>
                 </div>
             <?php endif; ?>
@@ -341,6 +301,7 @@ function get_page_url($page_num) {
         </div>
     </div>
 </div>
+
 
 <script>
     // Mobile Sidebar Toggle Logic

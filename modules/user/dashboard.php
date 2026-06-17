@@ -51,158 +51,149 @@ $stmt->execute([$user_id]);
 $recent_orders = $stmt->fetchAll();
 ?>
 
-<div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 animate-fade-in-down">
-    
-    <!-- Dashboard Header -->
-    <div class="flex flex-col md:flex-row md:items-center justify-between mb-8 gap-4">
+<div class="max-w-7xl mx-auto px-6 py-12">
+
+    <!-- Header -->
+    <div class="flex flex-col md:flex-row md:items-end justify-between mb-12 gap-8">
         <div>
-            <h1 class="text-3xl font-bold text-white tracking-tight flex items-center gap-3">
-                Overview <span class="h-2 w-2 rounded-full bg-[#00f0ff] shadow-[0_0_10px_#00f0ff] animate-pulse"></span>
-            </h1>
-            <p class="text-slate-400 mt-1">Welcome back, <span class="text-[#00f0ff] font-medium"><?php echo htmlspecialchars($user['full_name']); ?></span></p>
+            <h1 class="text-3xl md:text-5xl font-bold text-white tracking-tight">Account Overview</h1>
+            <p class="text-slate-500 mt-4 text-lg">Welcome back, <span class="text-blue-500 font-bold"><?php echo htmlspecialchars($user['full_name']); ?></span></p>
         </div>
-        <div class="flex gap-3">
-            <a href="index.php?module=shop&page=category" class="bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-500 hover:to-indigo-500 text-white px-5 py-2.5 rounded-xl font-bold text-sm shadow-lg shadow-blue-900/20 transition flex items-center gap-2">
-                <i class="fas fa-shopping-cart"></i> Browse Store
+        <div class="flex gap-4">
+            <a href="index.php?module=shop&page=search" class="bg-blue-600 hover:bg-blue-500 text-white px-8 py-3.5 rounded-2xl font-bold transition-all active:scale-95 shadow-lg shadow-blue-500/20">
+                Browse Store
             </a>
         </div>
     </div>
 
-    <!-- Stats Grid -->
-    <div class="grid grid-cols-1 md:grid-cols-2 gap-6 mb-8">
-        
-        <!-- Orders Card -->
-        <div class="bg-slate-900/60 backdrop-blur-xl border border-slate-700/50 rounded-2xl p-6 hover:border-blue-500/30 transition-all duration-300 group">
-            <div class="flex justify-between items-start mb-4">
-                <div class="w-10 h-10 rounded-lg bg-blue-500/10 flex items-center justify-center border border-blue-500/20 text-blue-400 group-hover:scale-110 transition">
-                    <i class="fas fa-box-open"></i>
-                </div>
+    <!-- Stats -->
+    <div class="grid grid-cols-1 md:grid-cols-2 gap-8 mb-12">
+        <div class="bg-slate-800/20 border border-white/5 p-8 rounded-[2.5rem] flex items-center justify-between group hover:border-blue-500/30 transition-all">
+            <div>
+                <p class="text-[10px] font-bold text-slate-500 uppercase tracking-widest mb-2">Total Orders</p>
+                <h3 class="text-4xl font-bold text-white"><?php echo $order_count; ?></h3>
             </div>
-            <h3 class="text-3xl font-bold text-white"><?php echo $order_count; ?></h3>
-            <p class="text-xs text-slate-400 mt-2">Total Orders Placed</p>
+            <div class="w-16 h-16 rounded-2xl bg-blue-500/10 flex items-center justify-center text-blue-400 text-2xl group-hover:scale-110 transition-transform">
+                <i class="fas fa-shopping-bag"></i>
+            </div>
         </div>
 
-        <!-- Referrals Card -->
-        <div class="bg-slate-900/60 backdrop-blur-xl border border-slate-700/50 rounded-2xl p-6 hover:border-purple-500/30 transition-all duration-300 group">
-            <div class="flex justify-between items-start mb-4">
-                <div class="w-10 h-10 rounded-lg bg-purple-500/10 flex items-center justify-center border border-purple-500/20 text-purple-400 group-hover:scale-110 transition">
-                    <i class="fas fa-users"></i>
-                </div>
-                <a href="index.php?module=user&page=referrals" class="text-xs text-purple-400 hover:text-purple-300 transition">View All <i class="fas fa-chevron-right text-[10px]"></i></a>
+        <div class="bg-slate-800/20 border border-white/5 p-8 rounded-[2.5rem] flex items-center justify-between group hover:border-emerald-500/30 transition-all">
+            <div>
+                <p class="text-[10px] font-bold text-slate-500 uppercase tracking-widest mb-2">Wallet Balance</p>
+                <h3 class="text-4xl font-bold text-emerald-400"><?php echo number_format($wallet_balance); ?> <span class="text-sm font-medium text-slate-500 ml-1">Ks</span></h3>
             </div>
-            <h3 class="text-3xl font-bold text-white"><?php echo $referral_count; ?></h3>
-            <p class="text-xs text-slate-400 mt-2">Active Referrals</p>
+            <div class="w-16 h-16 rounded-2xl bg-emerald-500/10 flex items-center justify-center text-emerald-400 text-2xl group-hover:scale-110 transition-transform">
+                <i class="fas fa-wallet"></i>
+            </div>
         </div>
     </div>
 
-    <!-- Recent Orders & Quick Actions -->
-    <div class="grid grid-cols-1 lg:grid-cols-3 gap-8">
-        
-        <!-- Recent Orders Table -->
-        <div class="lg:col-span-2 bg-slate-900/60 backdrop-blur-xl border border-slate-700/50 rounded-2xl overflow-hidden">
-            <div class="p-5 border-b border-slate-700/50 flex justify-between items-center bg-slate-800/30">
-                <h3 class="font-bold text-white flex items-center gap-2">
-                    <i class="fas fa-history text-slate-400"></i> Recent Orders
-                </h3>
-                <a href="index.php?module=user&page=orders" class="text-sm text-blue-400 hover:text-blue-300 transition">View All</a>
-            </div>
-            
-            <div class="overflow-x-auto">
-                <?php if (empty($recent_orders)): ?>
-                    <div class="text-center py-12">
-                        <div class="w-16 h-16 bg-slate-800 rounded-full flex items-center justify-center mx-auto mb-3">
-                            <i class="fas fa-ghost text-2xl text-slate-500"></i>
+    <!-- Main Grid -->
+    <div class="grid grid-cols-1 lg:grid-cols-12 gap-12">
+
+        <!-- Orders -->
+        <div class="lg:col-span-8 space-y-8">
+            <div class="bg-slate-800/20 rounded-[2.5rem] border border-white/5 overflow-hidden">
+                <div class="p-8 border-b border-white/5 flex justify-between items-center bg-white/5">
+                    <h3 class="font-bold text-white flex items-center gap-3">
+                        <i class="fas fa-history text-slate-500"></i> Recent Orders
+                    </h3>
+                    <a href="index.php?module=user&page=orders" class="text-sm font-bold text-blue-500 hover:text-blue-400">View All</a>
+                </div>
+
+                <div class="overflow-x-auto">
+                    <?php if (empty($recent_orders)): ?>
+                        <div class="p-20 text-center space-y-4">
+                            <div class="w-16 h-16 bg-slate-900 rounded-2xl flex items-center justify-center mx-auto text-slate-700 text-2xl">
+                                <i class="fas fa-box-open"></i>
+                            </div>
+                            <p class="text-slate-500 font-medium">No orders found yet.</p>
+                            <a href="index.php?module=shop&page=search" class="text-blue-500 font-bold hover:underline">Start shopping</a>
                         </div>
-                        <p class="text-slate-400 text-sm">No recent orders found.</p>
-                        <a href="index.php?module=shop&page=category" class="inline-block mt-3 text-sm text-[#00f0ff] hover:underline">Start shopping</a>
-                    </div>
-                <?php else: ?>
-                    <table class="w-full text-left text-sm">
-                        <thead class="bg-slate-900/80 text-slate-400 text-xs uppercase font-semibold">
-                            <tr>
-                                <th class="p-4 pl-6">Order ID</th>
-                                <th class="p-4">Product</th>
-                                <th class="p-4">Status</th>
-                                <th class="p-4 text-right pr-6">Amount</th>
-                            </tr>
-                        </thead>
-                        <tbody class="divide-y divide-slate-700/50">
-                            <?php foreach($recent_orders as $order): ?>
-                                <tr class="hover:bg-slate-800/50 transition cursor-pointer" onclick="window.location='index.php?module=user&page=orders&view_chat=<?php echo $order['id']; ?>'">
-                                    <td class="p-4 pl-6 font-mono text-slate-300">#<?php echo $order['id']; ?></td>
-                                    
-                                    <!-- FIXED: Uses $order['name'] instead of $order['title'] -->
-                                    <td class="p-4 text-white font-medium truncate max-w-[200px]"><?php echo htmlspecialchars($order['name']); ?></td>
-                                    
-                                    <td class="p-4">
-                                        <?php 
-                                            $statusColor = match($order['status']) {
-                                                'completed', 'active' => 'bg-green-500/10 text-green-400 border-green-500/20',
-                                                'pending' => 'bg-yellow-500/10 text-yellow-400 border-yellow-500/20',
-                                                'cancelled', 'rejected' => 'bg-red-500/10 text-red-400 border-red-500/20',
-                                                default => 'bg-slate-500/10 text-slate-400 border-slate-500/20'
-                                            };
-                                        ?>
-                                        <span class="px-2.5 py-1 rounded-md text-[10px] font-bold uppercase border <?php echo $statusColor; ?>">
-                                            <?php echo $order['status']; ?>
-                                        </span>
-                                    </td>
-                                    
-                                    <!-- FIXED: Uses $order['total_price_paid'] instead of $order['total_amount'] -->
-                                    <td class="p-4 text-right text-slate-300 font-mono pr-6">
-                                        <?php echo number_format($order['total_price_paid']); ?> Ks
-                                    </td>
+                    <?php else: ?>
+                        <table class="w-full text-left">
+                            <thead class="bg-slate-900/50 text-[10px] font-bold text-slate-500 uppercase tracking-widest">
+                                <tr>
+                                    <th class="px-8 py-5">Order ID</th>
+                                    <th class="px-8 py-5">Product</th>
+                                    <th class="px-8 py-5">Status</th>
+                                    <th class="px-8 py-5 text-right">Price</th>
                                 </tr>
-                            <?php endforeach; ?>
-                        </tbody>
-                    </table>
-                <?php endif; ?>
+                            </thead>
+                            <tbody class="divide-y divide-white/5">
+                                <?php foreach($recent_orders as $order): ?>
+                                    <tr class="hover:bg-white/5 transition-colors cursor-pointer" onclick="window.location='index.php?module=user&page=orders&view_chat=<?php echo $order['id']; ?>'">
+                                        <td class="px-8 py-6 font-mono text-xs text-slate-400">#<?php echo $order['id']; ?></td>
+                                        <td class="px-8 py-6 text-sm font-bold text-white truncate max-w-[200px]"><?php echo htmlspecialchars($order['name']); ?></td>
+                                        <td class="px-8 py-6">
+                                            <?php 
+                                                $statusClass = match($order['status']) {
+                                                    'completed', 'active' => 'bg-emerald-500/10 text-emerald-400 border-emerald-500/20',
+                                                    'pending' => 'bg-amber-500/10 text-amber-400 border-amber-500/20',
+                                                    'cancelled', 'rejected' => 'bg-rose-500/10 text-rose-400 border-rose-500/20',
+                                                    default => 'bg-slate-500/10 text-slate-400 border-slate-500/20'
+                                                };
+                                            ?>
+                                            <span class="px-3 py-1 rounded-lg text-[10px] font-bold uppercase tracking-widest border <?php echo $statusClass; ?>">
+                                                <?php echo $order['status']; ?>
+                                            </span>
+                                        </td>
+                                        <td class="px-8 py-6 text-right font-bold text-white text-sm">
+                                            <?php echo number_format($order['total_price_paid']); ?> <span class="text-[10px] text-slate-500">Ks</span>
+                                        </td>
+                                    </tr>
+                                <?php endforeach; ?>
+                            </tbody>
+                        </table>
+                    <?php endif; ?>
+                </div>
             </div>
         </div>
 
-        <!-- Quick Links / Actions -->
-        <div class="space-y-4">
-            <a href="index.php?module=user&page=profile" class="flex items-center justify-between p-4 bg-slate-900/60 backdrop-blur-xl border border-slate-700/50 rounded-2xl hover:bg-slate-800 transition group">
-                <div class="flex items-center gap-4">
-                    <div class="w-10 h-10 rounded-lg bg-slate-800 flex items-center justify-center text-slate-300 group-hover:text-white transition">
-                        <i class="fas fa-user-cog"></i>
+        <!-- Links -->
+        <div class="lg:col-span-4 space-y-6">
+            <a href="index.php?module=user&page=profile" class="flex items-center justify-between p-6 bg-slate-800/20 border border-white/5 rounded-3xl hover:bg-slate-800/40 transition-all group">
+                <div class="flex items-center gap-5">
+                    <div class="w-12 h-12 rounded-2xl bg-slate-900 flex items-center justify-center text-slate-500 group-hover:text-white transition-colors">
+                        <i class="fas fa-user-edit"></i>
                     </div>
                     <div>
-                        <h4 class="text-white font-medium text-sm">Account Settings</h4>
-                        <p class="text-xs text-slate-500">Update password & details</p>
+                        <h4 class="text-white font-bold text-sm">Edit Profile</h4>
+                        <p class="text-[10px] text-slate-500 uppercase font-bold tracking-widest mt-1">Manage details</p>
                     </div>
                 </div>
-                <i class="fas fa-chevron-right text-slate-600 group-hover:text-[#00f0ff] transition"></i>
+                <i class="fas fa-chevron-right text-slate-700 group-hover:text-blue-500 transition-colors"></i>
             </a>
 
-            <a href="index.php?module=user&page=wishlist" class="flex items-center justify-between p-4 bg-slate-900/60 backdrop-blur-xl border border-slate-700/50 rounded-2xl hover:bg-slate-800 transition group">
-                <div class="flex items-center gap-4">
-                    <div class="w-10 h-10 rounded-lg bg-rose-500/10 border border-rose-500/20 flex items-center justify-center text-rose-400 group-hover:scale-110 transition">
+            <a href="index.php?module=user&page=wishlist" class="flex items-center justify-between p-6 bg-slate-800/20 border border-white/5 rounded-3xl hover:bg-slate-800/40 transition-all group">
+                <div class="flex items-center gap-5">
+                    <div class="w-12 h-12 rounded-2xl bg-rose-500/10 flex items-center justify-center text-rose-500 group-hover:scale-110 transition-transform">
                         <i class="fas fa-heart"></i>
                     </div>
                     <div>
-                        <h4 class="text-white font-medium text-sm">My Wishlist</h4>
-                        <p class="text-xs text-slate-500">Saved premium items</p>
+                        <h4 class="text-white font-bold text-sm">My Wishlist</h4>
+                        <p class="text-[10px] text-slate-500 uppercase font-bold tracking-widest mt-1">Saved items</p>
                     </div>
                 </div>
-                <i class="fas fa-chevron-right text-slate-600 group-hover:text-rose-400 transition"></i>
+                <i class="fas fa-chevron-right text-slate-700 group-hover:text-rose-500 transition-colors"></i>
             </a>
 
-            <a href="index.php?module=info&page=support" class="flex items-center justify-between p-4 bg-slate-900/60 backdrop-blur-xl border border-slate-700/50 rounded-2xl hover:bg-slate-800 transition group">
-                <div class="flex items-center gap-4">
-                    <div class="w-10 h-10 rounded-lg bg-emerald-500/10 border border-emerald-500/20 flex items-center justify-center text-emerald-400 group-hover:scale-110 transition">
+            <a href="index.php?module=info&page=support" class="flex items-center justify-between p-6 bg-slate-800/20 border border-white/5 rounded-3xl hover:bg-slate-800/40 transition-all group">
+                <div class="flex items-center gap-5">
+                    <div class="w-12 h-12 rounded-2xl bg-indigo-500/10 flex items-center justify-center text-indigo-400 group-hover:scale-110 transition-transform">
                         <i class="fas fa-headset"></i>
                     </div>
                     <div>
-                        <h4 class="text-white font-medium text-sm">Support Center</h4>
-                        <p class="text-xs text-slate-500">Need help with an order?</p>
+                        <h4 class="text-white font-bold text-sm">Help Center</h4>
+                        <p class="text-[10px] text-slate-500 uppercase font-bold tracking-widest mt-1">Get support</p>
                     </div>
                 </div>
-                <i class="fas fa-chevron-right text-slate-600 group-hover:text-emerald-400 transition"></i>
+                <i class="fas fa-chevron-right text-slate-700 group-hover:text-indigo-500 transition-colors"></i>
             </a>
-            
-            <a href="index.php?module=auth&page=logout" class="flex items-center justify-center gap-2 p-4 mt-4 w-full bg-red-500/10 hover:bg-red-500/20 text-red-400 border border-red-500/20 rounded-2xl transition font-medium text-sm">
-                <i class="fas fa-sign-out-alt"></i> Secure Logout
+
+            <a href="index.php?module=auth&page=logout" class="flex items-center justify-center gap-3 p-5 mt-6 w-full bg-rose-500/5 hover:bg-rose-500/10 text-rose-500 border border-rose-500/10 rounded-3xl transition-all font-bold text-sm">
+                <i class="fas fa-power-off"></i> Logout
             </a>
         </div>
 

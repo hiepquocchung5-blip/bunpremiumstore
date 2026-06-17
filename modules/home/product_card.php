@@ -22,82 +22,62 @@ $product_url = "index.php?module=shop&page=product&id=" . $product['id'];
 ?>
 
 <!-- Entire Card is a Unified Anchor Tag -->
-<a href="<?php echo $product_url; ?>" class="glass-card block p-0 rounded-2xl overflow-hidden group hover:border-[#00f0ff]/50 transition-all duration-500 relative flex flex-col h-full bg-slate-900/80 border border-slate-700/50 shadow-[0_10px_30px_rgba(0,0,0,0.3)] hover:shadow-[0_15px_40px_rgba(0,240,255,0.2)] hover:-translate-y-2">
+<a href="<?php echo $product_url; ?>" class="block rounded-[2rem] overflow-hidden group hover:bg-slate-800/50 transition-all duration-500 flex flex-col h-full bg-slate-800/20 border border-white/5 hover:border-blue-500/30 shadow-xl hover:-translate-y-2 relative">
     
-    <!-- Hover Circuit Grid Background -->
-    <div class="absolute inset-0 bg-[url('data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMjAiIGhlaWdodD0iMjAiIHhtbG5zPSJodHRwOi8vd3d3LnczLm9yZy8yMDAwL3N2ZyI+PGNpcmNsZSBjeD0iMiIgY3k9IjIiIHI9IjEiIGZpbGw9InJnYmEoMCwgMjQwLCAyNTUsIDAuMSkiLz48L3N2Zz4=')] opacity-0 group-hover:opacity-100 transition-opacity duration-500 z-0 pointer-events-none"></div>
-
-    <!-- Ambient Corner Glow -->
-    <div class="absolute -top-12 -right-12 w-32 h-32 bg-[#00f0ff]/10 rounded-full blur-3xl group-hover:bg-[#00f0ff]/20 transition-colors duration-500 z-0 pointer-events-none"></div>
-
-    <!-- Badges Container -->
-    <div class="absolute top-4 right-4 flex flex-col gap-2 items-end z-20">
-        <?php if($product['sale_price']): ?>
-            <span class="bg-red-500/90 backdrop-blur-sm border border-red-400 text-white text-[10px] font-bold px-2.5 py-1 rounded-md shadow-[0_0_15px_rgba(239,68,68,0.5)] animate-pulse uppercase tracking-wide">
-                Flash Sale
-            </span>
+    <!-- Image / Icon Header -->
+    <div class="relative aspect-square overflow-hidden bg-slate-900">
+        <?php if($has_product_image): ?>
+            <img src="<?php echo BASE_URL . $product['image_path']; ?>" alt="<?php echo htmlspecialchars($product['name']); ?>" class="w-full h-full object-cover transition-transform duration-700 group-hover:scale-110" loading="lazy">
+        <?php elseif($has_cat_image): ?>
+            <img src="<?php echo BASE_URL . $product['cat_image']; ?>" alt="Category" class="w-full h-full object-cover transition-transform duration-700 group-hover:scale-110" loading="lazy">
+        <?php else: ?>
+            <div class="w-full h-full flex items-center justify-center text-4xl text-slate-700">
+                <i class="fas <?php echo htmlspecialchars($fallback_icon); ?>"></i>
+            </div>
         <?php endif; ?>
         
-        <?php if($discount > 0): ?>
-            <span class="bg-gradient-to-r from-yellow-500 to-yellow-600 text-slate-900 text-[10px] font-bold px-2.5 py-1 rounded-md shadow-lg flex items-center gap-1 uppercase tracking-wide">
-                <i class="fas fa-crown text-[9px]"></i> -<?php echo $discount; ?>%
-            </span>
-        <?php endif; ?>
+        <!-- Badges -->
+        <div class="absolute top-4 right-4 flex flex-col gap-2 items-end">
+            <?php if($product['sale_price']): ?>
+                <span class="bg-rose-500 text-white text-[10px] font-bold px-3 py-1 rounded-lg shadow-lg uppercase tracking-widest">Sale</span>
+            <?php endif; ?>
+            
+            <?php if($discount > 0): ?>
+                <span class="bg-amber-500 text-black text-[10px] font-bold px-3 py-1 rounded-lg shadow-lg uppercase tracking-widest">-<?php echo $discount; ?>%</span>
+            <?php endif; ?>
+        </div>
     </div>
 
     <!-- Card Body -->
-    <div class="p-4 sm:p-5 md:p-6 flex-grow flex flex-col relative z-10">
-        
-        <!-- Icon / Category Header -->
-        <div class="flex items-start justify-between mb-4">
-            <div class="w-12 h-12 sm:w-14 sm:h-14 bg-slate-800 rounded-xl flex items-center justify-center text-xl sm:text-2xl text-[#00f0ff] group-hover:scale-110 group-hover:shadow-[0_0_20px_rgba(0,240,255,0.3)] transition-all duration-500 border border-slate-600 shadow-inner overflow-hidden relative shrink-0">
-                <?php if($has_product_image): ?>
-                    <img src="<?php echo BASE_URL . $product['image_path']; ?>" alt="<?php echo htmlspecialchars($product['name']); ?>" class="w-full h-full object-cover" loading="lazy">
-                <?php elseif($has_cat_image): ?>
-                    <img src="<?php echo BASE_URL . $product['cat_image']; ?>" alt="Category" class="w-full h-full object-cover" loading="lazy">
-                <?php else: ?>
-                    <i class="fas <?php echo htmlspecialchars($fallback_icon); ?>"></i>
-                <?php endif; ?>
-            </div>
-            
-            <span class="text-[10px] font-bold text-slate-300 bg-slate-800/80 px-3 py-1 rounded-full border border-slate-600 shadow-sm mt-1">
-                <?php echo htmlspecialchars($product['cat_name'] ?? 'Unknown'); ?>
-            </span>
+    <div class="p-6 flex-grow flex flex-col">
+        <div class="flex items-center gap-2 mb-3">
+            <span class="text-[10px] font-bold text-slate-500 uppercase tracking-widest"><?php echo htmlspecialchars($product['cat_name'] ?? 'General'); ?></span>
         </div>
 
-        <!-- Title -->
-        <h3 class="text-base sm:text-lg md:text-xl font-bold text-white mb-2 line-clamp-2 group-hover:text-[#00f0ff] transition-colors duration-300 leading-tight">
+        <h3 class="text-white font-bold text-lg mb-3 line-clamp-2 group-hover:text-blue-400 transition-colors leading-tight">
             <?php echo htmlspecialchars($product['name']); ?>
         </h3>
         
-        <!-- Instruction Snippet (Simplified for Users) -->
-        <p class="text-xs text-slate-400 line-clamp-2 h-8 mb-6 leading-relaxed group-hover:text-slate-300 transition-colors">
-            <?php echo htmlspecialchars($product['user_instruction'] ?: "Instant secure delivery to your account upon purchase."); ?>
+        <p class="text-slate-500 text-xs line-clamp-2 mb-6 leading-relaxed">
+            <?php echo htmlspecialchars($product['user_instruction'] ?: "Fast and secure delivery to your account."); ?>
         </p>
         
-        <!-- Pricing & CTA Footer -->
-        <div class="mt-auto pt-4 border-t border-slate-700/50 flex items-end justify-between relative z-20">
-            <div>
-                <p class="text-[10px] text-slate-400 uppercase font-semibold tracking-wide mb-1">Price</p>
-                <div class="flex items-baseline gap-2">
-                    <span class="text-xl sm:text-2xl font-black tracking-tight <?php echo ($product['sale_price']||$discount>0)?'text-yellow-400 drop-shadow-[0_0_8px_rgba(234,179,8,0.4)]':'text-white'; ?>">
-                        <?php echo format_price($final_price); ?>
+        <!-- Footer -->
+        <div class="mt-auto pt-4 border-t border-white/5 flex items-center justify-between">
+            <div class="flex flex-col">
+                <span class="text-2xl font-bold <?php echo ($product['sale_price']||$discount>0)?'text-amber-400':'text-white'; ?>">
+                    <?php echo format_price($final_price); ?>
+                </span>
+                <?php if($product['sale_price'] || $discount > 0): ?>
+                    <span class="text-[10px] text-slate-500 line-through font-medium">
+                        <?php echo format_price($product['price']); ?>
                     </span>
-                    
-                    <?php if($product['sale_price'] || $discount > 0): ?>
-                        <span class="text-xs text-slate-500 line-through decoration-red-500/50 font-medium">
-                            <?php echo format_price($product['price']); ?>
-                        </span>
-                    <?php endif; ?>
-                </div>
+                <?php endif; ?>
             </div>
             
-            <!-- Animated Launch Button (User-Friendly CTA) -->
-            <span class="flex items-center gap-2 px-3 sm:px-4 py-2.5 bg-slate-800 text-slate-300 group-hover:bg-gradient-to-r group-hover:from-blue-600 group-hover:to-[#00f0ff] group-hover:text-slate-900 rounded-xl shadow-md transition-all duration-500 border border-slate-600 group-hover:border-transparent group-hover:shadow-[0_0_15px_rgba(0,240,255,0.5)] font-bold text-[10px] sm:text-xs shrink-0">
-                <span class="hidden sm:inline">Get It Now</span>
-                <span class="sm:hidden">Buy</span>
-                <i class="fas fa-arrow-right transform group-hover:rotate-[-45deg] group-hover:scale-110 transition-transform duration-500"></i>
-            </span>
+            <div class="w-10 h-10 rounded-full bg-slate-800 group-hover:bg-blue-600 flex items-center justify-center text-white transition-all transform group-hover:rotate-[-45deg]">
+                <i class="fas fa-arrow-right text-xs"></i>
+            </div>
         </div>
     </div>
 </a>

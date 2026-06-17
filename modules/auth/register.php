@@ -188,138 +188,143 @@ $google_login_url = "https://accounts.google.com/o/oauth2/v2/auth?response_type=
         }
     </style>
 </head>
-<body class="flex items-center justify-center relative overflow-x-hidden px-4 py-12 md:py-8 min-h-screen">
+<body class="flex items-center justify-center relative overflow-hidden px-4 py-12">
     
-    <div class="fixed inset-0 w-full h-full bg-slate-950 -z-20"></div>
-    <div class="fixed top-0 -left-4 w-72 h-72 bg-blue-600 rounded-full mix-blend-multiply filter blur-[128px] opacity-30 animate-blob -z-10"></div>
-    <div class="fixed top-0 -right-4 w-72 h-72 bg-[#00f0ff] rounded-full mix-blend-multiply filter blur-[128px] opacity-20 animate-blob animation-delay-2000 -z-10"></div>
-    <div class="fixed -bottom-8 left-20 w-72 h-72 bg-purple-600 rounded-full mix-blend-multiply filter blur-[128px] opacity-30 animate-blob animation-delay-4000 -z-10"></div>
+    <!-- Background Effects -->
+    <div class="fixed inset-0 w-full h-full bg-[#0b0f1a] -z-20"></div>
+    <div class="fixed top-0 left-0 w-full h-full -z-10 opacity-30">
+        <div class="absolute top-[-10%] left-[-10%] w-[50%] h-[50%] bg-blue-600/20 rounded-full blur-[120px]"></div>
+        <div class="absolute bottom-[-10%] right-[-10%] w-[50%] h-[50%] bg-indigo-600/20 rounded-full blur-[120px]"></div>
+    </div>
 
-    <div class="w-full max-w-xl glass p-6 md:p-10 rounded-3xl relative z-10 animate-fade-in-down border-t border-[#00f0ff]/30">
+    <!-- Container -->
+    <div class="w-full max-w-2xl space-y-10 relative z-10">
         
-        <div class="text-center mb-8">
-            <a href="index.php" class="inline-block mb-4 group">
-                <div class="w-16 h-16 bg-slate-900 border border-[#00f0ff]/30 rounded-2xl flex items-center justify-center mx-auto shadow-[0_0_15px_rgba(0,240,255,0.2)] group-hover:shadow-[0_0_25px_rgba(0,240,255,0.4)] transition duration-300">
-                    <i class="fas fa-satellite-dish text-3xl text-[#00f0ff]"></i>
+        <!-- Header -->
+        <div class="text-center">
+            <a href="index.php" class="inline-flex items-center gap-3 mb-8 group">
+                <div class="w-12 h-12 bg-blue-600 rounded-2xl flex items-center justify-center text-white shadow-lg transition-transform group-hover:rotate-12">
+                    <i class="fas fa-shopping-bag"></i>
                 </div>
+                <span class="text-2xl font-bold text-white">Digital<span class="text-blue-500">MM</span></span>
             </a>
-            <h2 class="text-3xl font-black tracking-tight text-white mb-1">Initialize Operative</h2>
-            <p class="text-slate-400 text-sm">Deploy your identity into the network</p>
+            <h2 class="text-3xl font-bold text-white tracking-tight">Create Account</h2>
+            <p class="text-slate-500 mt-3">Join our community and start shopping</p>
         </div>
         
-        <?php if($error): ?>
-            <div class="bg-red-900/20 border border-red-500/50 text-red-400 p-4 rounded-xl mb-6 text-sm backdrop-blur-md shadow-lg flex items-start gap-3">
-                <i class="fas fa-exclamation-triangle text-lg mt-0.5 shrink-0"></i>
-                <span class="font-medium leading-snug"><?php echo htmlspecialchars($error); ?></span>
+        <div class="bg-slate-800/20 rounded-[2.5rem] p-8 md:p-12 border border-white/5 shadow-2xl backdrop-blur-xl">
+            <!-- Alerts -->
+            <?php if($error): ?>
+                <div class="bg-rose-500/10 border border-rose-500/20 text-rose-400 p-4 rounded-2xl mb-8 text-sm flex items-start gap-3">
+                    <i class="fas fa-exclamation-circle mt-0.5"></i>
+                    <span><?php echo htmlspecialchars($error); ?></span>
+                </div>
+            <?php endif; ?>
+
+            <!-- Social Login -->
+            <?php if(!empty($google_client_id)): ?>
+            <a href="<?php echo $google_login_url; ?>" class="w-full bg-white text-black font-bold py-4 px-4 rounded-2xl shadow-lg transition-all hover:bg-slate-100 active:scale-95 flex items-center justify-center gap-3 mb-10">
+                <img src="https://www.svgrepo.com/show/475656/google-color.svg" class="w-5 h-5" alt="Google">
+                <span class="text-sm">Sign up with Google</span>
+            </a>
+
+            <div class="flex items-center gap-4 mb-10">
+                <div class="h-px bg-white/5 flex-1"></div>
+                <span class="text-[10px] text-slate-600 font-bold uppercase tracking-widest">or use email</span>
+                <div class="h-px bg-white/5 flex-1"></div>
             </div>
-        <?php endif; ?>
+            <?php endif; ?>
 
-        <!-- Google OAuth Button -->
-        <?php if(!empty($google_client_id)): ?>
-        <a href="<?php echo $google_login_url; ?>" class="w-full bg-slate-800 border border-slate-600 hover:border-slate-500 hover:bg-slate-700 text-white font-bold py-3.5 px-4 rounded-xl shadow-lg transition transform active:scale-[0.98] flex items-center justify-center gap-3 mb-6 group">
-            <img src="https://www.svgrepo.com/show/475656/google-color.svg" class="w-5 h-5 transition-transform group-hover:scale-110" alt="Google">
-            <span class="text-sm tracking-wide">Sign Up with Google</span>
-        </a>
-
-        <div class="flex items-center gap-4 mb-6">
-            <div class="h-px bg-slate-700/80 flex-1"></div>
-            <span class="text-[10px] text-slate-500 uppercase font-black tracking-widest">Or manual setup</span>
-            <div class="h-px bg-slate-700/80 flex-1"></div>
-        </div>
-        <?php endif; ?>
-
-        <!-- Form -->
-        <form method="POST" id="registerForm" class="space-y-5">
-            <input type="hidden" name="csrf_token" value="<?php echo generate_csrf_token(); ?>">
-            <input type="text" name="fax" class="visually-hidden" tabindex="-1" autocomplete="off">
-            
-            <div class="grid grid-cols-1 md:grid-cols-2 gap-5">
-                <div class="input-group">
-                    <input type="text" name="full_name" placeholder="Full Designation" required value="<?php echo htmlspecialchars($form_name); ?>"
-                           class="input-field w-full bg-slate-900/60 border border-slate-600 rounded-xl py-3.5 text-white focus:border-[#00f0ff] outline-none placeholder-slate-500 backdrop-blur-sm shadow-inner">
-                    <i class="fas fa-id-badge input-icon"></i>
-                </div>
-                <div class="input-group">
-                    <input type="text" name="username" placeholder="Handle (Username)" required value="<?php echo htmlspecialchars($form_user); ?>"
-                           class="input-field w-full bg-slate-900/60 border border-slate-600 rounded-xl py-3.5 text-white focus:border-[#00f0ff] outline-none placeholder-slate-500 backdrop-blur-sm shadow-inner">
-                    <i class="fas fa-at input-icon"></i>
-                </div>
-            </div>
-
-            <div class="grid grid-cols-1 md:grid-cols-2 gap-5">
-                <div class="input-group">
-                    <input type="email" name="email" placeholder="Secure Comm (Email)" required value="<?php echo htmlspecialchars($form_email); ?>"
-                           class="input-field w-full bg-slate-900/60 border border-slate-600 rounded-xl py-3.5 text-white focus:border-[#00f0ff] outline-none placeholder-slate-500 backdrop-blur-sm shadow-inner">
-                    <i class="fas fa-envelope input-icon"></i>
-                </div>
-
-                <div class="input-group">
-                    <input type="tel" name="phone" placeholder="Local Link (Optional Phone)" value="<?php echo htmlspecialchars($form_phone); ?>"
-                           class="input-field w-full bg-slate-900/60 border border-slate-600 rounded-xl py-3.5 text-white focus:border-[#00f0ff] outline-none placeholder-slate-500 backdrop-blur-sm shadow-inner">
-                    <i class="fas fa-phone-alt input-icon text-sm"></i>
-                </div>
-            </div>
-
-            <div class="grid grid-cols-1 md:grid-cols-2 gap-5">
-                <div class="input-group">
-                    <input type="password" name="password" id="password" placeholder="Master Password" required 
-                           class="input-field w-full bg-slate-900/60 border border-slate-600 rounded-xl py-3.5 text-white focus:border-[#00f0ff] outline-none placeholder-slate-500 backdrop-blur-sm pr-12 shadow-inner">
-                    <i class="fas fa-key input-icon"></i>
-                    <button type="button" id="togglePassword" class="absolute right-3 top-1/2 transform -translate-y-1/2 text-slate-400 hover:text-[#00f0ff] transition-colors duration-200 focus:outline-none">
-                        <i class="fas fa-eye"></i>
-                    </button>
-                </div>
-                <div class="input-group">
-                    <input type="password" name="confirm_password" id="confirm_password" placeholder="Verify Password" required 
-                           class="input-field w-full bg-slate-900/60 border border-slate-600 rounded-xl py-3.5 text-white focus:border-[#00f0ff] outline-none placeholder-slate-500 backdrop-blur-sm pr-12 shadow-inner">
-                    <i class="fas fa-check-double input-icon"></i>
-                    <button type="button" id="toggleConfirmPassword" class="absolute right-3 top-1/2 transform -translate-y-1/2 text-slate-400 hover:text-[#00f0ff] transition-colors duration-200 focus:outline-none">
-                        <i class="fas fa-eye"></i>
-                    </button>
-                </div>
-            </div>
-
-            <!-- Security Requirements -->
-            <div class="bg-slate-900/50 rounded-xl p-3 border border-slate-700 shadow-inner">
-                <div class="flex justify-between items-center mb-2 px-1">
-                    <span class="text-[10px] uppercase font-bold text-slate-500 tracking-widest">Password Strength</span>
-                    <span id="strengthText" class="text-[10px] font-bold text-slate-500 uppercase tracking-widest">Weak</span>
-                </div>
-                <div class="flex gap-1 h-1.5 mb-3">
-                    <div id="bar1" class="flex-1 rounded-full bg-slate-700 transition-colors duration-300"></div>
-                    <div id="bar2" class="flex-1 rounded-full bg-slate-700 transition-colors duration-300"></div>
-                    <div id="bar3" class="flex-1 rounded-full bg-slate-700 transition-colors duration-300"></div>
-                </div>
-                <div class="text-[10px] text-slate-500 flex flex-wrap justify-between gap-2 px-1 font-medium tracking-wide">
-                    <span id="len" class="flex items-center gap-1 transition-colors"><i class="fas fa-circle text-[5px]"></i> 8+ Chars</span>
-                    <span id="cap" class="flex items-center gap-1 transition-colors"><i class="fas fa-circle text-[5px]"></i> Uppercase</span>
-                    <span id="num" class="flex items-center gap-1 transition-colors"><i class="fas fa-circle text-[5px]"></i> Number</span>
-                </div>
-            </div>
-
-            <label class="flex items-start gap-3 cursor-pointer group mt-4 select-none px-1">
-                <div class="relative flex items-center pt-0.5">
-                    <input type="checkbox" name="terms" required class="peer sr-only">
-                    <div class="w-5 h-5 rounded border border-slate-600 bg-slate-900 peer-checked:bg-[#00f0ff] peer-checked:border-[#00f0ff] transition flex items-center justify-center">
-                        <i class="fas fa-check text-slate-900 text-xs opacity-0 peer-checked:opacity-100 transition transform scale-50 peer-checked:scale-100"></i>
+            <!-- Form -->
+            <form method="POST" id="registerForm" class="space-y-8">
+                <input type="hidden" name="csrf_token" value="<?php echo generate_csrf_token(); ?>">
+                <input type="text" name="fax" class="hidden" tabindex="-1" autocomplete="off">
+                
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                    <div class="space-y-2">
+                        <label class="text-[10px] font-bold text-slate-500 uppercase tracking-widest ml-1">Full Name</label>
+                        <input type="text" name="full_name" placeholder="John Doe" required value="<?php echo htmlspecialchars($form_name); ?>"
+                               class="w-full bg-slate-900/40 border border-white/5 rounded-2xl py-4 px-6 text-white focus:border-blue-500 outline-none transition-all placeholder-slate-600">
+                    </div>
+                    <div class="space-y-2">
+                        <label class="text-[10px] font-bold text-slate-500 uppercase tracking-widest ml-1">Username</label>
+                        <input type="text" name="username" placeholder="johndoe" required value="<?php echo htmlspecialchars($form_user); ?>"
+                               class="w-full bg-slate-900/40 border border-white/5 rounded-2xl py-4 px-6 text-white focus:border-blue-500 outline-none transition-all placeholder-slate-600">
                     </div>
                 </div>
-                <span class="text-xs text-slate-400 group-hover:text-white transition leading-snug">
-                    I acknowledge the <a href="index.php?module=info&page=terms" target="_blank" class="text-[#00f0ff] font-bold hover:underline">Terms of Service</a> & <a href="index.php?module=info&page=privacy" target="_blank" class="text-[#00f0ff] font-bold hover:underline">Privacy Policy</a>
-                </span>
-            </label>
 
-            <button type="submit" id="submitBtn" class="w-full bg-gradient-to-r from-blue-600 to-[#00f0ff] hover:from-blue-500 hover:to-[#00f0ff] text-slate-900 font-black py-4 rounded-xl shadow-[0_0_20px_rgba(0,240,255,0.2)] hover:shadow-[0_0_30px_rgba(0,240,255,0.4)] transform transition active:scale-[0.98] text-sm uppercase tracking-widest mt-6 flex justify-center items-center gap-2 group/btn relative overflow-hidden">
-                <span class="relative z-10 flex items-center gap-2" id="btnContent">
-                    Deploy Credentials <i class="fas fa-upload group-hover/btn:-translate-y-1 transition-transform"></i>
-                </span>
-            </button>
-        </form>
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                    <div class="space-y-2">
+                        <label class="text-[10px] font-bold text-slate-500 uppercase tracking-widest ml-1">Email Address</label>
+                        <input type="email" name="email" placeholder="name@example.com" required value="<?php echo htmlspecialchars($form_email); ?>"
+                               class="w-full bg-slate-900/40 border border-white/5 rounded-2xl py-4 px-6 text-white focus:border-blue-500 outline-none transition-all placeholder-slate-600">
+                    </div>
+                    <div class="space-y-2">
+                        <label class="text-[10px] font-bold text-slate-500 uppercase tracking-widest ml-1">Phone Number (Optional)</label>
+                        <input type="tel" name="phone" placeholder="09xxxxxxx" value="<?php echo htmlspecialchars($form_phone); ?>"
+                               class="w-full bg-slate-900/40 border border-white/5 rounded-2xl py-4 px-6 text-white focus:border-blue-500 outline-none transition-all placeholder-slate-600">
+                    </div>
+                </div>
 
-        <div class="mt-8 pt-6 border-t border-slate-700/50 text-center">
-            <p class="text-sm text-slate-400 font-medium">
-                Already registered? <a href="index.php?module=auth&page=login" class="text-[#00f0ff] font-bold hover:underline ml-1">Initiate Login</a>
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                    <div class="space-y-2 relative">
+                        <label class="text-[10px] font-bold text-slate-500 uppercase tracking-widest ml-1">Password</label>
+                        <input type="password" name="password" id="password" placeholder="••••••••" required 
+                               class="w-full bg-slate-900/40 border border-white/5 rounded-2xl py-4 px-6 text-white focus:border-blue-500 outline-none transition-all placeholder-slate-600">
+                        <button type="button" id="togglePassword" class="absolute right-4 top-11 text-slate-600 hover:text-blue-500 transition-colors">
+                            <i class="fas fa-eye"></i>
+                        </button>
+                    </div>
+                    <div class="space-y-2 relative">
+                        <label class="text-[10px] font-bold text-slate-500 uppercase tracking-widest ml-1">Confirm Password</label>
+                        <input type="password" name="confirm_password" id="confirm_password" placeholder="••••••••" required 
+                               class="w-full bg-slate-900/40 border border-white/5 rounded-2xl py-4 px-6 text-white focus:border-blue-500 outline-none transition-all placeholder-slate-600">
+                        <button type="button" id="toggleConfirmPassword" class="absolute right-4 top-11 text-slate-600 hover:text-blue-500 transition-colors">
+                            <i class="fas fa-eye"></i>
+                        </button>
+                    </div>
+                </div>
+
+                <!-- Strength -->
+                <div class="bg-slate-900/50 rounded-2xl p-5 border border-white/5 space-y-4">
+                    <div class="flex justify-between items-center">
+                        <span class="text-[10px] font-bold text-slate-500 uppercase tracking-widest">Strength</span>
+                        <span id="strengthText" class="text-[10px] font-bold text-slate-500 uppercase tracking-widest">Weak</span>
+                    </div>
+                    <div class="flex gap-2 h-1.5">
+                        <div id="bar1" class="flex-1 rounded-full bg-slate-800 transition-all duration-500"></div>
+                        <div id="bar2" class="flex-1 rounded-full bg-slate-800 transition-all duration-500"></div>
+                        <div id="bar3" class="flex-1 rounded-full bg-slate-800 transition-all duration-500"></div>
+                    </div>
+                </div>
+
+                <label class="flex items-start gap-4 cursor-pointer group select-none">
+                    <div class="relative flex items-center pt-0.5">
+                        <input type="checkbox" name="terms" required class="peer sr-only">
+                        <div class="w-6 h-6 rounded-lg border-2 border-slate-700 bg-slate-900 peer-checked:bg-blue-600 peer-checked:border-blue-600 transition-all flex items-center justify-center shadow-inner">
+                            <i class="fas fa-check text-white text-[10px] opacity-0 peer-checked:opacity-100 transition-opacity"></i>
+                        </div>
+                    </div>
+                    <span class="text-xs text-slate-500 group-hover:text-slate-300 transition-colors leading-relaxed">
+                        I agree to the <a href="index.php?module=info&page=terms" target="_blank" class="text-blue-500 font-bold hover:underline">Terms of Service</a> and <a href="index.php?module=info&page=privacy" target="_blank" class="text-blue-500 font-bold hover:underline">Privacy Policy</a>
+                    </span>
+                </label>
+
+                <button type="submit" id="submitBtn" class="w-full bg-blue-600 hover:bg-blue-500 text-white font-bold py-5 rounded-2xl shadow-lg shadow-blue-500/20 transition-all active:scale-[0.98] flex justify-center items-center gap-3 group/btn">
+                    <span id="btnContent">Create My Account</span>
+                    <i class="fas fa-arrow-right text-xs group-hover/btn:translate-x-1 transition-transform"></i>
+                </button>
+            </form>
+        </div>
+
+        <!-- Footer -->
+        <div class="text-center space-y-6">
+            <p class="text-sm text-slate-500">
+                Already have an account? <a href="index.php?module=auth&page=login" class="text-blue-500 font-bold hover:underline">Sign in</a>
             </p>
+            <a href="index.php" class="inline-flex items-center gap-2 text-xs font-bold text-slate-600 hover:text-white transition uppercase tracking-widest">
+                <i class="fas fa-home"></i> Back to Home
+            </a>
         </div>
     </div>
 

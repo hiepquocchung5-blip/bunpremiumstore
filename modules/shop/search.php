@@ -38,66 +38,63 @@ $discount = is_logged_in() ? get_user_discount($_SESSION['user_id']) : 0;
     .animation-delay-4000 { animation-delay: 4s; }
 </style>
 
-<!-- Animated Cyberpunk Background -->
-<div class="fixed inset-0 w-full h-full bg-slate-950 -z-20 pointer-events-none"></div>
-<div class="fixed top-0 -left-4 w-96 h-96 bg-[#00f0ff] rounded-full mix-blend-multiply filter blur-[128px] opacity-10 animate-blob -z-10 pointer-events-none"></div>
-<div class="fixed top-40 -right-4 w-96 h-96 bg-purple-600 rounded-full mix-blend-multiply filter blur-[128px] opacity-10 animate-blob animation-delay-2000 -z-10 pointer-events-none"></div>
+<!-- Background Effects -->
+<div class="fixed inset-0 w-full h-full bg-[#0b0f1a] -z-20"></div>
+<div class="fixed top-0 left-0 w-full h-full -z-10 opacity-20 pointer-events-none">
+    <div class="absolute top-[-10%] left-[-10%] w-[50%] h-[50%] bg-blue-600/20 rounded-full blur-[120px]"></div>
+</div>
 
-<div class="max-w-7xl mx-auto px-4 pb-12 relative z-10">
+<div class="max-w-7xl mx-auto px-6 pb-20 relative z-10">
 
     <!-- Search Header -->
-    <div class="mb-10 text-center relative pt-8 md:pt-12">
-        <div class="inline-block mb-4 relative group">
-            <div class="absolute inset-0 bg-[#00f0ff]/20 blur-xl rounded-full group-hover:bg-[#00f0ff]/40 transition duration-500"></div>
-            <div class="w-16 h-16 bg-slate-900 rounded-2xl flex items-center justify-center border border-[#00f0ff]/50 shadow-[0_0_20px_rgba(0,240,255,0.2)] relative z-10">
-                <i class="fas fa-search text-3xl text-[#00f0ff]"></i>
-            </div>
+    <div class="mb-12 text-center pt-12 md:pt-16">
+        <div class="inline-flex items-center justify-center w-16 h-16 bg-slate-800 rounded-[1.5rem] border border-white/5 shadow-xl mb-6 text-blue-400 text-2xl">
+            <i class="fas fa-search"></i>
         </div>
         
-        <h2 class="text-3xl md:text-5xl font-black text-white mb-4 tracking-tight">Database Query</h2>
-        <p class="text-slate-400 font-medium text-sm md:text-base">
-            Retrieved <span class="text-[#00f0ff] font-bold mx-1 bg-[#00f0ff]/10 px-2 py-0.5 rounded border border-[#00f0ff]/20"><?php echo count($results); ?></span> records matching <span class="text-white font-bold font-mono">"<?php echo htmlspecialchars($query); ?>"</span>
+        <h1 class="text-3xl md:text-5xl font-bold text-white mb-4 tracking-tight">Search Results</h1>
+        <p class="text-slate-500 font-medium">
+            Found <span class="text-white font-bold mx-1"><?php echo count($results); ?></span> items for <span class="text-blue-400 font-bold italic">"<?php echo htmlspecialchars($query); ?>"</span>
         </p>
     </div>
 
     <!-- Refine Search Bar -->
-    <div class="max-w-2xl mx-auto mb-12">
+    <div class="max-w-2xl mx-auto mb-16">
         <form action="index.php" method="GET" class="relative group">
             <input type="hidden" name="module" value="shop">
             <input type="hidden" name="page" value="search">
             
-            <div class="absolute inset-y-0 left-0 pl-5 flex items-center pointer-events-none">
-                <i class="fas fa-terminal text-[#00f0ff]/50 group-focus-within:text-[#00f0ff] transition-colors"></i>
-            </div>
-            
             <input type="text" name="q" value="<?php echo htmlspecialchars($query); ?>" 
-                   class="w-full bg-slate-900/80 border border-slate-700 focus:border-[#00f0ff] rounded-2xl py-4 pl-12 pr-32 text-white placeholder-slate-500 outline-none shadow-inner backdrop-blur-sm transition-all focus:shadow-[0_0_20px_rgba(0,240,255,0.15)] font-mono">
+                   class="w-full bg-slate-800/40 border border-white/5 focus:border-blue-500/50 rounded-2xl py-5 pl-6 pr-32 text-white placeholder-slate-600 outline-none shadow-2xl backdrop-blur-xl transition-all">
             
-            <button type="submit" class="absolute right-2 top-2 bottom-2 bg-gradient-to-r from-blue-600 to-[#00f0ff] hover:from-blue-500 hover:to-[#00f0ff] text-slate-900 font-black px-6 rounded-xl transition-all shadow-[0_0_15px_rgba(0,240,255,0.2)] transform active:scale-95 text-xs uppercase tracking-widest flex items-center gap-2">
-                <span class="hidden sm:inline">Execute</span> <i class="fas fa-arrow-right"></i>
+            <button type="submit" class="absolute right-2 top-2 bottom-2 bg-blue-600 hover:bg-blue-500 text-white font-bold px-8 rounded-xl transition-all active:scale-95 text-xs uppercase tracking-widest">
+                Search
             </button>
         </form>
     </div>
 
     <!-- Results Grid -->
     <?php if (empty($results)): ?>
-        <div class="glass p-10 md:p-14 rounded-3xl text-center border border-slate-700/50 bg-slate-900/60 backdrop-blur-xl shadow-2xl max-w-2xl mx-auto">
-            <div class="w-24 h-24 bg-slate-800 rounded-full flex items-center justify-center mx-auto mb-6 shadow-inner border border-slate-700">
-                <i class="fas fa-ghost text-5xl text-slate-600"></i>
+        <div class="bg-slate-800/20 border border-white/5 p-12 md:p-20 rounded-[2.5rem] text-center max-w-2xl mx-auto space-y-8 shadow-2xl">
+            <div class="w-20 h-20 bg-slate-900 rounded-full flex items-center justify-center mx-auto text-slate-700 text-3xl">
+                <i class="fas fa-search-minus"></i>
             </div>
-            <h3 class="text-2xl font-black text-white mb-3 tracking-tight">Null Reference</h3>
-            <p class="text-slate-400 max-w-sm mx-auto mb-8 text-sm leading-relaxed">No digital assets match your query parameter. Adjust your search logic or browse the master directory.</p>
-            <a href="index.php?module=shop&page=category" class="bg-slate-800 hover:bg-slate-700 border border-slate-600 text-white px-8 py-3.5 rounded-xl font-bold transition shadow-lg inline-flex items-center gap-2 uppercase tracking-widest text-sm">
-                <i class="fas fa-network-wired text-[#00f0ff]"></i> Access Directory
+            <div class="space-y-3">
+                <h3 class="text-2xl font-bold text-white">No items found</h3>
+                <p class="text-slate-500 max-w-sm mx-auto text-sm leading-relaxed">We couldn't find any products matching your search. Try different keywords or browse our categories.</p>
+            </div>
+            <a href="index.php?module=shop&page=category" class="inline-flex items-center gap-3 bg-white text-black font-bold px-8 py-4 rounded-2xl transition-all hover:scale-105 active:scale-95 shadow-xl">
+                Browse Categories
             </a>
         </div>
     <?php else: ?>
-        <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6 xl:gap-8">
+        <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-8">
             <?php foreach($results as $product): ?>
-                <!-- Reusing the master product card component -->
                 <?php include __DIR__ . '/../home/product_card.php'; ?>
             <?php endforeach; ?>
         </div>
     <?php endif; ?>
+
+</div>
 
 </div>

@@ -149,224 +149,182 @@ $has_cat_image = !empty($product['cat_image']);
     @keyframes fadeIn { from { opacity: 0; transform: translateY(5px); } to { opacity: 1; transform: translateY(0); } }
 </style>
 
-<div class="max-w-7xl mx-auto px-4 py-8">
+<div class="max-w-7xl mx-auto px-4 py-12">
     
-    <!-- Breadcrumb Navigation -->
-    <div class="mb-4 flex items-center justify-between">
-        <a href="index.php" class="inline-flex items-center gap-2 text-xs font-bold text-slate-500 hover:text-[#00f0ff] transition uppercase tracking-wider group">
-            <i class="fas fa-arrow-left group-hover:-translate-x-1 transition-transform"></i> Store Hub
+    <!-- Breadcrumbs -->
+    <div class="mb-8 flex items-center justify-between">
+        <a href="index.php" class="inline-flex items-center gap-2 text-sm font-bold text-slate-500 hover:text-white transition group">
+            <i class="fas fa-arrow-left group-hover:-translate-x-1 transition-transform"></i> Back to Store
         </a>
         
-        <!-- Quick Actions (Share) -->
-        <button onclick="shareProduct()" class="text-[10px] md:text-xs font-bold text-slate-500 hover:text-white transition uppercase tracking-wider flex items-center gap-2 bg-slate-800 px-3 py-1.5 rounded-lg border border-slate-700 hover:border-slate-500 shadow-sm">
-            <i class="fas fa-share-alt"></i> <span id="shareText">Share Node</span>
+        <button onclick="shareProduct()" class="text-xs font-bold text-slate-500 hover:text-white transition flex items-center gap-2 bg-slate-800/50 px-4 py-2 rounded-xl border border-white/5">
+            <i class="fas fa-share-alt"></i> <span id="shareText">Share</span>
         </button>
     </div>
 
-    <!-- MAIN GRID LAYOUT -->
-    <div class="grid grid-cols-1 lg:grid-cols-3 gap-6 lg:gap-8">
+    <div class="grid grid-cols-1 lg:grid-cols-12 gap-12">
         
-        <!-- LEFT: Main Content & Tabs -->
-        <div class="lg:col-span-2 space-y-6 lg:space-y-8">
+        <!-- Product Main -->
+        <div class="lg:col-span-8 space-y-12">
             
-            <!-- Hero Section -->
-            <div class="glass p-6 md:p-8 rounded-3xl border border-[#00f0ff]/20 shadow-[0_20px_50px_rgba(0,0,0,0.5)] bg-slate-900/80 backdrop-blur-xl relative overflow-hidden group">
+            <div class="bg-slate-800/20 rounded-[2.5rem] p-8 md:p-12 border border-white/5 flex flex-col md:flex-row gap-10">
                 
-                <!-- Dynamic Background -->
-                <div class="absolute inset-0 opacity-20 pointer-events-none bg-gradient-to-br from-blue-900 via-slate-900 to-slate-900"></div>
-                <div class="absolute inset-0 bg-[url('data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iNDAiIGhlaWdodD0iNDAiIHhtbG5zPSJodHRwOi8vd3d3LnczLm9yZy8yMDAwL3N2ZyI+PGRlZnM+PHBhdHRlcm4gaWQ9ImdyaWQiIHdpZHRoPSI0MCIgaGVpZ2h0PSI0MCIgcGF0dGVyblVuaXRzPSJ1c2VyU3BhY2VPblVzZSI+PHBhdGggZD0iTSAwIDEwIEwgNDAgMTAgTSAxMCAwIEwgMTAgNDAiIGZpbGw9Im5vbmUiIHN0cm9rZT0icmdiYSgwLCAyNDAsIDI1NSwgMC4wNSkiIHN0cm9rZS13aWR0aD0iMSIvPjwvcGF0dGVybj48L2RlZnM+PHJlY3Qgd2lkdGg9IjEwMCUiIGhlaWdodD0iMTAwJSIgZmlsbD0idXJsKCNncmlkKSIvPjwvc3ZnPg==')] opacity-30"></div>
-                <div class="absolute -right-20 -top-20 w-64 h-64 bg-[#00f0ff]/10 rounded-full blur-3xl pointer-events-none"></div>
-
-                <div class="flex flex-col md:flex-row gap-6 md:gap-8 relative z-10">
-                    
-                    <!-- Product Image Container -->
-                    <div class="shrink-0 mx-auto md:mx-0 relative">
+                <!-- Image -->
+                <div class="shrink-0">
+                    <div class="w-full md:w-64 aspect-square rounded-3xl overflow-hidden bg-slate-900 border border-white/10 shadow-2xl relative group">
                         <?php if($has_image): ?>
-                            <div class="w-48 h-48 md:w-56 md:h-56 rounded-2xl overflow-hidden shadow-[0_0_30px_rgba(0,240,255,0.2)] border border-[#00f0ff]/30 relative cursor-zoom-in hover:scale-105 transition-all duration-500" onclick="openLightbox(this.querySelector('img').src)">
-                                <img src="<?php echo $display_image; ?>" class="w-full h-full object-cover">
-                                <div class="absolute inset-0 bg-black/10 hover:bg-transparent transition duration-300"></div>
-                            </div>
+                            <img src="<?php echo $display_image; ?>" class="w-full h-full object-cover transition-transform duration-700 group-hover:scale-110">
                         <?php elseif($has_cat_image): ?>
-                            <div class="w-48 h-48 md:w-56 md:h-56 rounded-2xl overflow-hidden shadow-[0_0_30px_rgba(0,240,255,0.2)] border border-[#00f0ff]/30 relative cursor-zoom-in hover:scale-105 transition-all duration-500" onclick="openLightbox(this.querySelector('img').src)">
-                                <img src="<?php echo BASE_URL . $product['cat_image']; ?>" class="w-full h-full object-cover">
-                                <div class="absolute inset-0 bg-black/10 hover:bg-transparent transition duration-300"></div>
-                            </div>
+                            <img src="<?php echo BASE_URL . $product['cat_image']; ?>" class="w-full h-full object-cover transition-transform duration-700 group-hover:scale-110">
                         <?php else: ?>
-                            <div class="w-32 h-32 md:w-48 md:h-48 bg-slate-900 rounded-2xl flex items-center justify-center text-6xl text-[#00f0ff] shadow-[0_0_20px_rgba(0,240,255,0.1)] border border-slate-700 relative overflow-hidden">
-                                <div class="absolute inset-0 bg-gradient-to-br from-blue-600/20 to-[#00f0ff]/20"></div>
-                                <i class="fas fa-cube relative z-10 drop-shadow-[0_0_10px_rgba(0,240,255,0.5)]"></i>
+                            <div class="w-full h-full flex items-center justify-center text-6xl text-slate-700">
+                                <i class="fas fa-box"></i>
                             </div>
                         <?php endif; ?>
                         
-                        <!-- Floating Wishlist Button -->
                         <?php if(is_logged_in()): ?>
                             <a href="index.php?module=shop&page=product&id=<?php echo $product['id']; ?>&wishlist=<?php echo $in_wishlist ? 'remove' : 'add'; ?>" 
-                               class="absolute -top-3 -right-3 w-10 h-10 rounded-full flex items-center justify-center border transition-all duration-300 shadow-lg z-20 <?php echo $in_wishlist ? 'bg-rose-500 border-rose-400 text-white hover:bg-rose-600' : 'bg-slate-800 border-slate-600 text-slate-400 hover:text-white hover:border-slate-500 hover:bg-slate-700'; ?>"
-                               title="<?php echo $in_wishlist ? 'Remove from Wishlist' : 'Add to Wishlist'; ?>">
-                                <i class="<?php echo $in_wishlist ? 'fas' : 'far'; ?> fa-heart <?php echo $in_wishlist ? 'animate-pulse' : ''; ?>"></i>
+                               class="absolute top-4 right-4 w-10 h-10 rounded-full flex items-center justify-center border transition-all z-20 <?php echo $in_wishlist ? 'bg-rose-500 border-rose-400 text-white' : 'bg-slate-900/80 border-white/10 text-white/50 hover:text-white'; ?>">
+                                <i class="<?php echo $in_wishlist ? 'fas' : 'far'; ?> fa-heart"></i>
                             </a>
                         <?php endif; ?>
                     </div>
-                    
-                    <!-- Product Info -->
-                    <div class="flex-1 text-center md:text-left flex flex-col">
-                        <div class="mb-4">
-                            <div class="flex items-center justify-center md:justify-start gap-2 mb-3">
-                                <span class="inline-block text-[9px] font-black text-[#00f0ff] bg-[#00f0ff]/10 px-2.5 py-1 rounded-md border border-[#00f0ff]/20 uppercase tracking-widest">
-                                    <?php echo htmlspecialchars($product['cat_name']); ?>
-                                </span>
-                                <?php echo $stock_status_html; ?>
+                </div>
+                
+                <!-- Info -->
+                <div class="flex-1 space-y-6">
+                    <div>
+                        <div class="flex items-center gap-3 mb-4">
+                            <span class="px-3 py-1 bg-blue-500/10 text-blue-400 text-[10px] font-bold uppercase tracking-widest rounded-lg border border-blue-500/20">
+                                <?php echo htmlspecialchars($product['cat_name']); ?>
+                            </span>
+                            <?php echo $stock_status_html; ?>
+                        </div>
+                        <h1 class="text-3xl md:text-5xl font-bold text-white leading-tight tracking-tight"><?php echo htmlspecialchars($product['name']); ?></h1>
+                    </div>
+
+                    <div class="flex items-center gap-4 text-sm">
+                        <div class="flex text-amber-400 gap-1">
+                            <?php for($i=1; $i<=5; $i++) echo ($i <= $avg_rating) ? '<i class="fas fa-star text-xs"></i>' : '<i class="far fa-star text-xs text-slate-700"></i>'; ?>
+                        </div>
+                        <span class="font-bold text-white"><?php echo $avg_rating; ?></span>
+                        <span class="text-slate-600">|</span>
+                        <span class="text-slate-400"><?php echo count($reviews); ?> Reviews</span>
+                    </div>
+
+                    <div class="grid grid-cols-2 gap-4">
+                        <div class="bg-slate-900/40 p-4 rounded-2xl border border-white/5 flex items-center gap-4">
+                            <div class="w-10 h-10 rounded-xl bg-emerald-500/10 flex items-center justify-center text-emerald-400">
+                                <i class="fas <?php echo $product['delivery_type'] == 'unique' ? 'fa-bolt' : 'fa-clock'; ?>"></i>
                             </div>
-                            
-                            <h1 class="text-3xl md:text-4xl font-black text-white mb-3 tracking-tight leading-tight"><?php echo htmlspecialchars($product['name']); ?></h1>
-                            
-                            <div class="flex items-center justify-center md:justify-start gap-3 text-sm text-slate-400 mt-2">
-                                <div class="flex text-yellow-400 text-xs drop-shadow-[0_0_5px_rgba(234,179,8,0.5)]">
-                                    <?php for($i=1; $i<=5; $i++) echo ($i <= $avg_rating) ? '<i class="fas fa-star"></i>' : '<i class="far fa-star text-slate-600"></i>'; ?>
-                                </div>
-                                <span class="font-bold text-white"><?php echo $avg_rating; ?></span>
-                                <span class="w-1.5 h-1.5 bg-slate-600 rounded-full"></span>
-                                <span class="cursor-pointer hover:text-[#00f0ff] transition" onclick="switchTab('rev')"><?php echo count($reviews); ?> Reviews</span>
+                            <div>
+                                <p class="text-[9px] text-slate-500 font-bold uppercase tracking-widest mb-0.5">Delivery</p>
+                                <p class="text-xs text-white font-medium"><?php echo $product['delivery_type'] == 'unique' ? 'Instant' : '5-15 Mins'; ?></p>
                             </div>
                         </div>
-
-                        <!-- Delivery Features Banner -->
-                        <div class="mt-auto grid grid-cols-2 gap-3">
-                            <div class="bg-slate-900/60 p-3 rounded-xl border border-slate-700/50 flex items-center gap-3">
-                                <div class="w-8 h-8 rounded-lg bg-green-500/10 flex items-center justify-center text-green-400 shrink-0">
-                                    <i class="fas <?php echo $product['delivery_type'] == 'unique' ? 'fa-bolt' : 'fa-clock'; ?>"></i>
-                                </div>
-                                <div class="text-left">
-                                    <p class="text-[9px] md:text-[10px] text-slate-500 font-bold uppercase tracking-wider">Delivery Time</p>
-                                    <p class="text-xs text-white font-medium"><?php echo $product['delivery_type'] == 'unique' ? 'Instant Auto-Send' : '5-15 Mins (Manual)'; ?></p>
-                                </div>
+                        <div class="bg-slate-900/40 p-4 rounded-2xl border border-white/5 flex items-center gap-4">
+                            <div class="w-10 h-10 rounded-xl bg-indigo-500/10 flex items-center justify-center text-indigo-400">
+                                <i class="fas fa-shield-alt"></i>
                             </div>
-                            <div class="bg-slate-900/60 p-3 rounded-xl border border-slate-700/50 flex items-center gap-3">
-                                <div class="w-8 h-8 rounded-lg bg-purple-500/10 flex items-center justify-center text-purple-400 shrink-0">
-                                    <i class="fas fa-shield-alt"></i>
-                                </div>
-                                <div class="text-left">
-                                    <p class="text-[9px] md:text-[10px] text-slate-500 font-bold uppercase tracking-wider">Warranty</p>
-                                    <p class="text-xs text-white font-medium"><?php echo $product['duration_days'] ? $product['duration_days'].' Days Coverage' : 'Lifetime Valid'; ?></p>
-                                </div>
+                            <div>
+                                <p class="text-[9px] text-slate-500 font-bold uppercase tracking-widest mb-0.5">Warranty</p>
+                                <p class="text-xs text-white font-medium"><?php echo $product['duration_days'] ? $product['duration_days'].' Days' : 'Lifetime'; ?></p>
                             </div>
                         </div>
                     </div>
                 </div>
             </div>
 
-            <!-- Tabbed Content Section -->
-            <div class="glass rounded-3xl border border-slate-700 shadow-xl bg-slate-900/60 backdrop-blur-xl overflow-hidden">
-                <!-- Tab Headers -->
-                <div class="flex border-b border-slate-700/50 bg-slate-800/40 px-2 pt-2 overflow-x-auto no-scrollbar">
-                    <button onclick="switchTab('desc')" id="btn-tab-desc" class="px-5 py-3.5 text-xs md:text-sm font-black uppercase tracking-wider text-[#00f0ff] border-b-2 border-[#00f0ff] transition-all whitespace-nowrap">
-                        Overview
+            <!-- Content Tabs -->
+            <div class="bg-slate-800/20 rounded-[2.5rem] border border-white/5 overflow-hidden">
+                <div class="flex border-b border-white/5 bg-white/5 px-4 pt-4 overflow-x-auto no-scrollbar">
+                    <button onclick="switchTab('desc')" id="btn-tab-desc" class="px-8 py-4 text-sm font-bold border-b-2 border-blue-500 text-white transition-all whitespace-nowrap">
+                        Description
                     </button>
-                    <button onclick="switchTab('inst')" id="btn-tab-inst" class="px-5 py-3.5 text-xs md:text-sm font-bold uppercase tracking-wider text-slate-400 border-b-2 border-transparent hover:text-white transition-all whitespace-nowrap">
-                        Protocol Guide
+                    <button onclick="switchTab('inst')" id="btn-tab-inst" class="px-8 py-4 text-sm font-bold border-b-2 border-transparent text-slate-500 hover:text-white transition-all whitespace-nowrap">
+                        How to Use
                     </button>
-                    <button onclick="switchTab('rev')" id="btn-tab-rev" class="px-5 py-3.5 text-xs md:text-sm font-bold uppercase tracking-wider text-slate-400 border-b-2 border-transparent hover:text-white transition-all whitespace-nowrap">
-                        Comms (<?php echo count($reviews); ?>)
+                    <button onclick="switchTab('rev')" id="btn-tab-rev" class="px-8 py-4 text-sm font-bold border-b-2 border-transparent text-slate-500 hover:text-white transition-all whitespace-nowrap">
+                        Reviews (<?php echo count($reviews); ?>)
                     </button>
                 </div>
 
-                <!-- Tab Contents -->
-                <div class="p-5 md:p-8">
-                    
-                    <!-- Description Tab -->
-                    <div id="tab-desc" class="tab-content active text-slate-300 text-sm leading-relaxed space-y-4">
-                        <?php echo nl2br(htmlspecialchars($product['description'] ?? "No extended data provided for this sector. Standard operational protocols apply.")); ?>
+                <div class="p-8 md:p-12">
+                    <!-- Description -->
+                    <div id="tab-desc" class="tab-content active text-slate-400 text-sm leading-relaxed space-y-4">
+                        <?php echo nl2br(htmlspecialchars($product['description'] ?: "Detailed information for this product is coming soon.")); ?>
                     </div>
 
-                    <!-- Instructions Tab -->
-                    <div id="tab-inst" class="tab-content">
+                    <!-- Instructions -->
+                    <div id="tab-inst" class="tab-content hidden">
                         <?php if($product['user_instruction']): ?>
-                            <div class="flex items-start gap-4 text-sm text-yellow-200/90 bg-gradient-to-r from-yellow-900/40 to-yellow-600/10 p-5 rounded-2xl border border-yellow-500/30 shadow-inner mb-6">
-                                <div class="w-10 h-10 rounded-full bg-yellow-500/20 flex items-center justify-center shrink-0">
-                                    <i class="fas fa-exclamation-triangle text-yellow-500 text-lg animate-pulse"></i>
+                            <div class="bg-amber-500/5 p-6 rounded-3xl border border-amber-500/20 mb-8">
+                                <div class="flex gap-4">
+                                    <i class="fas fa-info-circle text-amber-500 mt-1"></i>
+                                    <div>
+                                        <h4 class="font-bold text-amber-500 mb-2">Important Note</h4>
+                                        <p class="text-sm text-slate-400 leading-relaxed"><?php echo htmlspecialchars($product['user_instruction']); ?></p>
+                                    </div>
                                 </div>
-                                <div class="pt-1">
-                                    <h4 class="font-bold text-yellow-400 mb-1 uppercase tracking-wider text-xs">Crucial Directive</h4>
-                                    <p class="font-medium leading-relaxed"><?php echo htmlspecialchars($product['user_instruction']); ?></p>
-                                </div>
-                            </div>
-                        <?php else: ?>
-                            <div class="text-center py-8 text-slate-500">
-                                <i class="fas fa-check-circle text-4xl mb-3 opacity-30 text-green-500"></i>
-                                <p>Standard usage protocol. No special instructions required.</p>
                             </div>
                         <?php endif; ?>
                         
-                        <div class="bg-slate-800/50 rounded-xl p-5 border border-slate-700">
-                            <h4 class="font-bold text-white mb-3 text-xs uppercase tracking-widest"><i class="fas fa-truck-loading text-blue-400 mr-2"></i> How you receive this</h4>
+                        <div class="bg-slate-900/40 rounded-2xl p-6 border border-white/5">
+                            <h4 class="font-bold text-white mb-4 text-xs uppercase tracking-widest">Delivery Process</h4>
                             <p class="text-sm text-slate-400 leading-relaxed">
                                 <?php 
-                                    if($product['delivery_type'] == 'unique') echo "Upon payment verification, a unique digital key will be instantly dispatched to your secure Order Chat.";
-                                    elseif($product['delivery_type'] == 'form') echo "You will provide necessary target details during checkout. An admin will process the injection manually.";
-                                    else echo "Standard operational data will be delivered to your Order Chat post-verification.";
+                                    if($product['delivery_type'] == 'unique') echo "After payment, your unique digital key will be sent instantly to your Order Chat.";
+                                    elseif($product['delivery_type'] == 'form') echo "Please provide the required details during checkout. Our team will process it manually.";
+                                    else echo "Your product details will be delivered to your Order Chat after verification.";
                                 ?>
                             </p>
                         </div>
                     </div>
 
-                    <!-- Reviews Tab -->
-                    <div id="tab-rev" class="tab-content">
-                        <?php if(isset($success)) echo "<div class='bg-green-500/10 text-green-400 p-4 rounded-xl mb-6 text-sm font-medium border border-green-500/30 flex items-center gap-3 shadow-lg'><i class='fas fa-shield-check text-lg'></i> $success</div>"; ?>
-                        <?php if(isset($error)) echo "<div class='bg-red-500/10 text-red-400 p-4 rounded-xl mb-6 text-sm font-medium border border-red-500/30 flex items-center gap-3 shadow-lg'><i class='fas fa-exclamation-triangle text-lg'></i> $error</div>"; ?>
-
+                    <!-- Reviews -->
+                    <div id="tab-rev" class="tab-content hidden space-y-10">
                         <?php if(is_logged_in()): ?>
-                            <form method="POST" class="mb-10 p-5 md:p-6 bg-slate-800/50 rounded-2xl border border-slate-700 transition focus-within:border-[#00f0ff]/50 shadow-inner">
+                            <form method="POST" class="bg-slate-900/40 p-8 rounded-3xl border border-white/5 space-y-6">
                                 <input type="hidden" name="csrf_token" value="<?php echo generate_csrf_token(); ?>">
-                                <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-4">
-                                    <span class="text-sm font-bold text-slate-300 uppercase tracking-wider">Evaluate Sector</span>
-                                    <div class="flex flex-row-reverse justify-end gap-2 group">
+                                <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+                                    <span class="text-sm font-bold text-white">Write a Review</span>
+                                    <div class="flex flex-row-reverse gap-2">
                                         <?php for($i=5; $i>=1; $i--): ?>
                                             <input type="radio" name="rating" value="<?php echo $i; ?>" id="star<?php echo $i; ?>" class="peer hidden" required>
-                                            <label for="star<?php echo $i; ?>" class="cursor-pointer text-slate-600 peer-checked:text-yellow-400 hover:text-yellow-400 peer-hover:text-yellow-400 transition-colors text-xl md:text-2xl drop-shadow-md"><i class="fas fa-star"></i></label>
+                                            <label for="star<?php echo $i; ?>" class="cursor-pointer text-slate-800 peer-checked:text-amber-400 hover:text-amber-400 transition-colors text-2xl"><i class="fas fa-star"></i></label>
                                         <?php endfor; ?>
                                     </div>
                                 </div>
-                                <textarea name="comment" rows="3" placeholder="Transmit your experience..." required class="w-full bg-slate-900/80 border border-slate-600 rounded-xl p-4 text-white text-sm focus:border-[#00f0ff] focus:ring-1 focus:ring-[#00f0ff] outline-none transition-all placeholder-slate-500 resize-none shadow-inner"></textarea>
-                                <div class="flex justify-end mt-4">
-                                    <button type="submit" name="submit_review" class="bg-gradient-to-r from-blue-600 to-[#00f0ff] hover:from-blue-500 hover:to-[#00f0ff] text-slate-900 px-6 py-3 rounded-xl text-sm font-black transition-all shadow-[0_0_15px_rgba(0,240,255,0.3)] transform active:scale-95 flex items-center gap-2 uppercase tracking-widest">
-                                        <span>Transmit</span> <i class="fas fa-satellite-dish"></i>
-                                    </button>
+                                <textarea name="comment" rows="3" placeholder="Share your experience with this product..." required class="w-full bg-slate-800/50 border border-white/10 rounded-2xl p-4 text-white text-sm focus:border-blue-500 outline-none transition-all placeholder-slate-600"></textarea>
+                                <div class="flex justify-end">
+                                    <button type="submit" name="submit_review" class="bg-blue-600 hover:bg-blue-500 text-white px-8 py-3 rounded-xl font-bold transition-all active:scale-95">Post Review</button>
                                 </div>
                             </form>
-                        <?php else: ?>
-                            <div class="mb-10 p-8 bg-slate-800/30 rounded-2xl border border-slate-700 border-dashed text-center">
-                                <i class="fas fa-lock text-3xl text-slate-600 mb-3"></i>
-                                <p class="text-slate-400 text-sm mb-4">Authentication required to transmit feedback.</p>
-                                <a href="index.php?module=auth&page=login" class="bg-slate-700 hover:bg-slate-600 text-white font-bold py-2.5 px-6 rounded-xl transition text-sm shadow-md inline-block">Initialize Login</a>
-                            </div>
                         <?php endif; ?>
 
-                        <div class="space-y-4">
+                        <div class="space-y-6">
                             <?php if(empty($reviews)): ?>
-                                <div class="text-center py-8 text-slate-500">
-                                    <i class="far fa-comment-dots text-4xl mb-3 opacity-20 text-[#00f0ff]"></i>
-                                    <p class="text-sm font-medium">No comms intercepted yet.</p>
+                                <div class="text-center py-10">
+                                    <p class="text-slate-600 text-sm italic">No reviews yet. Be the first to share!</p>
                                 </div>
                             <?php else: ?>
                                 <?php foreach($reviews as $rev): ?>
-                                    <div class="p-5 rounded-2xl bg-slate-800/30 border border-slate-700/50 hover:border-slate-600 transition-colors">
-                                        <div class="flex justify-between items-start mb-3">
-                                            <div class="flex items-center gap-3">
-                                                <div class="w-10 h-10 rounded-xl bg-slate-800 flex items-center justify-center text-sm font-bold text-white shadow-inner border border-slate-700 shrink-0">
+                                    <div class="p-6 rounded-3xl bg-slate-900/20 border border-white/5 space-y-4">
+                                        <div class="flex justify-between items-start">
+                                            <div class="flex items-center gap-4">
+                                                <div class="w-10 h-10 rounded-xl bg-slate-800 flex items-center justify-center text-xs font-bold text-white">
                                                     <?php echo strtoupper(substr($rev['username'], 0, 2)); ?>
                                                 </div>
                                                 <div>
-                                                    <span class="text-sm font-bold text-slate-200">@<?php echo htmlspecialchars($rev['username']); ?></span>
-                                                    <div class="flex text-yellow-400 text-[10px] mt-0.5">
-                                                        <?php for($i=1; $i<=5; $i++) echo ($i <= $rev['rating']) ? '<i class="fas fa-star"></i>' : '<i class="far fa-star text-slate-600"></i>'; ?>
+                                                    <span class="text-sm font-bold text-white">@<?php echo htmlspecialchars($rev['username']); ?></span>
+                                                    <div class="flex text-amber-400 text-[10px] mt-1">
+                                                        <?php for($i=1; $i<=5; $i++) echo ($i <= $rev['rating']) ? '<i class="fas fa-star"></i>' : '<i class="far fa-star text-slate-800"></i>'; ?>
                                                     </div>
                                                 </div>
                                             </div>
-                                            <span class="text-[10px] font-mono text-slate-500"><?php echo date('Y.m.d', strtotime($rev['created_at'])); ?></span>
+                                            <span class="text-[10px] text-slate-600"><?php echo date('M d, Y', strtotime($rev['created_at'])); ?></span>
                                         </div>
-                                        <p class="text-slate-400 text-sm leading-relaxed bg-slate-900/50 p-3 rounded-xl border border-slate-700/30 font-medium">
-                                            "<?php echo htmlspecialchars($rev['comment']); ?>"
-                                        </p>
+                                        <p class="text-slate-400 text-sm leading-relaxed italic">"<?php echo htmlspecialchars($rev['comment']); ?>"</p>
                                     </div>
                                 <?php endforeach; ?>
                             <?php endif; ?>
@@ -377,70 +335,58 @@ $has_cat_image = !empty($product['cat_image']);
 
         </div>
 
-        <!-- RIGHT: Pricing & Upsell (Sticky Sidebar) -->
-        <div class="lg:col-span-1">
+        <!-- Sidebar / Checkout -->
+        <div class="lg:col-span-4">
             
-            <div class="glass p-5 md:p-8 rounded-3xl border border-slate-700 shadow-[0_20px_40px_rgba(0,0,0,0.4)] lg:sticky lg:top-24 bg-slate-900/80 backdrop-blur-xl relative overflow-hidden">
-                <!-- Decorative Glow -->
-                <div class="absolute -right-10 -top-10 w-32 h-32 bg-[#00f0ff]/10 rounded-full blur-3xl pointer-events-none"></div>
-
-                <h3 class="text-slate-300 text-xs uppercase font-black mb-5 tracking-widest flex items-center gap-2 border-b border-slate-700/50 pb-4">
-                    <i class="fas fa-receipt text-[#00f0ff]"></i> Acquisition Summary
-                </h3>
+            <div class="bg-slate-800/20 rounded-[2.5rem] p-8 border border-white/5 space-y-8 sticky top-32 shadow-2xl">
+                <h3 class="text-white font-bold text-lg border-b border-white/5 pb-6">Order Summary</h3>
                 
-                <!-- Enhanced Pricing Matrix Box -->
-                <div class="space-y-3 mb-6 bg-slate-950/60 p-4 md:p-5 rounded-2xl border border-slate-800 shadow-inner">
-                    
-                    <!-- Original / Retail Price -->
-                    <div class="flex justify-between items-center text-xs md:text-sm">
-                        <span class="text-slate-400 font-bold">Retail Value</span>
-                        <span class="font-mono <?php echo ($is_flash_sale || $discount > 0) ? 'text-slate-500 line-through decoration-red-500/60' : 'text-white font-bold'; ?>">
+                <div class="space-y-4 bg-slate-900/40 p-6 rounded-2xl border border-white/5">
+                    <div class="flex justify-between text-sm">
+                        <span class="text-slate-500">Retail Price</span>
+                        <span class="<?php echo ($is_flash_sale || $discount > 0) ? 'text-slate-600 line-through' : 'text-white font-bold'; ?>">
                             <?php echo format_price($retail_value); ?>
                         </span>
                     </div>
                     
-                    <!-- Flash Sale Savings -->
                     <?php if($is_flash_sale): ?>
-                    <div class="flex justify-between items-center text-xs md:text-sm">
-                        <span class="text-red-400 font-black flex items-center gap-1.5"><i class="fas fa-bolt text-[10px] animate-pulse"></i> Flash Sale</span>
-                        <span class="text-red-400 font-mono font-bold">- <?php echo format_price($flash_sale_deduction); ?></span>
+                    <div class="flex justify-between text-sm">
+                        <span class="text-rose-500 font-bold">Flash Sale</span>
+                        <span class="text-rose-500 font-bold">- <?php echo format_price($flash_sale_deduction); ?></span>
                     </div>
                     <?php endif; ?>
 
-                    <!-- Agent Discount -->
                     <?php if($discount > 0): ?>
-                    <div class="flex justify-between items-center text-xs md:text-sm">
-                        <span class="text-yellow-400 font-black flex items-center gap-1.5"><i class="fas fa-crown text-[10px]"></i> Agent (-<?php echo $discount; ?>%)</span>
-                        <span class="text-yellow-400 font-mono font-bold">- <?php echo format_price($agent_deduction); ?></span>
+                    <div class="flex justify-between text-sm">
+                        <span class="text-amber-500 font-bold">Agent Discount (<?php echo $discount; ?>%)</span>
+                        <span class="text-amber-500 font-bold">- <?php echo format_price($agent_deduction); ?></span>
                     </div>
                     <?php endif; ?>
+                    
+                    <div class="pt-4 border-t border-white/5 flex justify-between items-end">
+                        <span class="text-white font-bold">Total Pay</span>
+                        <span class="text-3xl font-bold text-blue-400"><?php echo format_price($final_payable); ?></span>
+                    </div>
                 </div>
 
-                <div class="flex justify-between items-end mb-8 relative z-10 border-t border-slate-700/50 pt-5">
-                    <span class="text-slate-300 font-black text-xs md:text-sm uppercase tracking-widest">Total Pay</span>
-                    <span class="text-3xl md:text-4xl font-black text-[#00f0ff] tracking-tighter drop-shadow-[0_0_15px_rgba(0,240,255,0.4)]"><?php echo format_price($final_payable); ?></span>
-                </div>
-
-                <!-- Checkout Action -->
                 <?php if($can_buy): ?>
-                    <a href="index.php?module=shop&page=checkout&id=<?php echo $product['id']; ?>" class="block w-full bg-gradient-to-r from-blue-600 to-[#00f0ff] hover:from-blue-500 hover:to-[#00f0ff] text-slate-900 font-black py-4 rounded-xl text-center shadow-[0_0_20px_rgba(0,240,255,0.3)] hover:shadow-[0_0_30px_rgba(0,240,255,0.4)] transform hover:-translate-y-1 transition duration-300 uppercase tracking-widest flex items-center justify-center gap-2 group relative z-10 text-xs md:text-sm">
-                        <i class="fas fa-lock"></i> <span>Initiate Checkout</span>
+                    <a href="index.php?module=shop&page=checkout&id=<?php echo $product['id']; ?>" class="block w-full bg-blue-600 hover:bg-blue-500 text-white font-bold py-5 rounded-2xl text-center shadow-lg shadow-blue-500/20 transition-all hover:-translate-y-1 active:scale-95">
+                        Buy Now
                     </a>
                 <?php else: ?>
-                    <button disabled class="w-full bg-slate-800 border border-slate-700 text-slate-500 font-black py-4 rounded-xl text-center shadow-inner cursor-not-allowed uppercase tracking-widest flex items-center justify-center gap-2 relative z-10 text-xs md:text-sm">
-                        <i class="fas fa-ban"></i> <span>Out of Stock</span>
+                    <button disabled class="w-full bg-slate-800 text-slate-600 font-bold py-5 rounded-2xl cursor-not-allowed border border-white/5">
+                        Out of Stock
                     </button>
-                    <p class="text-center text-[10px] text-red-400 mt-3 font-bold">This node is currently depleted. Check back later.</p>
                 <?php endif; ?>
                 
-                <div class="mt-6 grid grid-cols-2 gap-3 text-[10px] uppercase font-bold tracking-widest text-center text-slate-500 relative z-10">
-                    <div class="bg-slate-800/50 py-2.5 rounded-lg border border-slate-700 flex flex-col items-center gap-1">
-                        <i class="fas fa-rocket text-yellow-400 text-sm"></i>
-                        <span>Fast Delivery</span>
+                <div class="grid grid-cols-2 gap-4">
+                    <div class="text-center p-4 bg-slate-900/40 rounded-2xl border border-white/5">
+                        <i class="fas fa-check-circle text-emerald-500 text-xl mb-2"></i>
+                        <p class="text-[10px] font-bold text-slate-500 uppercase tracking-widest">Verified</p>
                     </div>
-                    <div class="bg-slate-800/50 py-2.5 rounded-lg border border-slate-700 flex flex-col items-center gap-1">
-                        <i class="fas fa-shield-alt text-green-400 text-sm"></i>
-                        <span>Secure Node</span>
+                    <div class="text-center p-4 bg-slate-900/40 rounded-2xl border border-white/5">
+                        <i class="fas fa-headset text-blue-500 text-xl mb-2"></i>
+                        <p class="text-[10px] font-bold text-slate-500 uppercase tracking-widest">Support</p>
                     </div>
                 </div>
             </div>
@@ -450,15 +396,34 @@ $has_cat_image = !empty($product['cat_image']);
     </div>
 </div>
 
-<!-- MOVED OUTSIDE THE MAIN GRID FOR FULL WIDTH BOTTOM FLOW ON MOBILE & DESKTOP -->
-<!-- Related Products Grid (Similar Nodes) -->
+<script>
+    function switchTab(tabId) {
+        document.querySelectorAll('.tab-content').forEach(el => el.classList.add('hidden'));
+        document.getElementById('tab-' + tabId).classList.remove('hidden');
+        
+        document.querySelectorAll('[id^="btn-tab-"]').forEach(el => {
+            el.classList.remove('border-blue-500', 'text-white');
+            el.classList.add('border-transparent', 'text-slate-500');
+        });
+        document.getElementById('btn-tab-' + tabId).classList.add('border-blue-500', 'text-white');
+        document.getElementById('btn-tab-' + tabId).classList.remove('border-transparent', 'text-slate-500');
+    }
+
+    function shareProduct() {
+        navigator.clipboard.writeText(window.location.href).then(() => {
+            const btnText = document.getElementById('shareText');
+            btnText.innerText = "Copied!";
+            setTimeout(() => { btnText.innerText = "Share"; }, 2000);
+        });
+    }
+</script>
+
+<!-- Related Products Grid -->
 <?php if(!empty($related_items)): ?>
-<div class="max-w-7xl mx-auto px-4 pb-12 pt-6 md:pt-12">
-    <div class="border-t border-slate-700/50 pt-8 md:pt-12">
-        <h3 class="text-xl md:text-2xl font-black text-white mb-6 md:mb-8 tracking-tight flex items-center gap-3">
-            <i class="fas fa-layer-group text-[#00f0ff]"></i> Similar Nodes
-        </h3>
-        <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
+<div class="max-w-7xl mx-auto px-4 pb-16 pt-12">
+    <div class="border-t border-white/5 pt-12">
+        <h3 class="text-2xl font-bold text-white mb-10 tracking-tight">You might also like</h3>
+        <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-8">
             <?php 
             foreach($related_items as $item) {
                 $product_temp = $product; 

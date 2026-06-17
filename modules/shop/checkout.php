@@ -168,51 +168,32 @@ $display_image = !empty($product['image_path']) ? BASE_URL . $product['image_pat
 ?>
 
 <style>
-    /* Animated Gradient Background */
-    .bg-animated-gradient {
-        background: linear-gradient(-45deg, #0f172a, #1e1b4b, #0f172a, #064e3b);
-        background-size: 400% 400%;
-        animation: gradientBG 15s ease infinite;
-    }
-    @keyframes gradientBG {
-        0% { background-position: 0% 50%; }
-        50% { background-position: 100% 50%; }
-        100% { background-position: 0% 50%; }
-    }
-    
-    /* Cinematic Image Pan */
-    @keyframes panImage {
-        0% { transform: scale(1.05) translate(0, 0); }
-        50% { transform: scale(1.15) translate(-2%, -2%); }
-        100% { transform: scale(1.05) translate(0, 0); }
-    }
-    .animate-pan-image {
-        animation: panImage 20s ease-in-out infinite;
-    }
-
     /* Input Label Floating */
     .input-wrapper { position: relative; }
     .input-wrapper input:focus + label,
     .input-wrapper input:not(:placeholder-shown) + label {
         transform: translateY(-130%) scale(0.85);
-        color: #00f0ff;
-        background-color: #0f172a;
+        color: #3b82f6;
+        background-color: #0b0f1a;
         padding: 0 4px;
     }
 </style>
 
-<div class="bg-animated-gradient fixed inset-0 w-full h-full -z-20"></div>
+<div class="fixed inset-0 w-full h-full bg-[#0b0f1a] -z-20"></div>
 
-<div class="max-w-7xl mx-auto px-4 py-8 lg:py-12 animate-fade-in-down relative z-10">
+<div class="max-w-7xl mx-auto px-4 py-8 lg:py-12 relative z-10">
     
-    <div class="flex items-center gap-3 mb-8">
-        <a href="javascript:history.back()" class="w-10 h-10 rounded-xl bg-slate-800/80 hover:bg-slate-700 border border-slate-700 text-slate-400 hover:text-white flex items-center justify-center transition shadow-lg backdrop-blur">
+    <div class="flex items-center gap-4 mb-10">
+        <a href="javascript:history.back()" class="w-12 h-12 rounded-2xl bg-slate-800/50 hover:bg-slate-700 border border-white/5 text-slate-400 hover:text-white flex items-center justify-center transition-all shadow-sm">
             <i class="fas fa-arrow-left"></i>
         </a>
-        <h1 class="text-3xl font-black text-white tracking-tight">Secure Checkout</h1>
+        <div>
+            <h1 class="text-3xl md:text-4xl font-bold text-white tracking-tight">Checkout</h1>
+            <p class="text-slate-500 text-sm mt-1">Complete your secure purchase</p>
+        </div>
     </div>
 
-    <div class="grid grid-cols-1 lg:grid-cols-12 gap-8 lg:gap-10 items-start">
+    <div class="grid grid-cols-1 lg:grid-cols-12 gap-8 lg:gap-12 items-start">
         
         <!-- LEFT: Checkout Form / Cooldown UI (8 columns) -->
         <div class="lg:col-span-8 space-y-6">
@@ -220,39 +201,36 @@ $display_image = !empty($product['image_path']) ? BASE_URL . $product['image_pat
             <?php if(isset($error)) echo "<div class='bg-red-900/20 border border-red-500/50 text-red-400 p-4 rounded-2xl flex items-start gap-3 animate-pulse shadow-lg backdrop-blur-md'><i class='fas fa-exclamation-triangle mt-1'></i> $error</div>"; ?>
 
             <?php if($on_cooldown): ?>
-                <!-- COOLDOWN TERMINAL UI -->
-                <div class="bg-slate-900/80 backdrop-blur-xl border border-red-500/40 p-8 md:p-12 rounded-3xl shadow-[0_20px_50px_rgba(239,68,68,0.15)] text-center relative overflow-hidden">
-                    <div class="absolute inset-0 bg-[url('data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iNDAiIGhlaWdodD0iNDAiIHhtbG5zPSJodHRwOi8vd3d3LnczLm9yZy8yMDAwL3N2ZyI+PGRlZnM+PHBhdHRlcm4gaWQ9ImdyaWQiIHdpZHRoPSI0MCIgaGVpZ2h0PSI0MCIgcGF0dGVyblVuaXRzPSJ1c2VyU3BhY2VPblVzZSI+PHBhdGggZD0iTSAwIDEwIEwgNDAgMTAgTSAxMCAwIEwgMTAgNDAiIGZpbGw9Im5vbmUiIHN0cm9rZT0icmdiYSgyMzksIDY4LCA2OCwgMC4wNSkiIHN0cm9rZS13aWR0aD0iMSIvPjwvcGF0dGVybj48L2RlZnM+PHJlY3Qgd2lkdGg9IjEwMCUiIGhlaWdodD0iMTAwJSIgZmlsbD0idXJsKCNncmlkKSIvPjwvc3ZnPg==')] opacity-50"></div>
-                    <div class="absolute -right-20 -top-20 w-64 h-64 bg-red-500/10 rounded-full blur-3xl pointer-events-none"></div>
-
-                    <div class="w-24 h-24 bg-red-500/10 rounded-full flex items-center justify-center mx-auto mb-6 border border-red-500/30 shadow-[0_0_30px_rgba(239,68,68,0.3)] relative z-10">
-                        <i class="fas fa-clock text-4xl text-red-500 animate-pulse"></i>
+                <!-- COOLDOWN UI -->
+                <div class="bg-slate-800/20 border border-white/5 p-12 rounded-[2.5rem] shadow-2xl text-center relative overflow-hidden">
+                    <div class="w-24 h-24 bg-rose-500/10 rounded-full flex items-center justify-center mx-auto mb-8 border border-rose-500/20 shadow-lg relative z-10">
+                        <i class="fas fa-clock text-4xl text-rose-500 animate-pulse"></i>
                     </div>
                     
-                    <h2 class="text-3xl font-black text-white tracking-tight mb-3 relative z-10">Please Wait</h2>
+                    <h2 class="text-3xl font-bold text-white tracking-tight mb-4 relative z-10">Please Wait</h2>
                     <p class="text-slate-400 text-sm mb-10 leading-relaxed max-w-md mx-auto relative z-10">
-                        To protect against spam and ensure all orders are processed quickly, we require a short 10-minute wait between purchases.
+                        To ensure quality service, we require a short wait between orders. Please wait for the timer below before placing a new order.
                     </p>
                     
-                    <div class="inline-flex flex-col items-center justify-center bg-slate-950 border border-red-500/50 rounded-2xl p-6 min-w-[220px] shadow-inner relative z-10">
-                        <span class="text-[10px] font-bold text-red-400 uppercase tracking-widest mb-2 flex items-center gap-2">
-                            <i class="fas fa-spinner animate-spin"></i> Unlocking in...
+                    <div class="inline-flex flex-col items-center justify-center bg-slate-900/50 border border-white/5 rounded-2xl p-8 min-w-[240px] shadow-inner relative z-10 mb-10">
+                        <span class="text-[10px] font-bold text-slate-500 uppercase tracking-widest mb-3 flex items-center gap-2">
+                            <i class="fas fa-spinner animate-spin text-rose-500"></i> Time Remaining
                         </span>
-                        <span id="cooldownDisplay" class="text-5xl font-mono font-black text-white drop-shadow-[0_0_10px_rgba(239,68,68,0.5)]">
+                        <span id="cooldownDisplay" class="text-5xl font-bold text-white tracking-tight">
                             00:00
                         </span>
                     </div>
 
-                    <div class="mt-10 relative z-10">
-                        <a href="index.php?module=user&page=orders" class="inline-flex items-center gap-2 text-sm text-slate-400 hover:text-white transition uppercase tracking-wider font-bold">
-                            <i class="fas fa-history"></i> View My Previous Orders
+                    <div class="relative z-10">
+                        <a href="index.php?module=user&page=orders" class="inline-flex items-center gap-3 bg-white hover:bg-slate-100 text-black px-6 py-3 rounded-xl font-bold transition-all active:scale-95 shadow-lg">
+                            <i class="fas fa-history"></i> View My Orders
                         </a>
                     </div>
                 </div>
             <?php else: ?>
 
                 <!-- NORMAL CHECKOUT FORM -->
-                <form method="POST" enctype="multipart/form-data" id="checkoutForm" class="space-y-6" onsubmit="handleSecureSubmit(event)">
+                <form method="POST" enctype="multipart/form-data" id="checkoutForm" class="space-y-8" onsubmit="handleSecureSubmit(event)">
                     <input type="hidden" name="csrf_token" value="<?php echo generate_csrf_token(); ?>">
                     <input type="hidden" name="coupon_code" id="hidden_coupon_code">
                     <input type="hidden" name="payment_method_id" id="hidden_payment_id" required>
@@ -261,111 +239,113 @@ $display_image = !empty($product['image_path']) ? BASE_URL . $product['image_pat
                     <input type="hidden" name="email_type" value="admin_provided">
 
                     <!-- STEP 1: Interactive Payment Selection -->
-                    <div class="bg-slate-900/80 backdrop-blur-xl p-6 md:p-8 rounded-3xl border border-slate-700/50 shadow-[0_10px_30px_rgba(0,0,0,0.3)] relative overflow-hidden group">
-                        <div class="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-blue-600 via-[#00f0ff] to-blue-600 bg-[length:200%_auto] animate-gradient"></div>
-                        
-                        <div class="flex items-center justify-between mb-6 border-b border-slate-700/50 pb-3">
-                            <h3 class="text-sm font-bold text-[#00f0ff] uppercase tracking-widest flex items-center gap-3">
-                                <span class="w-6 h-6 rounded-full bg-[#00f0ff]/10 border border-[#00f0ff]/30 flex items-center justify-center text-[10px]">1</span> 
+                    <div class="bg-slate-800/20 p-8 md:p-10 rounded-[2.5rem] border border-white/5 shadow-xl relative overflow-hidden group">
+                        <div class="flex items-center gap-4 mb-8 border-b border-white/5 pb-4">
+                            <div class="w-8 h-8 rounded-full bg-blue-600 flex items-center justify-center text-white font-bold text-sm shadow-md">1</div>
+                            <h3 class="text-lg font-bold text-white tracking-tight">
                                 Choose Payment Method
                             </h3>
                         </div>
                         
                         <!-- Selection Grid -->
-                        <div class="grid grid-cols-2 sm:grid-cols-3 gap-4 mb-2" id="paymentGrid">
+                        <div class="grid grid-cols-2 sm:grid-cols-3 gap-4" id="paymentGrid">
                             <?php foreach($payment_methods as $pm): ?>
-                                <div class="payment-card cursor-pointer bg-slate-800/50 border border-slate-600 hover:border-[#00f0ff] rounded-2xl p-5 text-center transition-all duration-300 group/card shadow-inner" 
+                                <div class="payment-card cursor-pointer bg-slate-900/50 border border-white/5 hover:border-blue-500/50 rounded-2xl p-6 text-center transition-all duration-300 shadow-sm" 
                                     onclick="selectPayment(<?php echo htmlspecialchars(json_encode($pm)); ?>, this)">
-                                    <div class="w-12 h-12 mx-auto rounded-xl bg-slate-900 flex items-center justify-center mb-3 group-hover/card:scale-110 transition-transform duration-300 shadow-sm border border-slate-700 group-hover/card:border-[#00f0ff]/50">
-                                        <i class="<?php echo htmlspecialchars($pm['logo_class']); ?> text-xl text-slate-500 group-hover/card:text-[#00f0ff] transition-colors"></i>
+                                    <div class="w-14 h-14 mx-auto rounded-xl bg-slate-800 flex items-center justify-center mb-4 transition-transform duration-300">
+                                        <i class="<?php echo htmlspecialchars($pm['logo_class']); ?> text-2xl text-slate-400 transition-colors"></i>
                                     </div>
-                                    <p class="text-xs font-bold text-slate-300 group-hover/card:text-white tracking-wide"><?php echo htmlspecialchars($pm['bank_name']); ?></p>
+                                    <p class="text-sm font-bold text-slate-300 transition-colors"><?php echo htmlspecialchars($pm['bank_name']); ?></p>
                                 </div>
                             <?php endforeach; ?>
                         </div>
                     </div>
 
                     <!-- STEP 2: Transfer Terminal & Verification (Revealed on click) -->
-                    <div id="step2Container" class="hidden bg-slate-900/80 backdrop-blur-xl p-6 md:p-8 rounded-3xl border border-[#00f0ff]/30 shadow-[0_20px_50px_rgba(0,240,255,0.1)] relative overflow-hidden animate-fade-in-down">
-                        <div class="absolute -right-20 -top-20 w-64 h-64 bg-[#00f0ff]/10 rounded-full blur-3xl pointer-events-none"></div>
-
-                        <h3 class="text-sm font-bold text-[#00f0ff] uppercase tracking-widest mb-6 flex items-center gap-3 border-b border-slate-700/50 pb-3 relative z-10">
-                            <span class="w-6 h-6 rounded-full bg-[#00f0ff]/10 border border-[#00f0ff]/30 flex items-center justify-center text-[10px]">2</span> 
-                            Send Payment & Verify
-                        </h3>
+                    <div id="step2Container" class="hidden bg-slate-800/20 p-8 md:p-10 rounded-[2.5rem] border border-blue-500/30 shadow-xl relative overflow-hidden animate-fade-in-down">
+                        <div class="flex items-center gap-4 mb-8 border-b border-white/5 pb-4">
+                            <div class="w-8 h-8 rounded-full bg-blue-600 flex items-center justify-center text-white font-bold text-sm shadow-md">2</div>
+                            <h3 class="text-lg font-bold text-white tracking-tight">
+                                Payment Details
+                            </h3>
+                        </div>
 
                         <!-- MANUAL PAYMENT DETAILS -->
                         <div id="manualPaymentDetails" class="relative z-10">
-                            <div class="bg-black/50 border border-slate-700 rounded-2xl p-6 mb-8 shadow-inner flex flex-col md:flex-row justify-between items-center gap-6">
-                                <div class="flex-1 w-full space-y-4">
+                            <div class="bg-slate-900/50 border border-white/5 rounded-3xl p-6 md:p-8 mb-8 shadow-inner flex flex-col md:flex-row justify-between items-center gap-8">
+                                <div class="flex-1 w-full space-y-6">
                                     <div>
-                                        <p class="text-[10px] text-slate-400 font-bold uppercase tracking-wider mb-1">Please transfer exactly:</p>
-                                        <p class="text-4xl font-black text-[#00f0ff] tracking-tight drop-shadow-[0_0_10px_rgba(0,240,255,0.4)]" id="transferAmountDisplay"><?php echo format_price($final_price); ?></p>
+                                        <p class="text-sm text-slate-400 font-bold uppercase tracking-wider mb-2">Transfer Amount</p>
+                                        <p class="text-4xl font-bold text-blue-400 tracking-tight" id="transferAmountDisplay"><?php echo format_price($final_price); ?></p>
                                     </div>
                                     
-                                    <div class="space-y-1 bg-slate-900 p-3 rounded-xl border border-slate-700">
-                                        <p class="text-xs text-slate-400 font-medium">Receiver Name: <strong class="text-white ml-1" id="receiverName">...</strong></p>
-                                        <div class="flex items-center justify-between gap-3">
-                                            <code class="text-lg md:text-xl font-mono text-green-400 font-bold select-all break-all" id="accountNumber">...</code>
-                                            <button type="button" onclick="copyAccountInfo()" class="text-slate-500 hover:text-white bg-slate-800 p-2 rounded-lg transition shrink-0 border border-slate-600 shadow-sm" title="Copy Number">
-                                                <i class="fas fa-copy"></i> Copy
+                                    <div class="space-y-3 bg-slate-800/50 p-6 rounded-2xl border border-white/5">
+                                        <p class="text-sm text-slate-400 font-medium">Receiver Name: <strong class="text-white ml-2" id="receiverName">...</strong></p>
+                                        <div class="flex items-center justify-between gap-4">
+                                            <code class="text-xl md:text-2xl font-mono text-emerald-400 font-bold select-all break-all" id="accountNumber">...</code>
+                                            <button type="button" onclick="copyAccountInfo()" class="text-slate-400 hover:text-white bg-slate-700/50 hover:bg-slate-700 px-4 py-2 rounded-xl transition shrink-0 border border-white/5 font-bold text-sm">
+                                                Copy
                                             </button>
                                         </div>
                                     </div>
                                 </div>
 
                                 <!-- 5 Minute Session Timer -->
-                                <div class="bg-red-900/10 border border-red-500/30 p-5 rounded-xl flex flex-col items-center justify-center shrink-0 w-full md:w-48 shadow-inner">
-                                    <i class="fas fa-stopwatch text-red-500 text-2xl mb-2 animate-pulse"></i>
-                                    <span class="text-[10px] text-slate-400 font-bold uppercase tracking-widest mb-1 text-center">Time to pay</span>
-                                    <span id="sessionTimer" class="font-mono text-3xl font-black text-white tracking-widest drop-shadow-[0_0_8px_rgba(239,68,68,0.5)]">05:00</span>
+                                <div class="bg-rose-500/10 border border-rose-500/20 p-8 rounded-[2rem] flex flex-col items-center justify-center shrink-0 w-full md:w-56 shadow-inner text-center">
+                                    <i class="fas fa-stopwatch text-rose-500 text-3xl mb-4 animate-pulse"></i>
+                                    <span class="text-xs text-rose-400 font-bold uppercase tracking-widest mb-2">Time Remaining</span>
+                                    <span id="sessionTimer" class="font-mono text-4xl font-bold text-white tracking-tight">05:00</span>
                                 </div>
                             </div>
 
                             <!-- Verification Inputs -->
-                            <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
-                                <div class="input-wrapper">
-                                    <input type="text" name="txn_id" id="txn_id" placeholder=" " maxlength="6" pattern="\d{6}"
-                                        class="w-full bg-slate-950/50 border-2 border-slate-600 rounded-xl px-4 py-5 text-white font-mono tracking-[0.5em] text-xl focus:border-[#00f0ff] outline-none transition peer shadow-inner text-center">
-                                    <label for="txn_id" class="absolute left-4 top-5 text-slate-400 text-sm font-bold tracking-wider transition-all duration-200 pointer-events-none">Last 6 Digits of Txn ID</label>
+                            <div class="grid grid-cols-1 md:grid-cols-2 gap-8">
+                                <div class="space-y-2">
+                                    <label class="text-[10px] font-bold text-slate-500 uppercase tracking-widest ml-2">Last 6 Digits of Transaction ID</label>
+                                    <input type="text" name="txn_id" id="txn_id" placeholder="123456" maxlength="6" pattern="\d{6}"
+                                        class="w-full bg-slate-900/50 border border-white/5 rounded-2xl px-6 py-5 text-white font-mono tracking-widest text-xl focus:border-blue-500 outline-none transition text-center shadow-inner">
                                 </div>
 
-                                <div id="uploadWrapper" class="relative border-2 border-dashed border-slate-600 rounded-xl h-full min-h-[88px] text-center hover:bg-slate-800/50 hover:border-[#00f0ff] transition-all cursor-pointer group/upload flex flex-col justify-center bg-slate-950/30">
-                                    <input type="file" name="proof" id="proofInput" accept="image/*" class="absolute inset-0 w-full h-full opacity-0 cursor-pointer z-10" 
-                                        onchange="document.getElementById('fileNameDisplay').innerHTML = `<span class='text-green-400 font-bold flex items-center justify-center gap-2'><i class='fas fa-check-circle'></i> Uploaded: ` + this.files[0].name + `</span>`; this.parentElement.classList.add('border-green-500/50', 'bg-green-500/10');">
-                                    <div class="flex items-center justify-center gap-3 px-4">
-                                        <i class="fas fa-cloud-upload-alt text-2xl text-slate-500 group-hover/upload:text-[#00f0ff] transition transform group-hover/upload:-translate-y-1 shrink-0"></i>
-                                        <div class="text-left overflow-hidden">
-                                            <p class="text-xs font-bold text-slate-300 truncate" id="fileNameDisplay">Upload Payment Slip</p>
-                                            <p class="text-[9px] text-slate-500 font-mono mt-0.5 uppercase">JPG/PNG Only</p>
+                                <div class="space-y-2">
+                                    <label class="text-[10px] font-bold text-slate-500 uppercase tracking-widest ml-2">Payment Slip (Screenshot)</label>
+                                    <div id="uploadWrapper" class="relative border-2 border-dashed border-white/10 rounded-2xl h-full min-h-[72px] text-center hover:bg-slate-800/50 hover:border-blue-500/50 transition-all cursor-pointer group/upload flex flex-col justify-center bg-slate-900/50">
+                                        <input type="file" name="proof" id="proofInput" accept="image/*" class="absolute inset-0 w-full h-full opacity-0 cursor-pointer z-10" 
+                                            onchange="document.getElementById('fileNameDisplay').innerHTML = `<span class='text-emerald-400 font-bold flex items-center justify-center gap-2'><i class='fas fa-check-circle'></i> Uploaded: ` + this.files[0].name + `</span>`; this.parentElement.classList.add('border-emerald-500/50', 'bg-emerald-500/10');">
+                                        <div class="flex items-center justify-center gap-4 px-6">
+                                            <i class="fas fa-cloud-upload-alt text-2xl text-slate-500 group-hover/upload:text-blue-400 transition"></i>
+                                            <div class="text-left overflow-hidden">
+                                                <p class="text-sm font-bold text-slate-300 truncate" id="fileNameDisplay">Upload Slip</p>
+                                                <p class="text-[10px] text-slate-500 font-medium mt-1 uppercase">JPG or PNG</p>
+                                            </div>
                                         </div>
                                     </div>
                                 </div>
                             </div>
                         </div>
-
                     </div>
 
                     <!-- STEP 3: Form Fields (If applicable) -->
                     <?php if($product['delivery_type'] == 'form' && $product['form_fields']): ?>
-                    <div class="bg-slate-900/80 backdrop-blur-xl p-6 md:p-8 rounded-3xl border border-yellow-500/30 shadow-xl relative overflow-hidden">
-                        <h3 class="text-sm font-bold text-yellow-500 uppercase tracking-widest mb-6 flex items-center gap-3 border-b border-slate-700/50 pb-3 relative z-10">
-                            <span class="w-6 h-6 rounded-full bg-yellow-500/10 border border-yellow-500/30 flex items-center justify-center text-[10px]">3</span> 
-                            Account Details (Required)
-                        </h3>
+                    <div class="bg-slate-800/20 p-8 md:p-10 rounded-[2.5rem] border border-amber-500/30 shadow-xl relative overflow-hidden">
+                        <div class="flex items-center gap-4 mb-8 border-b border-white/5 pb-4">
+                            <div class="w-8 h-8 rounded-full bg-amber-500 flex items-center justify-center text-black font-bold text-sm shadow-md">3</div>
+                            <h3 class="text-lg font-bold text-white tracking-tight">
+                                Account Information (Required)
+                            </h3>
+                        </div>
                         
-                        <div class="space-y-5 relative z-10">
+                        <div class="space-y-6 relative z-10">
                         <?php 
                             $fields = json_decode($product['form_fields'], true);
                             if(is_array($fields)){
                                 foreach($fields as $idx => $f): 
                         ?>
-                            <div class="input-wrapper">
-                                <input type="<?php echo htmlspecialchars($f['type'] ?? 'text'); ?>" name="form_field[<?php echo htmlspecialchars($f['label']); ?>]" id="ff_<?php echo $idx; ?>" placeholder=" " required 
-                                    class="w-full bg-slate-950/80 border-2 border-slate-600 rounded-xl px-4 py-4 text-white focus:border-yellow-400 outline-none shadow-inner transition peer">
-                                <label for="ff_<?php echo $idx; ?>" class="absolute left-4 top-4 text-slate-400 text-xs font-bold tracking-wider transition-all duration-200 pointer-events-none">
+                            <div class="space-y-2">
+                                <label for="ff_<?php echo $idx; ?>" class="text-[10px] font-bold text-slate-500 uppercase tracking-widest ml-2">
                                     <?php echo htmlspecialchars($f['label']); ?>
                                 </label>
+                                <input type="<?php echo htmlspecialchars($f['type'] ?? 'text'); ?>" name="form_field[<?php echo htmlspecialchars($f['label']); ?>]" id="ff_<?php echo $idx; ?>" required 
+                                    class="w-full bg-slate-900/50 border border-white/5 rounded-2xl px-6 py-4 text-white focus:border-amber-400 outline-none shadow-inner transition">
                             </div>
                         <?php 
                                 endforeach; 
@@ -377,23 +357,24 @@ $display_image = !empty($product['image_path']) ? BASE_URL . $product['image_pat
 
                     <!-- STEP 4: Mandatory Instructions -->
                     <?php if(!empty($instructions)): ?>
-                    <div class="bg-slate-900/80 backdrop-blur-xl border border-red-500/30 p-6 md:p-8 rounded-3xl relative overflow-hidden">
-                        <div class="absolute top-0 right-0 w-1 h-full bg-gradient-to-b from-red-500 to-transparent"></div>
-                        <h3 class="text-sm font-bold text-red-400 uppercase tracking-widest mb-5 flex items-center gap-3">
-                            <span class="w-6 h-6 rounded-full bg-red-500/10 border border-red-500/30 flex items-center justify-center text-[10px] text-red-400">!</span>
-                            Important Rules
-                        </h3>
-                        <p class="text-xs text-slate-400 mb-4">Please read and check all boxes to proceed.</p>
-                        <div class="space-y-3">
+                    <div class="bg-slate-800/20 border border-rose-500/30 p-8 md:p-10 rounded-[2.5rem] relative overflow-hidden">
+                        <div class="flex items-center gap-4 mb-8 border-b border-white/5 pb-4">
+                            <div class="w-8 h-8 rounded-full bg-rose-500 flex items-center justify-center text-white font-bold text-sm shadow-md">!</div>
+                            <h3 class="text-lg font-bold text-white tracking-tight">
+                                Important Information
+                            </h3>
+                        </div>
+                        <p class="text-sm text-slate-400 mb-6">Please read and agree to the following terms to proceed.</p>
+                        <div class="space-y-4">
                             <?php foreach($instructions as $ins): ?>
-                                <label class="flex items-start gap-4 cursor-pointer group select-none bg-slate-950/50 p-3.5 rounded-xl border border-slate-700/50 hover:bg-slate-800 hover:border-red-500/30 transition">
-                                    <div class="relative flex items-center pt-0.5 shrink-0">
+                                <label class="flex items-start gap-5 cursor-pointer group bg-slate-900/50 p-5 rounded-2xl border border-white/5 hover:bg-slate-800/80 hover:border-rose-500/30 transition-all">
+                                    <div class="relative flex items-center shrink-0">
                                         <input type="checkbox" name="agreed[]" value="<?php echo $ins['id']; ?>" required class="peer sr-only">
-                                        <div class="w-5 h-5 rounded border-2 border-slate-500 bg-slate-900 peer-checked:bg-red-500 peer-checked:border-red-500 transition-colors flex items-center justify-center shadow-inner">
-                                            <i class="fas fa-check text-white text-[10px] opacity-0 peer-checked:opacity-100 transition-opacity transform scale-50 peer-checked:scale-100 duration-200"></i>
+                                        <div class="w-6 h-6 rounded-lg border-2 border-slate-600 bg-slate-800 peer-checked:bg-rose-500 peer-checked:border-rose-500 transition-colors flex items-center justify-center shadow-inner">
+                                            <i class="fas fa-check text-white text-xs opacity-0 peer-checked:opacity-100 transition-opacity"></i>
                                         </div>
                                     </div>
-                                    <span class="text-xs sm:text-sm text-slate-300 group-hover:text-white transition leading-relaxed font-medium pt-px"><?php echo htmlspecialchars($ins['instruction_text']); ?></span>
+                                    <span class="text-sm text-slate-300 group-hover:text-white transition leading-relaxed"><?php echo htmlspecialchars($ins['instruction_text']); ?></span>
                                 </label>
                             <?php endforeach; ?>
                         </div>
@@ -401,10 +382,8 @@ $display_image = !empty($product['image_path']) ? BASE_URL . $product['image_pat
                     <?php endif; ?>
 
                     <!-- Submit Button -->
-                    <button type="submit" id="finalSubmitBtn" disabled class="w-full bg-slate-800 border border-slate-700 text-slate-500 font-black py-5 rounded-2xl text-sm uppercase tracking-widest transition-all duration-300 cursor-not-allowed shadow-inner mt-4 relative overflow-hidden group/btn">
-                        <span class="relative z-10 flex items-center justify-center gap-2">
-                            <i class="fas fa-lock" id="btnLockIcon"></i> <span id="btnText">Select a payment method first</span>
-                        </span>
+                    <button type="submit" id="finalSubmitBtn" disabled class="w-full bg-slate-800/50 border border-white/5 text-slate-500 font-bold py-6 rounded-3xl text-sm md:text-base uppercase tracking-widest transition-all duration-300 cursor-not-allowed shadow-inner mt-8 flex items-center justify-center gap-3">
+                        <i class="fas fa-lock" id="btnLockIcon"></i> <span id="btnText">Select a payment method first</span>
                     </button>
 
                 </form>
