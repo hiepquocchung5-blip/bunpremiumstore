@@ -288,7 +288,7 @@ if ($avg_rating > 0) {
                     </div>
 
                     <!-- Instructions -->
-                    <div id="tab-inst" class="tab-content hidden">
+                    <div id="tab-inst" class="tab-content">
                         <?php if($product['user_instruction']): ?>
                             <div class="bg-amber-500/5 p-6 rounded-3xl border border-amber-500/20 mb-8">
                                 <div class="flex gap-4">
@@ -314,7 +314,7 @@ if ($avg_rating > 0) {
                     </div>
 
                     <!-- Reviews -->
-                    <div id="tab-rev" class="tab-content hidden space-y-10">
+                    <div id="tab-rev" class="tab-content space-y-10">
                         <?php if(is_logged_in()): ?>
                             <form method="POST" class="bg-slate-900/40 p-8 rounded-3xl border border-white/5 space-y-6">
                                 <input type="hidden" name="csrf_token" value="<?php echo generate_csrf_token(); ?>">
@@ -401,24 +401,24 @@ if ($avg_rating > 0) {
                     </div>
                 </div>
 
-                <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                <div class="grid grid-cols-2 gap-4">
                     <?php if($can_buy): ?>
-                        <a href="<?php echo BASE_URL; ?>index.php?module=shop&page=checkout&id=<?php echo $product['id']; ?>" class="liquid-glass-btn liquid-glass-buy w-full py-[18px] text-center justify-center min-h-[56px]">
+                        <a href="<?php echo BASE_URL; ?>index.php?module=shop&page=checkout&id=<?php echo $product['id']; ?>" class="liquid-glass-btn liquid-glass-buy w-full py-4 text-center justify-center min-h-[60px] shadow-lg hover:shadow-orange-500/20">
                             <i class="fas fa-bag-shopping"></i> Buy Now
                         </a>
                     <?php else: ?>
-                        <button disabled class="liquid-glass-btn liquid-glass-buy w-full py-[18px] justify-center min-h-[56px] opacity-60 cursor-not-allowed">
+                        <button disabled class="liquid-glass-btn liquid-glass-buy w-full py-4 justify-center min-h-[60px] opacity-60 cursor-not-allowed">
                             <i class="fas fa-ban"></i> Out of Stock
                         </button>
                     <?php endif; ?>
 
                     <?php if(is_logged_in()): ?>
-                        <a href="<?php echo BASE_URL; ?>index.php?module=shop&page=product&id=<?php echo $product['id']; ?>&wishlist=<?php echo $in_wishlist ? 'remove' : 'add'; ?>" class="liquid-glass-btn liquid-glass-like w-full py-[18px] text-center justify-center min-h-[56px] <?php echo $in_wishlist ? 'border-rose-300/60 bg-rose-500/15 text-rose-200' : ''; ?>">
+                        <a href="<?php echo BASE_URL; ?>index.php?module=shop&page=product&id=<?php echo $product['id']; ?>&wishlist=<?php echo $in_wishlist ? 'remove' : 'add'; ?>" class="liquid-glass-btn liquid-glass-like w-full py-4 text-center justify-center min-h-[60px] <?php echo $in_wishlist ? 'border-rose-300/60 bg-rose-500/15 text-rose-200' : ''; ?> shadow-lg hover:shadow-rose-500/10">
                             <i class="<?php echo $in_wishlist ? 'fas' : 'far'; ?> fa-heart"></i>
                             <?php echo $in_wishlist ? 'Liked' : 'Like'; ?>
                         </a>
                     <?php else: ?>
-                        <a href="<?php echo BASE_URL; ?>index.php?module=auth&page=login" class="liquid-glass-btn liquid-glass-like w-full py-[18px] text-center justify-center min-h-[56px]">
+                        <a href="<?php echo BASE_URL; ?>index.php?module=auth&page=login" class="liquid-glass-btn liquid-glass-like w-full py-4 text-center justify-center min-h-[60px] shadow-lg">
                             <i class="far fa-heart"></i> Like
                         </a>
                     <?php endif; ?>
@@ -443,14 +443,14 @@ if ($avg_rating > 0) {
 
 <script>
     window.switchTab = function(tabId) {
-        document.querySelectorAll('.tab-content').forEach(el => el.classList.add('hidden'));
-        document.getElementById('tab-' + tabId).classList.remove('hidden');
+        document.querySelectorAll('.tab-content').forEach(el => el.classList.remove('active'));
+        document.getElementById('tab-' + tabId).classList.add('active');
         
         document.querySelectorAll('[id^="btn-tab-"]').forEach(el => {
-            el.classList.remove('border-blue-500', 'text-white');
+            el.classList.remove('border-blue-500', 'text-white', 'bg-white/5');
             el.classList.add('border-transparent', 'text-slate-500');
         });
-        document.getElementById('btn-tab-' + tabId).classList.add('border-blue-500', 'text-white');
+        document.getElementById('btn-tab-' + tabId).classList.add('border-blue-500', 'text-white', 'bg-white/5');
         document.getElementById('btn-tab-' + tabId).classList.remove('border-transparent', 'text-slate-500');
     };
 

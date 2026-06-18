@@ -113,6 +113,7 @@ if (isset($_SESSION['user_id'])) {
     <meta property="og:url" content="<?php echo htmlspecialchars($page_canonical ?? (defined('BASE_URL') ? BASE_URL : '/')); ?>">
     <meta property="og:image" content="<?php echo htmlspecialchars($page_image ?? (defined('BASE_URL') ? BASE_URL . 'assets/images/og-image.png' : 'assets/images/og-image.png')); ?>">
     <link rel="canonical" href="<?php echo htmlspecialchars($page_canonical ?? (defined('BASE_URL') ? BASE_URL : '/')); ?>">
+    <link rel="icon" type="image/x-icon" href="<?php echo BASE_URL; ?>assets/images/favicon.ico">
     <base href="<?php echo htmlspecialchars(defined('BASE_URL') ? BASE_URL : '/'); ?>">
     
     <title><?php echo htmlspecialchars($page_title ?? 'DigitalMM | Premium Digital Marketplace'); ?></title>

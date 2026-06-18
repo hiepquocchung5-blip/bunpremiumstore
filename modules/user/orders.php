@@ -241,22 +241,27 @@ $cache_key = "user_orders_list_{$user_id}";
 $ordersList = matrix_cache_get($cache_key);
 
 if (!$ordersList) {
-    $stmt = $pdo->prepare("
-        SELECT o.id, o.status, o.total_price_paid, o.created_at, o.pass_id,
-               COALESCE(p.name, ps.name) as name, 
-               p.image_path, c.image_url as cat_image,
-               (SELECT sender_type FROM order_messages WHERE order_id = o.id AND sender_type = 'admin' ORDER BY id DESC LIMIT 1) as last_sender
-        FROM orders o 
-        LEFT JOIN products p ON o.product_id = p.id 
-        LEFT JOIN categories c ON p.category_id = c.id
-        LEFT JOIN passes ps ON o.pass_id = ps.id
-        WHERE o.user_id = ? 
-        ORDER BY o.created_at DESC
-    ");
-    $stmt->execute([$user_id]);
-    $ordersList = $stmt->fetchAll();
-    matrix_cache_set($cache_key, $ordersList, 60); 
+    try {
+        $stmt = $pdo->prepare("
+            SELECT o.id, o.status, o.total_price_paid, o.created_at, o.pass_id,
+                   COALESCE(p.name, ps.name) as name, 
+                   p.image_path, c.image_url as cat_image,
+                   (SELECT sender_type FROM order_messages WHERE order_id = o.id AND sender_type = 'admin' ORDER BY id DESC LIMIT 1) as last_sender
+            FROM orders o 
+            LEFT JOIN products p ON o.product_id = p.id 
+            LEFT JOIN categories c ON p.category_id = c.id
+            LEFT JOIN passes ps ON o.pass_id = ps.id
+            WHERE o.user_id = ? 
+            ORDER BY o.created_at DESC
+        ");
+        $stmt->execute([$user_id]);
+        $ordersList = $stmt->fetchAll() ?: [];
+        matrix_cache_set($cache_key, $ordersList, 60); 
+    } catch (Exception $e) {
+        $ordersList = [];
+    }
 }
+$ordersList = is_array($ordersList) ? $ordersList : [];
 
 $is_mobile = preg_match("/(android|avantgo|blackberry|bolt|boost|cricket|docomo|fone|hiptop|mini|mobi|palm|phone|pie|tablet|up\.browser|up\.link|webos|wos)/i", $_SERVER["HTTP_USER_AGENT"]);
 if (!$active_chat_id && count($ordersList) > 0 && !$is_mobile) {
@@ -367,12 +372,21 @@ if ($active_chat_id) {
                 <?php foreach($ordersList as $ord): 
                     $isActive = ($ord['id'] == $active_chat_id);
                     $isPass = !empty($ord['pass_id']);
-                    $statusColor = match($ord['status']) {
-                        'completed', 'active' => 'text-green-400 bg-green-500/10 border-green-500/20',
-                        'pending' => 'text-yellow-400 bg-yellow-500/10 border-yellow-500/20',
-                        'cancelled', 'rejected' => 'text-red-400 bg-red-500/10 border-red-500/20',
-                        default => 'text-slate-400 bg-slate-500/10 border-slate-500/20'
-                    };
+                    
+                    $statusColor = 'text-slate-400 bg-slate-500/10 border-slate-500/20';
+                    switch($ord['status']) {
+                        case 'completed':
+                        case 'active':
+                            $statusColor = 'text-green-400 bg-green-500/10 border-green-500/20';
+                            break;
+                        case 'pending':
+                            $statusColor = 'text-yellow-400 bg-yellow-500/10 border-yellow-500/20';
+                            break;
+                        case 'cancelled':
+                        case 'rejected':
+                            $statusColor = 'text-red-400 bg-red-500/10 border-red-500/20';
+                            break;
+                    }
                 ?>
                 <a href="index.php?module=user&page=orders&view_chat=<?php echo $ord['id']; ?>" 
                    id="order-item-<?php echo $ord['id']; ?>"
@@ -424,12 +438,20 @@ if ($active_chat_id) {
                 </div>
             </div>
         <?php else: 
-            $statusColorHeader = match($active_order['status']) {
-                'completed', 'active' => 'text-green-400 bg-green-500/10 border-green-500/20',
-                'pending' => 'text-yellow-400 bg-yellow-500/10 border-yellow-500/20',
-                'cancelled', 'rejected' => 'text-red-400 bg-red-500/10 border-red-500/20',
-                default => 'text-slate-400 bg-slate-500/10 border-slate-500/20'
-            };
+            $statusColorHeader = 'text-slate-400 bg-slate-500/10 border-slate-500/20';
+            switch($active_order['status']) {
+                case 'completed':
+                case 'active':
+                    $statusColorHeader = 'text-green-400 bg-green-500/10 border-green-500/20';
+                    break;
+                case 'pending':
+                    $statusColorHeader = 'text-yellow-400 bg-yellow-500/10 border-yellow-500/20';
+                    break;
+                case 'cancelled':
+                case 'rejected':
+                    $statusColorHeader = 'text-red-400 bg-red-500/10 border-red-500/20';
+                    break;
+            }
         ?>
             
             <!-- Chat Header -->
