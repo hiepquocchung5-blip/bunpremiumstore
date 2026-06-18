@@ -72,7 +72,7 @@ $allowed_routes = [
     ],
     
     // System
-    'error' => ['404']
+    'error' => ['404', '403', '500']
 ];
 
 // Validate Request against Whitelist
@@ -102,22 +102,21 @@ if ($module === 'home' && $page === 'index') {
     }
 } elseif ($module === 'shop' && $page === 'product') {
     $product_meta_id = isset($_GET['id']) ? (int)$_GET['id'] : 0;
-    if ($product_meta_id > 0) {
-        $stmt = $pdo->prepare("
-            SELECT p.name, p.description, p.image_path, c.name as cat_name
-            FROM products p
-            JOIN categories c ON p.category_id = c.id
-            WHERE p.id = ?
-        ");
-        $stmt->execute([$product_meta_id]);
-        if ($product_meta = $stmt->fetch()) {
+    $product_meta_slug = trim($_GET['slug'] ?? '');
+    if ($product_meta_id > 0 || $product_meta_slug !== '') {
+        $product_meta = resolve_product_route($product_meta_id, $product_meta_slug);
+        if ($product_meta) {
             $page_title = 'DigitalMM | ' . $product_meta['name'];
             $page_description = $product_meta['description'] ?: ('Buy ' . $product_meta['name'] . ' from the ' . $product_meta['cat_name'] . ' collection.');
             if (!empty($product_meta['image_path'])) {
                 $page_image = defined('BASE_URL') ? BASE_URL . $product_meta['image_path'] : $product_meta['image_path'];
             }
             $page_type = 'product';
-            $page_canonical = defined('BASE_URL') ? BASE_URL . 'index.php?module=shop&page=product&id=' . $product_meta_id : 'index.php?module=shop&page=product&id=' . $product_meta_id;
+            $page_canonical = product_public_url($product_meta);
+            if ($product_meta_slug === '' && $product_meta_id > 0) {
+                header('Location: ' . $page_canonical, true, 301);
+                exit;
+            }
         }
     }
 } elseif ($module === 'shop' && $page === 'search') {
@@ -158,7 +157,7 @@ if (isset($protected_pages[$module]) && in_array($page, $protected_pages[$module
 $standalone_views = [
     'auth' => ['login', 'register', 'verify', 'verify_resend', 'forgot_password', 'reset_password'],
     'user' => ['invoice'],
-    'error' => ['404'] 
+    'error' => ['404', '403', '500']
 ];
 
 $is_standalone = (isset($standalone_views[$module]) && in_array($page, $standalone_views[$module]));

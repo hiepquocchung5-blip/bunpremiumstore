@@ -37,13 +37,111 @@ function is_logged_in() {
 }
 
 // Safe Redirect Helper
-function redirect($url) {
+function redirect($url, $status = 302) {
+    $target = $url;
+    if (!preg_match('#^https?://#i', $target) && !str_starts_with($target, '//')) {
+        $target = BASE_URL . ltrim($target, '/');
+    }
+
     if (!headers_sent()) {
-        header("Location: " . BASE_URL . ltrim($url, '/'));
+        header("Location: " . $target, true, $status);
     } else {
-        echo "<script>window.location.href='" . BASE_URL . ltrim($url, '/') . "';</script>";
+        echo "<script>window.location.href='" . htmlspecialchars($target, ENT_QUOTES, 'UTF-8') . "';</script>";
     }
     exit;
+}
+
+function slugify($text) {
+    $text = (string) $text;
+    $ascii = @iconv('UTF-8', 'ASCII//TRANSLIT//IGNORE', $text);
+    if ($ascii !== false) {
+        $text = $ascii;
+    }
+    $text = preg_replace('/[^A-Za-z0-9]+/', '-', $text);
+    $text = strtolower(trim($text, '-'));
+    return $text !== '' ? $text : 'product';
+}
+
+function product_slug(array $product) {
+    if (!empty($product['slug'])) {
+        return $product['slug'];
+    }
+    return slugify($product['name'] ?? 'product');
+}
+
+function product_public_url(array $product) {
+    return base_url('shop/' . rawurlencode(product_slug($product)));
+}
+
+function product_supports_slug_column() {
+    static $supports = null;
+    if ($supports !== null) {
+        return $supports;
+    }
+
+    try {
+        global $pdo;
+        $stmt = $pdo->query("SHOW COLUMNS FROM products LIKE 'slug'");
+        $supports = (bool) $stmt->fetchColumn();
+    } catch (Exception $e) {
+        $supports = false;
+    }
+
+    return $supports;
+}
+
+function resolve_product_route($id = 0, $slug = '') {
+    global $pdo;
+
+    $id = (int) $id;
+    $slug = trim((string) $slug);
+    $row = null;
+
+    try {
+        if ($id > 0) {
+            $stmt = $pdo->prepare("
+                SELECT p.*, c.name as cat_name, c.image_url as cat_image
+                FROM products p
+                JOIN categories c ON p.category_id = c.id
+                WHERE p.id = ?
+                LIMIT 1
+            ");
+            $stmt->execute([$id]);
+            $row = $stmt->fetch();
+        } elseif ($slug !== '') {
+            if (product_supports_slug_column()) {
+                $stmt = $pdo->prepare("
+                    SELECT p.*, c.name as cat_name, c.image_url as cat_image
+                    FROM products p
+                    JOIN categories c ON p.category_id = c.id
+                    WHERE p.slug = ?
+                    LIMIT 1
+                ");
+                $stmt->execute([$slug]);
+                $row = $stmt->fetch();
+            }
+
+            if (!$row) {
+                $stmt = $pdo->prepare("
+                    SELECT p.*, c.name as cat_name, c.image_url as cat_image
+                    FROM products p
+                    JOIN categories c ON p.category_id = c.id
+                    ORDER BY p.id DESC
+                ");
+                $stmt->execute();
+                while ($candidate = $stmt->fetch()) {
+                    if (product_slug($candidate) === $slug) {
+                        $row = $candidate;
+                        break;
+                    }
+                }
+            }
+        }
+    } catch (Exception $e) {
+        error_log('Product route resolution failed: ' . $e->getMessage());
+    }
+
+    return $row ?: null;
 }
 
 // ⚡️ NEW: BLACKLIST PROTOCOL (Ban Console)

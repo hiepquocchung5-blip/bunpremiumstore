@@ -274,7 +274,7 @@ if (is_logged_in()) {
                         <span class="text-[10px] font-bold text-blue-400 uppercase tracking-[0.2em] mb-4">Top Rated Choice</span>
                         <h3 class="text-3xl md:text-5xl font-bold text-white mb-6 leading-tight"><?php echo htmlspecialchars($f['name']); ?></h3>
                         <p class="text-slate-400 text-sm mb-8 leading-relaxed line-clamp-2">Experience the best quality digital service with our most popular pick. Trusted by thousands of happy customers.</p>
-                        <a href="index.php?module=shop&page=product&id=<?php echo $f['id']; ?>" class="w-fit px-10 py-4 bg-blue-600 hover:bg-blue-500 text-white font-bold rounded-2xl transition-all shadow-xl shadow-blue-500/20 active:scale-95">
+                        <a href="<?php echo product_public_url($f); ?>" class="w-fit px-10 py-4 bg-blue-600 hover:bg-blue-500 text-white font-bold rounded-2xl transition-all shadow-xl shadow-blue-500/20 active:scale-95">
                             View Product
                         </a>
                     </div>
@@ -286,7 +286,7 @@ if (is_logged_in()) {
                 <?php for($i=1; $i<min(3, count($best_sellers)); $i++): 
                     $p = $best_sellers[$i];
                 ?>
-                <a href="index.php?module=shop&page=product&id=<?php echo $p['id']; ?>" class="flex-1 bg-slate-800/30 border border-white/5 rounded-[2rem] p-6 group hover:border-blue-500/30 transition-all flex items-center gap-6">
+                <a href="<?php echo product_public_url($p); ?>" class="flex-1 bg-slate-800/30 border border-white/5 rounded-[2rem] p-6 group hover:border-blue-500/30 transition-all flex items-center gap-6">
                     <div class="w-20 h-20 rounded-2xl bg-slate-900 border border-white/5 overflow-hidden shrink-0 shadow-lg">
                         <img src="<?php echo BASE_URL . ($p['image_path'] ?: $p['cat_image']); ?>" class="w-full h-full object-cover opacity-80 group-hover:opacity-100 transition-opacity">
                     </div>

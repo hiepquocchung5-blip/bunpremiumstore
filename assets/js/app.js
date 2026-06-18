@@ -11,10 +11,11 @@ const PUBLIC_VAPID_KEY = window.AppConfig?.vapidPublicKey || '';
 const BASE_URL = window.AppConfig?.baseUrl || '/';
 
 window.shareCurrentPage = async function (payload = {}) {
+    const canonicalUrl = document.querySelector('link[rel="canonical"]')?.href || window.AppConfig?.canonicalUrl || window.location.href;
     const shareData = {
         title: payload.title || document.title,
         text: payload.text || document.querySelector('meta[name="description"]')?.content || '',
-        url: payload.url || window.location.href
+        url: payload.url || canonicalUrl
     };
 
     if (navigator.share) {

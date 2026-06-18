@@ -28,7 +28,9 @@ try {
 } catch (PDOException $e) {
     // In production, log the error instead of displaying raw DB info
     error_log("DB Connection Failed: " . $e->getMessage());
-    die("Service temporarily unavailable. Please try again later.");
+    http_response_code(500);
+    include __DIR__ . '/../modules/error/500.php';
+    exit;
 }
 
 // 4. System Settings

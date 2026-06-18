@@ -17,8 +17,8 @@ $has_product_image = !empty($product['image_path']);
 $has_cat_image = !empty($product['cat_image']);
 $fallback_icon = $product['icon_class'] ?? 'fa-cube'; 
 
-// Generate Secure Route
-$product_url = "index.php?module=shop&page=product&id=" . $product['id'];
+// Generate Public Route
+$product_url = product_public_url($product);
 ?>
 
 <!-- Entire Card is a Unified Anchor Tag -->

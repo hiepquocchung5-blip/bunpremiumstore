@@ -36,7 +36,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['ajax_msg'])) {
     }
     
     if (hash_equals($_SESSION['csrf_token'], $_POST['csrf_token'])) {
-        $msg = trim($_POST['message']);
+        $msg = trim($_POST['message'] ?? '');
+        $msg = strip_tags($msg);
+        $msg = mb_substr($msg, 0, 1000);
         $oid = (int)$_POST['order_id'];
         
         // ⚡️ REAL-TIME DATABASE LOOKUP FOR AI (The "Siri" Step)
@@ -216,7 +218,9 @@ if (isset($_GET['ajax']) && $_GET['ajax'] == 1 && $active_chat_id > 0) {
 // C. Fallback Standard POST
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['message']) && !isset($_POST['ajax_msg'])) {
     if (hash_equals($_SESSION['csrf_token'], $_POST['csrf_token'])) {
-        $msg = trim($_POST['message']);
+        $msg = trim($_POST['message'] ?? '');
+        $msg = strip_tags($msg);
+        $msg = mb_substr($msg, 0, 1000);
         $oid = (int)$_POST['order_id'];
         $stmt = $pdo->prepare("SELECT status FROM orders WHERE id = ? AND user_id = ?");
         $stmt->execute([$oid, $user_id]);
@@ -475,7 +479,7 @@ if ($active_chat_id) {
                 </div>
             <?php else: ?>
                 <!-- LIVE CHAT AREA (Scrollable Container) -->
-                <div class="flex-grow overflow-y-auto p-4 md:p-6 bg-slate-950 md:bg-slate-900/40 chat-scroll-container relative z-0" id="chatBox">
+                <div class="flex-grow overflow-y-auto p-4 md:p-6 pb-36 md:pb-6 bg-slate-950 md:bg-slate-900/40 chat-scroll-container relative z-0" id="chatBox">
                     <div class="flex justify-center mb-6 mt-2">
                         <div class="bg-yellow-500/10 text-yellow-500 text-[10px] font-bold px-3 py-1.5 rounded-lg border border-yellow-500/20 backdrop-blur-sm shadow-sm flex items-center gap-2 text-center max-w-sm">
                             <i class="fas fa-lock"></i> Messages are end-to-End encrypted. Admins will never ask for your passwords outside of the checkout form.
@@ -506,17 +510,30 @@ if ($active_chat_id) {
                     </div>
                 </div>
 
-                <!-- CHAT INPUT (Pinned to bottom, accounts for iOS safe area) -->
-                <form id="chatForm" class="p-3 bg-slate-900 border-t border-slate-800 shrink-0 relative z-20 pb-[calc(0.75rem+env(safe-area-inset-bottom))]">
+                <!-- CHAT COMPOSER (Raised above mobile chrome / floating bars) -->
+                <form id="chatForm" class="sticky bottom-0 z-30 border-t border-slate-800 bg-slate-950/95 backdrop-blur-xl px-3 md:px-5 pt-3 pb-[calc(0.9rem+env(safe-area-inset-bottom))]">
                     <input type="hidden" name="csrf_token" value="<?php echo generate_csrf_token(); ?>">
                     <input type="hidden" name="order_id" value="<?php echo $active_chat_id; ?>">
                     
-                    <div class="flex items-center gap-2 max-w-4xl mx-auto">
-                        <div class="relative flex-grow group" id="inputWrapper">
-                            <input type="text" name="message" id="chatInput" placeholder="Type your message..." required autocomplete="off"
-                                   class="w-full bg-slate-800 border border-slate-700 rounded-full py-3 pl-5 pr-14 text-sm text-white focus:border-[#00f0ff] focus:bg-slate-900 outline-none transition-all placeholder-slate-500">
-                            <button type="submit" class="absolute right-1 top-1 bottom-1 bg-blue-600 hover:bg-blue-500 text-white w-10 rounded-full flex items-center justify-center shadow-lg transition transform active:scale-95">
-                                <i class="fas fa-paper-plane text-sm ml-[-2px] mt-[1px]"></i>
+                    <div class="max-w-4xl mx-auto">
+                        <div class="mb-2 flex items-center justify-between gap-3 px-1">
+                            <div class="flex items-center gap-2 text-[10px] uppercase tracking-[0.28em] font-black text-slate-500">
+                                <span class="w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></span>
+                                Secure Reply
+                            </div>
+                            <div class="text-[10px] text-slate-500 font-medium">
+                                Max 1000 characters
+                            </div>
+                        </div>
+
+                        <div class="flex items-end gap-2 md:gap-3">
+                            <div class="relative flex-grow group" id="inputWrapper">
+                                <textarea name="message" id="chatInput" placeholder="Type your message..." required autocomplete="off" maxlength="1000" rows="1" inputmode="text"
+                                          class="w-full resize-none bg-slate-900 border border-slate-700 rounded-[1.5rem] py-3.5 pl-5 pr-16 text-sm md:text-[15px] text-white focus:border-[#00f0ff] focus:bg-slate-950 outline-none transition-all placeholder-slate-500 min-h-[54px] max-h-40 overflow-y-auto"></textarea>
+                                <div class="absolute right-3 bottom-3 text-[10px] text-slate-500 font-mono pointer-events-none" id="chatCount">0/1000</div>
+                            </div>
+                            <button type="submit" class="shrink-0 bg-gradient-to-br from-blue-600 to-cyan-500 hover:from-blue-500 hover:to-cyan-400 text-white w-12 h-12 md:w-14 md:h-14 rounded-2xl flex items-center justify-center shadow-lg transition transform active:scale-95 border border-white/10">
+                                <i class="fas fa-paper-plane text-sm md:text-base ml-[-1px] mt-[1px]"></i>
                             </button>
                         </div>
                     </div>
@@ -563,6 +580,19 @@ if ($active_chat_id) {
         if(chatBox) chatBox.scrollTop = chatBox.scrollHeight;
     }
 
+    function resizeChatInput(input) {
+        if (!input) return;
+        input.style.height = 'auto';
+        const nextHeight = Math.min(input.scrollHeight, 160);
+        input.style.height = nextHeight + 'px';
+    }
+
+    function updateChatCount(input) {
+        const counter = document.getElementById('chatCount');
+        if (!counter || !input) return;
+        counter.textContent = `${input.value.length}/1000`;
+    }
+
     // Chat Polling Logic
     function fetchChat() {
         if(!currentOrderId) return;
@@ -600,9 +630,28 @@ if ($active_chat_id) {
         
         if(window.innerWidth > 768) {
             const input = document.getElementById('chatInput');
-            if(input) input.focus();
+            if(input) {
+                input.focus();
+                resizeChatInput(input);
+                updateChatCount(input);
+            }
         }
     }
+
+    document.addEventListener('input', function(e) {
+        if (e.target && e.target.id === 'chatInput') {
+            resizeChatInput(e.target);
+            updateChatCount(e.target);
+        }
+    });
+
+    document.addEventListener('keydown', function(e) {
+        if (e.target && e.target.id === 'chatInput' && e.key === 'Enter' && !e.shiftKey) {
+            e.preventDefault();
+            const form = document.getElementById('chatForm');
+            if (form) form.requestSubmit();
+        }
+    });
 
     // Handle AJAX Message Submission (With 3-Stage Read Receipt UI)
     document.addEventListener('submit', async function(e) {
@@ -665,6 +714,8 @@ if ($active_chat_id) {
             }
 
             input.value = '';
+            resizeChatInput(input);
+            updateChatCount(input);
 
             try {
                 const res = await fetch('index.php?module=user&page=orders', {

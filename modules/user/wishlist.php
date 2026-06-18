@@ -117,7 +117,7 @@ $discount = get_user_discount($user_id);
                     <!-- Content -->
                     <div class="p-6 flex-grow flex flex-col">
                         <h3 class="text-xl font-black text-white mb-4 line-clamp-2 group-hover:text-[#00f0ff] transition-colors leading-tight">
-                            <a href="index.php?module=shop&page=product&id=<?php echo $product['id']; ?>">
+                        <a href="<?php echo product_public_url($product); ?>">
                                 <?php echo htmlspecialchars($product['name']); ?>
                             </a>
                         </h3>
@@ -136,7 +136,7 @@ $discount = get_user_discount($user_id);
                                 <p class="text-[9px] text-slate-500 font-bold uppercase tracking-widest mt-1">Instant Delivery</p>
                             </div>
                             
-                            <a href="index.php?module=shop&page=product&id=<?php echo $product['id']; ?>" 
+                            <a href="<?php echo product_public_url($product); ?>" 
                                class="bg-blue-600 hover:bg-[#00f0ff] text-white hover:text-slate-900 w-12 h-12 rounded-2xl flex items-center justify-center shadow-lg transform hover:scale-110 active:scale-95 transition-all duration-300" 
                                title="View Product">
                                 <i class="fas fa-shopping-cart"></i>

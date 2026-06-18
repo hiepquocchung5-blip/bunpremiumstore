@@ -3,6 +3,7 @@
 // PRODUCTION v4.3 - Mobile DOM Reordering & Strict Flash Sale Math
 
 $product_id = isset($_GET['id']) ? (int)$_GET['id'] : 0;
+$product_slug = trim($_GET['slug'] ?? '');
 
 // 1. Handle Actions (Review & Wishlist)
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['submit_review'])) {
@@ -40,18 +41,17 @@ if (isset($_GET['wishlist'])) {
 }
 
 // 2. Fetch Product Data
-$stmt = $pdo->prepare("
-    SELECT p.*, c.name as cat_name, c.image_url as cat_image
-    FROM products p 
-    JOIN categories c ON p.category_id = c.id 
-    WHERE p.id = ?
-");
-$stmt->execute([$product_id]);
-$product = $stmt->fetch();
+$product = resolve_product_route($product_id, $product_slug);
 
 if (!$product) {
     echo "<div class='p-20 text-center text-slate-500'>Product not found. <a href='index.php' class='text-[#00f0ff] hover:underline'>Return to Hub</a></div>";
     return;
+}
+
+$product_url = product_public_url($product);
+
+if ($product_id > 0 && $product_slug === '') {
+    redirect($product_url, 301);
 }
 
 // 3. Fetch Related Products
@@ -152,7 +152,7 @@ $schema_data = [
         'priceCurrency' => 'MMK',
         'price' => number_format($final_payable, 0, '.', ''),
         'availability' => $can_buy ? 'https://schema.org/InStock' : 'https://schema.org/OutOfStock',
-        'url' => defined('BASE_URL') ? BASE_URL . 'index.php?module=shop&page=product&id=' . $product['id'] : 'index.php?module=shop&page=product&id=' . $product['id']
+        'url' => $product_url
     ]
 ];
 if ($avg_rating > 0) {
@@ -190,7 +190,7 @@ if ($avg_rating > 0) {
         </a>
         
         <button onclick="shareProduct()" class="text-xs font-bold text-slate-500 hover:text-white transition flex items-center gap-2 bg-slate-800/50 px-4 py-2 rounded-xl border border-white/5">
-            <i class="fas fa-share-alt"></i> <span id="shareText">Share</span>
+            <i class="fas fa-share-alt"></i> <span id="shareText">Share Link</span>
         </button>
     </div>
 
@@ -445,11 +445,12 @@ if ($avg_rating > 0) {
         const btnText = document.getElementById('shareText');
         const ok = await window.shareCurrentPage({
             title: <?php echo json_encode($product['name']); ?>,
-            text: <?php echo json_encode($product['name'] . ' from DigitalMM'); ?>
+            text: <?php echo json_encode($product['name'] . ' from DigitalMM'); ?>,
+            url: <?php echo json_encode($product_url); ?>
         });
         if (btnText) {
-            btnText.innerText = ok ? 'Copied!' : 'Share';
-            setTimeout(() => { btnText.innerText = 'Share'; }, 2000);
+            btnText.innerText = ok ? 'Copied!' : 'Share Link';
+            setTimeout(() => { btnText.innerText = 'Share Link'; }, 2000);
         }
     };
 </script>

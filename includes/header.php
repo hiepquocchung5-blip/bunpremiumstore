@@ -111,15 +111,15 @@ if (isset($_SESSION['user_id'])) {
             --page-accent-2: #3b82f6;
         }
         html[data-theme="light"] {
-            --page-bg: #f6f8fc;
-            --page-surface: rgba(255, 255, 255, 0.88);
-            --page-surface-soft: rgba(255, 255, 255, 0.72);
-            --page-surface-strong: rgba(255, 255, 255, 0.98);
-            --page-border: rgba(15, 23, 42, 0.08);
-            --page-text: #303030;
-            --page-muted: #5f6472;
-            --page-accent: #ffba30;
-            --page-accent-2: #2563eb;
+            --page-bg: #f8fafc;
+            --page-surface: rgba(255, 255, 255, 0.94);
+            --page-surface-soft: rgba(255, 255, 255, 0.82);
+            --page-surface-strong: rgba(255, 255, 255, 1);
+            --page-border: #e2e8f0;
+            --page-text: #0f172a;
+            --page-muted: #64748b;
+            --page-accent: #6d28d9;
+            --page-accent-2: #ec4899;
         }
         body { background: var(--page-bg); color: var(--page-text); font-family: 'Montserrat', sans-serif; -webkit-tap-highlight-color: transparent; transition: background-color .25s ease, color .25s ease; }
         .glass { background: var(--page-surface); backdrop-filter: blur(20px); -webkit-backdrop-filter: blur(20px); border-bottom: 1px solid var(--page-border); }
@@ -134,13 +134,32 @@ if (isset($_SESSION['user_id'])) {
                 radial-gradient(circle at top right, rgba(255,186,48,0.16), transparent 28%),
                 var(--page-bg);
         }
-        html[data-theme="light"] .text-white { color: #111827 !important; }
+        html[data-theme="light"] a {
+            color: var(--page-accent);
+        }
+        html[data-theme="light"] .text-white {
+            color: var(--page-text) !important;
+        }
         html[data-theme="light"] .text-slate-100,
         html[data-theme="light"] .text-slate-200,
-        html[data-theme="light"] .text-slate-300 { color: #1f2937 !important; }
-        html[data-theme="light"] .text-slate-400 { color: #5f6472 !important; }
-        html[data-theme="light"] .text-slate-500 { color: #6b7280 !important; }
-        html[data-theme="light"] .text-slate-600 { color: #9ca3af !important; }
+        html[data-theme="light"] .text-slate-300 { color: #1e293b !important; }
+        html[data-theme="light"] .text-slate-400 { color: var(--page-muted) !important; }
+        html[data-theme="light"] .text-slate-500 { color: #94a3b8 !important; }
+        html[data-theme="light"] .text-slate-600 { color: #cbd5e1 !important; }
+        html[data-theme="light"] .text-blue-400,
+        html[data-theme="light"] .text-blue-500,
+        html[data-theme="light"] .text-blue-600 {
+            color: var(--page-accent) !important;
+        }
+        html[data-theme="light"] .text-emerald-400,
+        html[data-theme="light"] .text-emerald-500 {
+            color: var(--page-accent-2) !important;
+        }
+        html[data-theme="light"] .bg-blue-600,
+        html[data-theme="light"] .hover\:bg-blue-500:hover,
+        html[data-theme="light"] .hover\:bg-blue-600:hover {
+            background: linear-gradient(135deg, var(--page-accent) 0%, var(--page-accent-2) 100%) !important;
+        }
         html[data-theme="light"] .bg-slate-900,
         html[data-theme="light"] .bg-slate-900\/40,
         html[data-theme="light"] .bg-slate-900\/50,
@@ -149,11 +168,13 @@ if (isset($_SESSION['user_id'])) {
         html[data-theme="light"] .bg-slate-800\/30,
         html[data-theme="light"] .bg-slate-800\/40,
         html[data-theme="light"] .bg-slate-800\/50 {
-            background-color: rgba(255, 255, 255, 0.88) !important;
+            background-color: rgba(255, 255, 255, 0.94) !important;
         }
         html[data-theme="light"] .border-white\/5,
         html[data-theme="light"] .border-white\/10,
-        html[data-theme="light"] .border-slate-700\/50 {
+        html[data-theme="light"] .border-slate-700\/50,
+        html[data-theme="light"] .border-blue-500\/20,
+        html[data-theme="light"] .border-blue-500\/30 {
             border-color: var(--page-border) !important;
         }
         
@@ -189,6 +210,7 @@ if (isset($_SESSION['user_id'])) {
         window.AppConfig = {
             vapidPublicKey: "<?php echo $_ENV['VAPID_PUBLIC_KEY'] ?? ''; ?>",
             baseUrl: "<?php echo defined('BASE_URL') ? BASE_URL : '/'; ?>",
+            canonicalUrl: "<?php echo htmlspecialchars($page_canonical ?? (defined('BASE_URL') ? BASE_URL : '/')); ?>",
             // Explicitly routing API endpoints to the API Subdomain (Environment driven)
             pushApiUrl: "<?php echo $_ENV['PUSH_API_URL'] ?? 'https://api.digitalmarketplacemm.com/push_subscribe.php'; ?>",
             notificationsApiUrl: "<?php echo $_ENV['NOTIF_API_URL'] ?? 'https://api.digitalmarketplacemm.com/notifications.php'; ?>"
@@ -491,6 +513,7 @@ if (isset($_SESSION['user_id'])) {
                 icon.className = normalized === 'light' ? 'fas fa-sun text-amber-400' : 'fas fa-moon text-blue-400';
             }
             window.AppConfig.theme = normalized;
+            window.AppConfig.canonicalUrl = document.querySelector('link[rel="canonical"]')?.href || window.location.href;
             try { localStorage.setItem('site_theme', normalized); } catch (e) {}
         }
 

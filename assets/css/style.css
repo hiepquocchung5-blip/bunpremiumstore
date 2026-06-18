@@ -50,8 +50,8 @@ body {
 }
 
 html[data-theme="light"] body {
-    background: #f6f8fc;
-    color: var(--text-light);
+    background: #f8fafc;
+    color: #0f172a;
 }
 
 /* Human-Centric Spacing & Transitions */
@@ -140,17 +140,31 @@ html[data-theme="light"] body {
 html[data-theme="light"] .dm-card,
 html[data-theme="light"] .card-premium {
     background: var(--surface-light);
-    border-color: rgba(15, 23, 42, 0.08);
+    border-color: var(--border-dim);
 }
 
 html[data-theme="light"] .dm-btn-secondary {
     background: rgba(255, 255, 255, 0.9);
     color: var(--text-light);
-    border-color: rgba(15, 23, 42, 0.08);
+    border-color: var(--border-dim);
 }
 
 html[data-theme="light"] .dm-btn-primary {
     color: #111827;
+}
+
+html[data-theme="light"] .text-blue-400,
+html[data-theme="light"] .text-blue-500,
+html[data-theme="light"] .text-blue-600 {
+    color: var(--secondary) !important;
+}
+
+html[data-theme="light"] .text-white {
+    color: var(--text-light) !important;
+}
+
+html[data-theme="light"] .text-slate-400 {
+    color: var(--text-light-muted) !important;
 }
 
 /* Mobile Adjustments */

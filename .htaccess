@@ -29,7 +29,10 @@ Options -Indexes
 # Turns /product/123 into index.php?module=shop&page=product&id=123
 # RewriteRule ^product/([0-9]+)$ index.php?module=shop&page=product&id=$1 [L,QSA]
 # RewriteRule ^category/([0-9]+)$ index.php?module=shop&page=category&id=$1 [L,QSA]
+# Turns /shop/instagram-followers-premium into the public product page
+RewriteRule ^shop/([A-Za-z0-9-]+)/?$ index.php?module=shop&page=product&slug=$1 [L,QSA,NC]
 
 # 7. Error Handling
 ErrorDocument 404 /scottsub/index.php?module=error&page=404
-ErrorDocument 403 /scottsub/index.php?module=error&page=404
+ErrorDocument 403 /scottsub/index.php?module=error&page=403
+ErrorDocument 500 /scottsub/index.php?module=error&page=500
