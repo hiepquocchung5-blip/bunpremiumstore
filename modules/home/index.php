@@ -191,6 +191,280 @@ if (is_logged_in()) {
         </div>
     </div>
 
+    <!-- SECTION 0: BANNER SLIDER -->
+    <?php if(!empty($banners)): ?>
+    <style>
+        .banner-slider-container {
+            position: relative;
+            width: 100%;
+            max-width: 1440px;
+            margin: 0 auto 4rem auto;
+            border-radius: 24px;
+            overflow: hidden;
+            background: transparent;
+        }
+
+        .banner-slider-track {
+            display: flex;
+            height: 420px;
+            width: 100%;
+            position: relative;
+            border-radius: 24px;
+            overflow: hidden;
+            box-shadow: 0 20px 50px rgba(0, 0, 0, 0.3);
+        }
+
+        .banner-slide {
+            position: absolute;
+            width: 100%;
+            height: 100%;
+            border-radius: 24px;
+            opacity: 0;
+            transition: opacity 0.8s ease-in-out;
+            top: 0;
+            left: 0;
+        }
+
+        .banner-slide.active {
+            opacity: 1;
+            z-index: 10;
+        }
+
+        .banner-slide img {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+        }
+
+        .banner-overlay {
+            position: absolute;
+            inset: 0;
+            background: linear-gradient(135deg, rgba(11, 15, 26, 0.4) 0%, rgba(11, 15, 26, 0.2) 50%, transparent 100%);
+            display: flex;
+            flex-direction: column;
+            justify-content: flex-end;
+            padding: 2rem 2rem 3rem 2rem;
+            z-index: 2;
+        }
+
+        .banner-content {
+            max-width: 600px;
+        }
+
+        .banner-title {
+            font-size: 2.5rem;
+            font-weight: 900;
+            color: white;
+            margin-bottom: 1rem;
+            text-shadow: 0 4px 12px rgba(0, 0, 0, 0.5);
+            line-height: 1.2;
+        }
+
+        .banner-slide.active .banner-title {
+            animation: slideInUp 0.6s ease-out 0.2s both;
+        }
+
+        .banner-cta {
+            display: inline-flex;
+            align-items: center;
+            gap: 0.5rem;
+            padding: 0.75rem 1.5rem;
+            background: linear-gradient(135deg, #3b82f6 0%, #2563eb 100%);
+            color: white;
+            font-weight: 700;
+            font-size: 0.875rem;
+            border-radius: 12px;
+            text-decoration: none;
+            transition: all 0.3s ease;
+            box-shadow: 0 4px 15px rgba(59, 130, 246, 0.4);
+        }
+
+        .banner-slide.active .banner-cta {
+            animation: slideInUp 0.6s ease-out 0.4s both;
+        }
+
+        .banner-cta:hover {
+            background: linear-gradient(135deg, #2563eb 0%, #1d4ed8 100%);
+            transform: translateY(-2px);
+            box-shadow: 0 6px 20px rgba(59, 130, 246, 0.6);
+        }
+
+        .banner-nav {
+            position: absolute;
+            bottom: 1.5rem;
+            right: 1.5rem;
+            display: flex;
+            gap: 0.75rem;
+            z-index: 20;
+        }
+
+        .banner-dot {
+            width: 10px;
+            height: 10px;
+            border-radius: 50%;
+            background: rgba(255, 255, 255, 0.4);
+            border: 2px solid rgba(255, 255, 255, 0.6);
+            cursor: pointer;
+            transition: all 0.3s ease;
+        }
+
+        .banner-dot.active {
+            background: white;
+            width: 28px;
+            border-radius: 5px;
+            border-color: white;
+        }
+
+        .banner-arrow {
+            position: absolute;
+            top: 50%;
+            transform: translateY(-50%);
+            width: 44px;
+            height: 44px;
+            background: rgba(255, 255, 255, 0.15);
+            border: 1px solid rgba(255, 255, 255, 0.3);
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: white;
+            cursor: pointer;
+            z-index: 15;
+            transition: all 0.3s ease;
+            font-size: 1.25rem;
+        }
+
+        .banner-arrow:hover {
+            background: rgba(255, 255, 255, 0.25);
+            border-color: rgba(255, 255, 255, 0.5);
+        }
+
+        .banner-prev {
+            left: 1.5rem;
+        }
+
+        .banner-next {
+            right: 1.5rem;
+        }
+
+        @keyframes slideInUp {
+            from {
+                opacity: 0;
+                transform: translateY(20px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        @media (max-width: 768px) {
+            .banner-slider-track {
+                height: 280px;
+            }
+
+            .banner-title {
+                font-size: 1.5rem;
+                margin-bottom: 0.75rem;
+            }
+
+            .banner-overlay {
+                padding: 1.5rem 1rem 2rem 1rem;
+            }
+
+            .banner-arrow {
+                width: 36px;
+                height: 36px;
+                font-size: 1rem;
+            }
+
+            .banner-prev {
+                left: 1rem;
+            }
+
+            .banner-next {
+                right: 1rem;
+            }
+
+            .banner-nav {
+                bottom: 1rem;
+                right: 1rem;
+            }
+        }
+    </style>
+
+    <div class="banner-slider-container">
+        <div class="banner-slider-track" id="bannerSlider">
+            <?php foreach($banners as $index => $banner): ?>
+            <div class="banner-slide <?php echo $index === 0 ? 'active' : ''; ?>" data-slide="<?php echo $index; ?>">
+                <img src="<?php echo BASE_URL . $banner['image_path']; ?>" alt="<?php echo htmlspecialchars($banner['title']); ?>" loading="lazy">
+                <div class="banner-overlay">
+                    <div class="banner-content">
+                        <h2 class="banner-title"><?php echo htmlspecialchars($banner['title']); ?></h2>
+                        <?php if(!empty($banner['target_url'])): ?>
+                        <a href="<?php echo $banner['target_url']; ?>" class="banner-cta">
+                            Explore Now <i class="fas fa-arrow-right"></i>
+                        </a>
+                        <?php endif; ?>
+                    </div>
+                </div>
+            </div>
+            <?php endforeach; ?>
+        </div>
+
+        <!-- Navigation Arrows -->
+        <div class="banner-prev banner-arrow" onclick="bannerSlide(-1);">
+            <i class="fas fa-chevron-left"></i>
+        </div>
+        <div class="banner-next banner-arrow" onclick="bannerSlide(1);">
+            <i class="fas fa-chevron-right"></i>
+        </div>
+
+        <!-- Navigation Dots -->
+        <div class="banner-nav">
+            <?php foreach($banners as $index => $banner): ?>
+            <div class="banner-dot <?php echo $index === 0 ? 'active' : ''; ?>" onclick="bannerGoTo(<?php echo $index; ?>);"></div>
+            <?php endforeach; ?>
+        </div>
+    </div>
+
+    <script>
+        let currentBannerSlide = 0;
+        const bannerTotalSlides = document.querySelectorAll('.banner-slide').length;
+        let bannerAutoPlayInterval;
+
+        function showBannerSlide(n) {
+            const slides = document.querySelectorAll('.banner-slide');
+            const dots = document.querySelectorAll('.banner-dot');
+
+            if(n >= bannerTotalSlides) { currentBannerSlide = 0; }
+            if(n < 0) { currentBannerSlide = bannerTotalSlides - 1; }
+
+            slides.forEach(slide => slide.classList.remove('active'));
+            dots.forEach(dot => dot.classList.remove('active'));
+
+            slides[currentBannerSlide].classList.add('active');
+            dots[currentBannerSlide].classList.add('active');
+
+            clearInterval(bannerAutoPlayInterval);
+            bannerAutoPlayInterval = setInterval(() => bannerSlide(1), 6000);
+        }
+
+        function bannerSlide(n) {
+            currentBannerSlide += n;
+            showBannerSlide(currentBannerSlide);
+        }
+
+        function bannerGoTo(n) {
+            currentBannerSlide = n;
+            showBannerSlide(currentBannerSlide);
+        }
+
+        // Auto-play banners
+        showBannerSlide(currentBannerSlide);
+    </script>
+    <?php endif; ?>
+
     <!-- SECTION 1: PREMIUM ACCORDION HERO (GameSeal Inspired) -->
     <style>
         .accordion-hero {

@@ -148,14 +148,36 @@ function resolve_product_route($id = 0, $slug = '') {
 function enforce_ban_protocol() {
     global $pdo;
     if (is_logged_in()) {
-        try {
-            $stmt = $pdo->prepare("SELECT is_banned, ban_reason FROM users WHERE id = ?");
-            $stmt->execute([$_SESSION['user_id']]);
-            $user = $stmt->fetch();
+        // Optimization: Cache ban status in session for 5 minutes to reduce DB load
+        if (isset($_SESSION['ban_check_time']) && (time() - $_SESSION['ban_check_time']) < 300) {
+            if (!empty($_SESSION['is_banned'])) {
+                // User is already marked as banned in session cache
+                $reason = $_SESSION['ban_reason'] ?? "Violation of terms of service.";
+            } else {
+                return; // User is not banned and cache is fresh
+            }
+        }
 
-            if ($user && $user['is_banned'] == 1) {
+        try {
+            if (empty($reason)) {
+                $stmt = $pdo->prepare("SELECT is_banned, ban_reason FROM users WHERE id = ?");
+                $stmt->execute([$_SESSION['user_id']]);
+                $user = $stmt->fetch();
+                
+                $_SESSION['ban_check_time'] = time();
+                
+                if ($user && $user['is_banned'] == 1) {
+                    $_SESSION['is_banned'] = true;
+                    $_SESSION['ban_reason'] = $user['ban_reason'];
+                    $reason = $user['ban_reason'] ?: "Violation of terms of service.";
+                } else {
+                    $_SESSION['is_banned'] = false;
+                    return;
+                }
+            }
+
+            if (!empty($reason)) {
                 // Terminate Session
-                $reason = $user['ban_reason'] ?: "Violation of terms of service.";
                 session_unset();
                 session_destroy();
                 
@@ -331,6 +353,12 @@ function send_telegram_alert($order_id, $product_name, $price, $username) {
 // Get Unread Admin Messages Count
 function get_unread_notifications($user_id) {
     global $pdo;
+    
+    // Matrix Cache: User Notifications
+    $cache_key = "user_notif_data_{$user_id}";
+    $cached = matrix_cache_get($cache_key);
+    if ($cached !== false) return (int)$cached;
+
     try {
         $stmt = $pdo->prepare("
             SELECT COUNT(*) FROM order_messages om
@@ -339,7 +367,10 @@ function get_unread_notifications($user_id) {
             AND om.created_at >= DATE_SUB(NOW(), INTERVAL 24 HOUR)
         ");
         $stmt->execute([$user_id]);
-        return (int) $stmt->fetchColumn();
+        $count = (int) $stmt->fetchColumn();
+        
+        matrix_cache_set($cache_key, $count, 300); // Cache for 5 minutes
+        return $count;
     } catch (Exception $e) {
         return 0;
     }

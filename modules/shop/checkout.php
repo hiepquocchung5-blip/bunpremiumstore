@@ -106,10 +106,14 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 if (move_uploaded_file($_FILES["proof"]["tmp_name"], $target_file)) {
                     $txn_id = trim($_POST['txn_id']);
                     
-                    // Fetch Payment Method Name for logs
-                    $stmt_pm = $pdo->prepare("SELECT bank_name FROM payment_methods WHERE id = ?");
-                    $stmt_pm->execute([$selected_payment_id]);
-                    $pm_name = $stmt_pm->fetchColumn() ?: 'Manual Transfer';
+                    // Find Payment Method Name from already loaded array to avoid redundant DB query
+                    $pm_name = 'Manual Transfer';
+                    foreach ($payment_methods as $pm) {
+                        if ($pm['id'] == $selected_payment_id) {
+                            $pm_name = $pm['bank_name'];
+                            break;
+                        }
+                    }
 
                     // Form Data JSON setup
                     $form_data_array = ['Payment Node' => $pm_name];
