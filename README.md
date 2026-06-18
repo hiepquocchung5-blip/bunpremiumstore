@@ -38,6 +38,14 @@ DigitalMM is a PHP-based digital marketplace for products such as games, softwar
 - Several expensive homepage queries are cached briefly with the existing matrix cache helper.
 - Product grids were simplified to reduce layout noise and improve scan speed on mobile.
 
+## Liquid Glass UI Reference
+
+- Primary product actions use the shared liquid-glass button treatment in `assets/css/style.css`.
+- Use `liquid-glass-btn liquid-glass-buy` for the main CTA.
+- Use `liquid-glass-btn liquid-glass-like` for wishlist or like actions.
+- Use `liquid-glass-btn liquid-glass-share` for copy/share actions.
+- Prompt reference for future UI work: keep the liquid effect subtle, readable, and production-safe. Prefer opposite CTA colors in light mode and keep the button text/icon contrast high.
+
 ## Deployment
 
 This project is intended to run on the `digitalmarketplacemm.com` deployment target with:
@@ -56,4 +64,3 @@ Recommended checks after deployment:
 3. Product share button copies or opens native share.
 4. Product page metadata renders correctly for social previews.
 5. Login sessions survive refresh and logout clears the user state.
-

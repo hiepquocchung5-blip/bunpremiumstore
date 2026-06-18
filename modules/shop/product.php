@@ -189,7 +189,7 @@ if ($avg_rating > 0) {
             <i class="fas fa-arrow-left group-hover:-translate-x-1 transition-transform"></i> Back to Store
         </a>
         
-        <button onclick="shareProduct()" class="text-xs font-bold text-slate-500 hover:text-white transition flex items-center gap-2 bg-slate-800/50 px-4 py-2 rounded-xl border border-white/5">
+        <button onclick="shareProduct()" class="liquid-glass-btn liquid-glass-share text-xs px-4 py-2">
             <i class="fas fa-share-alt"></i> <span id="shareText">Share Link</span>
         </button>
     </div>
@@ -216,7 +216,7 @@ if ($avg_rating > 0) {
                         
                         <?php if(is_logged_in()): ?>
                             <a href="index.php?module=shop&page=product&id=<?php echo $product['id']; ?>&wishlist=<?php echo $in_wishlist ? 'remove' : 'add'; ?>" 
-                               class="absolute top-4 right-4 w-10 h-10 rounded-full flex items-center justify-center border transition-all z-20 <?php echo $in_wishlist ? 'bg-rose-500 border-rose-400 text-white' : 'bg-slate-900/80 border-white/10 text-white/50 hover:text-white'; ?>">
+                               class="liquid-glass-btn liquid-glass-like absolute top-4 right-4 w-11 h-11 !p-0 rounded-full text-sm z-20 <?php echo $in_wishlist ? 'bg-rose-500/90 text-white border-rose-200/40' : ''; ?>">
                                 <i class="<?php echo $in_wishlist ? 'fas' : 'far'; ?> fa-heart"></i>
                             </a>
                         <?php endif; ?>
@@ -401,15 +401,28 @@ if ($avg_rating > 0) {
                     </div>
                 </div>
 
-                <?php if($can_buy): ?>
-                    <a href="index.php?module=shop&page=checkout&id=<?php echo $product['id']; ?>" class="block w-full dm-btn-primary py-5 text-center transition-all hover:-translate-y-1 active:scale-95">
-                        Buy Now
-                    </a>
-                <?php else: ?>
-                    <button disabled class="w-full bg-slate-800 text-slate-600 font-bold py-5 rounded-2xl cursor-not-allowed border border-white/5">
-                        Out of Stock
-                    </button>
-                <?php endif; ?>
+                <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                    <?php if($can_buy): ?>
+                        <a href="index.php?module=shop&page=checkout&id=<?php echo $product['id']; ?>" class="liquid-glass-btn liquid-glass-buy w-full py-[18px] text-center justify-center min-h-[56px]">
+                            <i class="fas fa-bag-shopping"></i> Buy Now
+                        </a>
+                    <?php else: ?>
+                        <button disabled class="liquid-glass-btn liquid-glass-buy w-full py-[18px] justify-center min-h-[56px] opacity-60 cursor-not-allowed">
+                            <i class="fas fa-ban"></i> Out of Stock
+                        </button>
+                    <?php endif; ?>
+
+                    <?php if(is_logged_in()): ?>
+                        <a href="index.php?module=shop&page=product&id=<?php echo $product['id']; ?>&wishlist=<?php echo $in_wishlist ? 'remove' : 'add'; ?>" class="liquid-glass-btn liquid-glass-like w-full py-[18px] text-center justify-center min-h-[56px] <?php echo $in_wishlist ? 'border-rose-300/60 bg-rose-500/15 text-rose-200' : ''; ?>">
+                            <i class="<?php echo $in_wishlist ? 'fas' : 'far'; ?> fa-heart"></i>
+                            <?php echo $in_wishlist ? 'Liked' : 'Like'; ?>
+                        </a>
+                    <?php else: ?>
+                        <a href="index.php?module=auth&page=login" class="liquid-glass-btn liquid-glass-like w-full py-[18px] text-center justify-center min-h-[56px]">
+                            <i class="far fa-heart"></i> Like
+                        </a>
+                    <?php endif; ?>
+                </div>
                 
                 <div class="grid grid-cols-2 gap-4">
                     <div class="text-center p-4 bg-slate-900/40 rounded-2xl border border-white/5">

@@ -48,6 +48,13 @@ Requests enter through `index.php`, which validates the route, enforces auth gua
 - Prefer shared layout tokens and CSS classes over repeated inline styles.
 - Use compact grid densities on mobile so users can scan more products without extra scrolling.
 
+## Liquid Glass UI Reference
+
+- Reuse `liquid-glass-btn` for product CTAs instead of one-off inline glass code.
+- Apply `liquid-glass-buy`, `liquid-glass-like`, and `liquid-glass-share` as the semantic variants.
+- In light mode, keep the primary CTA visually different from the like button by using the purple-pink gradient on Buy Now and a white surface for Like.
+- Keep hover motion restrained: small lift, no large scale jumps, and preserve legibility in all themes.
+
 ## Security Strategy
 
 - Route allow-list in `index.php`.
@@ -61,4 +68,3 @@ Requests enter through `index.php`, which validates the route, enforces auth gua
 - Deploy behind HTTPS so the session cookie can stay secure.
 - Ensure `.env` is populated with database, app URL, Google OAuth, Telegram, and push settings.
 - Clear any generated cache files only if the catalog changes heavily or cache invalidation is required.
-
