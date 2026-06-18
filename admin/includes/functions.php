@@ -149,17 +149,24 @@ function format_admin_currency($amount) {
 
 // Format Status Badge
 function format_status_badge($status) {
+    $base_classes = "px-3 py-1.5 rounded-xl text-[10px] font-bold uppercase tracking-widest border shadow-sm";
     switch ($status) {
         case 'active':
-            return '<span class="px-2 py-1 rounded text-xs font-bold bg-green-500/20 text-green-400 uppercase tracking-wider">Active</span>';
+        case 'completed':
+        case 'success':
+            return '<span class="'.$base_classes.' bg-emerald-500/10 text-emerald-400 border-emerald-500/20">Active</span>';
         case 'pending':
-            return '<span class="px-2 py-1 rounded text-xs font-bold bg-yellow-500/20 text-yellow-400 uppercase tracking-wider">Pending</span>';
+        case 'processing':
+            return '<span class="'.$base_classes.' bg-amber-500/10 text-amber-400 border-amber-500/20">Pending</span>';
         case 'rejected':
-            return '<span class="px-2 py-1 rounded text-xs font-bold bg-red-500/20 text-red-400 uppercase tracking-wider">Rejected</span>';
+        case 'cancelled':
+        case 'failed':
+            return '<span class="'.$base_classes.' bg-rose-500/10 text-rose-400 border-rose-500/20">Rejected</span>';
         case 'closed':
-            return '<span class="px-2 py-1 rounded text-xs font-bold bg-slate-500/20 text-slate-300 uppercase tracking-wider">Closed</span>';
+        case 'archived':
+            return '<span class="'.$base_classes.' bg-slate-500/10 text-slate-400 border-slate-500/20">Closed</span>';
         default:
-            return '<span class="px-2 py-1 rounded text-xs font-bold bg-gray-500/20 text-gray-400 uppercase tracking-wider">'.htmlspecialchars($status).'</span>';
+            return '<span class="'.$base_classes.' bg-indigo-500/10 text-indigo-400 border-indigo-500/20">'.htmlspecialchars($status).'</span>';
     }
 }
 ?>

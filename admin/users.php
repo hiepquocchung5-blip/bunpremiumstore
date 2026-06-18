@@ -26,93 +26,119 @@ $users = $pdo->query("
 ")->fetchAll();
 ?>
 
-<div class="mb-6 flex justify-between items-center">
+<div class="mb-10 flex flex-col md:flex-row justify-between items-start md:items-center gap-6 animate-fade-in">
     <div>
-        <h1 class="text-3xl font-bold text-white">User Management</h1>
-        <p class="text-slate-400 text-sm mt-1">Total Registered: <?php echo count($users); ?></p>
+        <h1 class="text-3xl md:text-5xl font-extrabold text-white tracking-tight font-heading">Customer Base <span class="text-indigo-500">.</span></h1>
+        <p class="text-slate-500 text-sm mt-3 leading-relaxed">Currently managing <span class="text-indigo-400 font-bold"><?php echo count($users); ?></span> registered members in the system.</p>
     </div>
 </div>
 
 <?php if(isset($_GET['msg']) && $_GET['msg'] == 'deleted'): ?>
-    <div class="bg-red-500/20 text-red-400 p-4 rounded-xl border border-red-500/50 mb-6 flex items-center gap-3">
-        <i class="fas fa-trash"></i> User deleted successfully.
+    <div class="bg-rose-500/10 border border-rose-500/20 text-rose-400 p-4 rounded-2xl mb-8 flex items-center gap-3 animate-fade-in shadow-sm">
+        <div class="w-8 h-8 rounded-lg bg-rose-500/20 flex items-center justify-center">
+            <i class="fas fa-user-minus"></i>
+        </div>
+        <span class="text-sm font-bold">User account has been successfully purged from the database.</span>
     </div>
 <?php endif; ?>
 
-<div class="bg-slate-800 rounded-xl border border-slate-700 overflow-hidden shadow-lg">
+<div class="custom-card overflow-hidden">
     <div class="overflow-x-auto">
-        <table class="w-full text-left text-sm">
-            <thead class="bg-slate-700/50 text-slate-400 uppercase text-xs">
-                <tr>
-                    <th class="p-4">ID</th>
-                    <th class="p-4">User</th>
-                    <th class="p-4">Contact</th>
-                    <th class="p-4">Membership</th>
-                    <th class="p-4 text-center">Orders</th>
-                    <th class="p-4 text-right">Total Spent</th>
-                    <th class="p-4 text-right">Joined</th>
-                    <th class="p-4 text-right">Action</th>
+        <table class="w-full text-left text-sm whitespace-nowrap">
+            <thead>
+                <tr class="bg-black/20 text-slate-500 uppercase text-[10px] tracking-[0.2em] font-bold">
+                    <th class="p-6 pl-10">System ID</th>
+                    <th class="p-6">Client Profile</th>
+                    <th class="p-6">Communication</th>
+                    <th class="p-6">Account Tier</th>
+                    <th class="p-6 text-center">Volume</th>
+                    <th class="p-6 text-right">LTV (Lifetime Value)</th>
+                    <th class="p-6 text-right">Registered</th>
+                    <th class="p-6 pr-10 text-right">Actions</th>
                 </tr>
             </thead>
-            <tbody class="divide-y divide-slate-700">
+            <tbody class="divide-y divide-white/[0.03]">
                 <?php foreach($users as $u): ?>
-                    <tr class="hover:bg-slate-700/30 transition group">
-                        <td class="p-4 text-slate-500">#<?php echo $u['id']; ?></td>
-                        <td class="p-4">
-                            <div class="flex items-center gap-3">
-                                <div class="w-8 h-8 rounded-full bg-gradient-to-br from-blue-600 to-purple-600 flex items-center justify-center text-xs font-bold text-white shadow-lg">
-                                    <?php echo strtoupper(substr($u['username'], 0, 2)); ?>
+                    <tr class="hover:bg-indigo-500/[0.02] transition-colors group">
+                        <td class="p-6 pl-10">
+                            <span class="bg-slate-800/50 text-slate-400 px-3 py-1.5 rounded-xl font-mono text-[10px] border border-white/5">#<?php echo $u['id']; ?></span>
+                        </td>
+                        <td class="p-6">
+                            <div class="flex items-center gap-4">
+                                <div class="w-11 h-11 rounded-2xl bg-gradient-to-br from-indigo-500 to-purple-600 flex items-center justify-center text-sm font-bold text-white shadow-lg group-hover:scale-105 transition-transform">
+                                    <?php echo strtoupper(substr($u['username'], 0, 1)); ?>
                                 </div>
-                                <div>
-                                    <div class="font-bold text-white"><?php echo htmlspecialchars($u['full_name']); ?></div>
-                                    <div class="text-xs text-slate-400">@<?php echo htmlspecialchars($u['username']); ?></div>
+                                <div class="flex flex-col">
+                                    <span class="font-bold text-white group-hover:text-indigo-400 transition-colors"><?php echo htmlspecialchars($u['full_name']); ?></span>
+                                    <span class="text-[10px] text-slate-500 font-bold uppercase tracking-widest mt-0.5">@<?php echo htmlspecialchars($u['username']); ?></span>
                                 </div>
                             </div>
                         </td>
-                        <td class="p-4">
-                            <div class="text-slate-300 text-xs flex items-center gap-1">
-                                <i class="fas fa-envelope text-slate-500"></i> 
-                                <?php echo htmlspecialchars($u['email']); ?>
-                                <?php if(isset($u['is_verified']) && $u['is_verified']): ?>
-                                    <span class="text-green-400" title="Email Verified"><i class="fas fa-check-circle text-[10px]"></i></span>
-                                <?php endif; ?>
-                            </div>
-                            <div class="text-slate-500 text-xs mt-1">
-                                <?php echo htmlspecialchars($u['phone'] ?: '-'); ?>
+                        <td class="p-6">
+                            <div class="flex flex-col gap-1.5">
+                                <div class="text-[12px] text-slate-300 flex items-center gap-2">
+                                    <i class="far fa-envelope text-indigo-400 text-[10px]"></i> 
+                                    <?php echo htmlspecialchars($u['email']); ?>
+                                    <?php if(isset($u['is_verified']) && $u['is_verified']): ?>
+                                        <span class="text-emerald-400" title="Email Verified"><i class="fas fa-circle-check text-[9px]"></i></span>
+                                    <?php endif; ?>
+                                </div>
+                                <div class="text-[10px] text-slate-500 font-medium flex items-center gap-2 ml-1">
+                                    <i class="fas fa-phone text-[9px] opacity-50"></i>
+                                    <?php echo htmlspecialchars($u['phone'] ?: 'No contact'); ?>
+                                </div>
                             </div>
                         </td>
-                        <td class="p-4">
+                        <td class="p-6">
                             <?php if($u['active_pass']): ?>
-                                <span class="bg-yellow-500/20 text-yellow-400 px-2 py-1 rounded text-xs font-bold border border-yellow-500/30 shadow-sm">
-                                    <i class="fas fa-crown mr-1"></i> <?php echo htmlspecialchars($u['active_pass']); ?>
+                                <span class="bg-amber-500/10 text-amber-400 px-3 py-1.5 rounded-xl text-[10px] font-black uppercase tracking-widest border border-amber-500/20 flex items-center gap-2 w-fit shadow-sm">
+                                    <i class="fas fa-crown text-[9px]"></i> <?php echo htmlspecialchars($u['active_pass']); ?>
                                 </span>
                             <?php else: ?>
-                                <span class="text-slate-600 text-xs bg-slate-900 px-2 py-1 rounded">Standard</span>
+                                <span class="text-slate-600 text-[10px] font-bold uppercase tracking-widest bg-slate-800/50 px-3 py-1.5 rounded-xl border border-white/5 w-fit">Standard Member</span>
                             <?php endif; ?>
                         </td>
-                        <td class="p-4 text-center">
-                            <span class="bg-slate-900 text-slate-300 px-2.5 py-1 rounded font-mono text-xs border border-slate-700">
-                                <?php echo $u['total_orders']; ?>
+                        <td class="p-6 text-center">
+                            <div class="flex flex-col items-center">
+                                <span class="text-white font-bold text-sm"><?php echo $u['total_orders']; ?></span>
+                                <span class="text-[9px] text-slate-600 uppercase font-black tracking-widest mt-0.5">Orders</span>
+                            </div>
+                        </td>
+                        <td class="p-6 text-right">
+                            <span class="text-emerald-400 font-extrabold tracking-tight">
+                                <?php echo format_admin_currency($u['total_spent'] ?: 0); ?>
                             </span>
                         </td>
-                        <td class="p-4 text-right font-mono text-green-400 font-bold">
-                            <?php echo format_admin_currency($u['total_spent'] ?: 0); ?>
+                        <td class="p-6 text-right">
+                            <div class="flex flex-col items-end">
+                                <span class="text-slate-300 text-xs font-medium"><?php echo date('M d, Y', strtotime($u['created_at'])); ?></span>
+                                <span class="text-[9px] text-slate-600 uppercase font-bold tracking-widest mt-0.5">Onboarded</span>
+                            </div>
                         </td>
-                        <td class="p-4 text-right text-slate-500 text-xs">
-                            <?php echo date('M d, Y', strtotime($u['created_at'])); ?>
-                        </td>
-                        <td class="p-4 text-right">
-                            <a href="<?php echo admin_url('users', ['delete' => $u['id']]); ?>" 
-                               class="text-slate-500 hover:text-red-400 transition p-2 rounded hover:bg-slate-700" 
-                               onclick="return confirm('Are you sure? This will delete the user and may affect their order history.')"
-                               title="Delete User">
-                                <i class="fas fa-user-times"></i>
-                            </a>
+                        <td class="p-6 pr-10 text-right">
+                            <div class="flex justify-end gap-3">
+                                <a href="<?php echo admin_url('users', ['delete' => $u['id']]); ?>" 
+                                   class="w-10 h-10 rounded-xl bg-slate-800/50 border border-white/5 text-rose-500 hover:bg-rose-600 hover:text-white hover:border-rose-500 transition-all flex items-center justify-center shadow-sm" 
+                                   onclick="return confirm('Account Deletion WARNING: This will remove all user data and access. Continue?')"
+                                   title="Remove Customer">
+                                    <i class="fas fa-user-xmark text-xs"></i>
+                                </a>
+                            </div>
                         </td>
                     </tr>
                 <?php endforeach; ?>
                 <?php if(empty($users)): ?>
-                    <tr><td colspan="8" class="p-8 text-center text-slate-500">No users found.</td></tr>
+                    <tr>
+                        <td colspan="8" class="p-24 text-center">
+                            <div class="flex flex-col items-center opacity-30">
+                                <div class="w-20 h-20 bg-slate-800 rounded-3xl flex items-center justify-center mb-6">
+                                    <i class="fas fa-users-slash text-4xl text-slate-600"></i>
+                                </div>
+                                <h3 class="text-white font-bold text-xl font-heading tracking-tight uppercase">Zero Clients Detected</h3>
+                                <p class="text-sm mt-2 font-medium text-slate-500">Your user database is currently empty.</p>
+                            </div>
+                        </td>
+                    </tr>
                 <?php endif; ?>
             </tbody>
         </table>
