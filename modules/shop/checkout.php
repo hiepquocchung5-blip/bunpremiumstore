@@ -184,7 +184,7 @@ $display_image = !empty($product['image_path']) ? BASE_URL . $product['image_pat
 <div class="max-w-7xl mx-auto px-4 py-8 lg:py-12 relative z-10">
     
     <div class="flex items-center gap-4 mb-10">
-        <a href="javascript:history.back()" class="w-12 h-12 rounded-2xl bg-slate-800/50 hover:bg-slate-700 border border-white/5 text-slate-400 hover:text-white flex items-center justify-center transition-all shadow-sm">
+        <a href="<?php echo BASE_URL; ?>" class="w-12 h-12 rounded-2xl bg-slate-800/50 hover:bg-slate-700 border border-white/5 text-slate-400 hover:text-white flex items-center justify-center transition-all shadow-sm" aria-label="Back to store">
             <i class="fas fa-arrow-left"></i>
         </a>
         <div>
@@ -222,7 +222,7 @@ $display_image = !empty($product['image_path']) ? BASE_URL . $product['image_pat
                     </div>
 
                     <div class="relative z-10">
-                        <a href="index.php?module=user&page=orders" class="inline-flex items-center gap-3 bg-white hover:bg-slate-100 text-black px-6 py-3 rounded-xl font-bold transition-all active:scale-95 shadow-lg">
+                        <a href="<?php echo BASE_URL; ?>index.php?module=user&page=orders" class="inline-flex items-center gap-3 bg-white hover:bg-slate-100 text-black px-6 py-3 rounded-xl font-bold transition-all active:scale-95 shadow-lg">
                             <i class="fas fa-history"></i> View My Orders
                         </a>
                     </div>

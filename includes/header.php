@@ -83,6 +83,7 @@ if (isset($_SESSION['user_id'])) {
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
     <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
     <meta name="apple-mobile-web-app-title" content="DigitalMM">
     <meta name="theme-color" content="<?php echo $theme_color; ?>">
@@ -93,6 +94,7 @@ if (isset($_SESSION['user_id'])) {
     <meta property="og:url" content="<?php echo htmlspecialchars($page_canonical ?? (defined('BASE_URL') ? BASE_URL : '/')); ?>">
     <meta property="og:image" content="<?php echo htmlspecialchars($page_image ?? (defined('BASE_URL') ? BASE_URL . 'assets/images/og-image.png' : 'assets/images/og-image.png')); ?>">
     <link rel="canonical" href="<?php echo htmlspecialchars($page_canonical ?? (defined('BASE_URL') ? BASE_URL : '/')); ?>">
+    <base href="<?php echo htmlspecialchars(defined('BASE_URL') ? BASE_URL : '/'); ?>">
     
     <title><?php echo htmlspecialchars($page_title ?? 'DigitalMM | Premium Digital Marketplace'); ?></title>
     
@@ -100,7 +102,7 @@ if (isset($_SESSION['user_id'])) {
     <script src="https://cdn.tailwindcss.com"></script>
     <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
     <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@400;500;600;700;800&display=swap" rel="stylesheet">
-    <link href="assets/css/style.css" rel="stylesheet">
+    <link href="<?php echo BASE_URL; ?>assets/css/style.css" rel="stylesheet">
 
     <!-- Inline Critical CSS -->
     <style>
@@ -234,7 +236,7 @@ if (isset($_SESSION['user_id'])) {
                 <!-- Logo -->
                 <a href="index.php" class="flex items-center gap-3 group relative z-10 shrink-0">
                     <div class="w-10 h-10 lg:w-12 lg:h-12 bg-slate-800 rounded-2xl flex items-center justify-center shadow-lg group-hover:shadow-blue-500/20 transition duration-300 border border-white/5 overflow-hidden">
-                        <img src="assets/images/logo.png" alt="Logo" class="w-full h-full object-contain p-1.5 transition-transform duration-500 group-hover:scale-110" onerror="this.outerHTML='<i class=\'fas fa-bolt text-blue-500 text-xl\'></i>'">
+                        <img src="<?php echo BASE_URL; ?>assets/images/logo.png" alt="Logo" class="w-full h-full object-contain p-1.5 transition-transform duration-500 group-hover:scale-110" onerror="this.outerHTML='<i class=\'fas fa-bolt text-blue-500 text-xl\'></i>'">
                     </div>
                     <div class="flex flex-col">
                         <span class="font-bold text-lg lg:text-xl tracking-tight text-white group-hover:text-blue-400 transition">Digital<span class="text-blue-500">MM</span></span>

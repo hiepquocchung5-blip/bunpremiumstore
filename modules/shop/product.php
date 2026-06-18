@@ -185,7 +185,7 @@ if ($avg_rating > 0) {
     
     <!-- Breadcrumbs -->
     <div class="mb-8 flex items-center justify-between">
-        <a href="index.php" class="inline-flex items-center gap-2 text-sm font-bold text-slate-500 hover:text-white transition group">
+        <a href="<?php echo BASE_URL; ?>" class="inline-flex items-center gap-2 text-sm font-bold text-slate-500 hover:text-white transition group">
             <i class="fas fa-arrow-left group-hover:-translate-x-1 transition-transform"></i> Back to Store
         </a>
         
@@ -215,7 +215,7 @@ if ($avg_rating > 0) {
                         <?php endif; ?>
                         
                         <?php if(is_logged_in()): ?>
-                            <a href="index.php?module=shop&page=product&id=<?php echo $product['id']; ?>&wishlist=<?php echo $in_wishlist ? 'remove' : 'add'; ?>" 
+                            <a href="<?php echo BASE_URL; ?>index.php?module=shop&page=product&id=<?php echo $product['id']; ?>&wishlist=<?php echo $in_wishlist ? 'remove' : 'add'; ?>" 
                                class="liquid-glass-btn liquid-glass-like absolute top-4 right-4 w-11 h-11 !p-0 rounded-full text-sm z-20 <?php echo $in_wishlist ? 'bg-rose-500/90 text-white border-rose-200/40' : ''; ?>">
                                 <i class="<?php echo $in_wishlist ? 'fas' : 'far'; ?> fa-heart"></i>
                             </a>
@@ -403,7 +403,7 @@ if ($avg_rating > 0) {
 
                 <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
                     <?php if($can_buy): ?>
-                        <a href="index.php?module=shop&page=checkout&id=<?php echo $product['id']; ?>" class="liquid-glass-btn liquid-glass-buy w-full py-[18px] text-center justify-center min-h-[56px]">
+                        <a href="<?php echo BASE_URL; ?>index.php?module=shop&page=checkout&id=<?php echo $product['id']; ?>" class="liquid-glass-btn liquid-glass-buy w-full py-[18px] text-center justify-center min-h-[56px]">
                             <i class="fas fa-bag-shopping"></i> Buy Now
                         </a>
                     <?php else: ?>
@@ -413,12 +413,12 @@ if ($avg_rating > 0) {
                     <?php endif; ?>
 
                     <?php if(is_logged_in()): ?>
-                        <a href="index.php?module=shop&page=product&id=<?php echo $product['id']; ?>&wishlist=<?php echo $in_wishlist ? 'remove' : 'add'; ?>" class="liquid-glass-btn liquid-glass-like w-full py-[18px] text-center justify-center min-h-[56px] <?php echo $in_wishlist ? 'border-rose-300/60 bg-rose-500/15 text-rose-200' : ''; ?>">
+                        <a href="<?php echo BASE_URL; ?>index.php?module=shop&page=product&id=<?php echo $product['id']; ?>&wishlist=<?php echo $in_wishlist ? 'remove' : 'add'; ?>" class="liquid-glass-btn liquid-glass-like w-full py-[18px] text-center justify-center min-h-[56px] <?php echo $in_wishlist ? 'border-rose-300/60 bg-rose-500/15 text-rose-200' : ''; ?>">
                             <i class="<?php echo $in_wishlist ? 'fas' : 'far'; ?> fa-heart"></i>
                             <?php echo $in_wishlist ? 'Liked' : 'Like'; ?>
                         </a>
                     <?php else: ?>
-                        <a href="index.php?module=auth&page=login" class="liquid-glass-btn liquid-glass-like w-full py-[18px] text-center justify-center min-h-[56px]">
+                        <a href="<?php echo BASE_URL; ?>index.php?module=auth&page=login" class="liquid-glass-btn liquid-glass-like w-full py-[18px] text-center justify-center min-h-[56px]">
                             <i class="far fa-heart"></i> Like
                         </a>
                     <?php endif; ?>
@@ -456,11 +456,26 @@ if ($avg_rating > 0) {
 
     window.shareProduct = async function() {
         const btnText = document.getElementById('shareText');
-        const ok = await window.shareCurrentPage({
+        const payload = {
             title: <?php echo json_encode($product['name']); ?>,
             text: <?php echo json_encode($product['name'] . ' from DigitalMM'); ?>,
             url: <?php echo json_encode($product_url); ?>
-        });
+        };
+        const ok = typeof window.shareCurrentPage === 'function'
+            ? await window.shareCurrentPage(payload)
+            : await (async () => {
+                try {
+                    if (navigator.share) {
+                        await navigator.share(payload);
+                        return true;
+                    }
+                    if (navigator.clipboard && payload.url) {
+                        await navigator.clipboard.writeText(payload.url);
+                        return true;
+                    }
+                } catch (e) {}
+                return false;
+            })();
         if (btnText) {
             btnText.innerText = ok ? 'Copied!' : 'Share Link';
             setTimeout(() => { btnText.innerText = 'Share Link'; }, 2000);
