@@ -65,7 +65,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     if (!hash_equals($_SESSION['csrf_token'], $_POST['csrf_token'])) die("Invalid Token");
 
     if ($on_cooldown) {
-        $error = "To prevent spam, please wait 10 minutes between orders.";
+        $mins = floor($time_remaining / 60);
+        $secs = $time_remaining % 60;
+        $time_str = sprintf("%02d:%02d", $mins, $secs);
+        $error = "To prevent spam, please wait {$time_str} minutes before placing another order.";
     } else {
         // Re-verify Coupon on Submit
         if (!empty($_POST['coupon_code'])) {
@@ -251,7 +254,11 @@ $display_image = !empty($product['image_path']) ? BASE_URL . $product['image_pat
                             <i class="fas fa-spinner animate-spin text-rose-500"></i> Time Remaining
                         </span>
                         <span id="cooldownDisplay" class="text-5xl font-bold text-white tracking-tight">
-                            00:00
+                            <?php 
+                                $m = floor($time_remaining / 60);
+                                $s = $time_remaining % 60;
+                                echo sprintf("%02d:%02d", $m, $s);
+                            ?>
                         </span>
                     </div>
 
