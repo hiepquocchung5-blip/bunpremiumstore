@@ -465,230 +465,282 @@ if (is_logged_in()) {
     </script>
     <?php endif; ?>
 
-    <!-- SECTION 1: PREMIUM ACCORDION HERO (GameSeal Inspired) -->
+    <!-- SECTION 0: BANNER SLIDER -->
+    <?php if(!empty($banners)): ?>
     <style>
-        .accordion-hero {
-            display: flex;
+        .banner-slider-container {
+            position: relative;
             width: 100%;
             max-width: 1440px;
-            height: 520px;
-            gap: 16px;
             margin: 0 auto 4rem auto;
             border-radius: 24px;
             overflow: hidden;
             background: transparent;
         }
 
-        .accordion-panel {
+        .banner-slider-track {
+            display: flex;
+            height: 420px;
+            width: 100%;
             position: relative;
-            flex: 1;
-            height: 100%;
             border-radius: 24px;
             overflow: hidden;
-            transition: all 0.6s cubic-bezier(0.25, 1, 0.5, 1);
-            cursor: pointer;
-            box-shadow: 0 10px 30px rgba(0,0,0,0.05);
-            background: white; /* Forced Light Mode requested */
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            text-decoration: none;
+            box-shadow: 0 20px 50px rgba(0, 0, 0, 0.3);
         }
 
-        html[data-theme="dark"] .accordion-panel {
-            box-shadow: 0 10px 40px rgba(0,0,0,0.4);
-            border: 1px solid rgba(255,255,255,0.05);
-            background: #0f172a;
-        }
-
-        .accordion-panel:hover, .accordion-panel.active {
-            flex: 4; /* Expands to ~65% */
-        }
-
-        .panel-bg {
+        .banner-slide {
             position: absolute;
-            inset: 0;
-            background-size: cover;
-            background-position: center;
-            opacity: 0.15;
-            transition: opacity 0.6s ease;
-            z-index: 0;
-        }
-
-        html[data-theme="dark"] .panel-bg {
-            opacity: 0.1;
-        }
-
-        .accordion-panel:hover .panel-bg, .accordion-panel.active .panel-bg {
-            opacity: 0.4;
-        }
-        
-        html[data-theme="dark"] .accordion-panel:hover .panel-bg, html[data-theme="dark"] .accordion-panel.active .panel-bg {
-            opacity: 0.3;
-        }
-
-        .panel-content {
-            position: relative;
-            z-index: 1;
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-            justify-content: center;
-            text-align: center;
-            padding: 2rem;
             width: 100%;
             height: 100%;
+            border-radius: 24px;
+            opacity: 0;
+            transition: opacity 0.8s ease-in-out;
+            top: 0;
+            left: 0;
         }
 
-        .panel-icon-wrap {
-            width: 80px;
-            height: 80px;
+        .banner-slide.active {
+            opacity: 1;
+            z-index: 10;
+        }
+
+        .banner-slide img {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+        }
+
+        .banner-overlay {
+            position: absolute;
+            inset: 0;
+            background: linear-gradient(135deg, rgba(11, 15, 26, 0.4) 0%, rgba(11, 15, 26, 0.2) 50%, transparent 100%);
+            display: flex;
+            flex-direction: column;
+            justify-content: flex-end;
+            padding: 2rem 2rem 3rem 2rem;
+            z-index: 2;
+        }
+
+        .banner-content {
+            max-width: 600px;
+        }
+
+        .banner-title {
+            font-size: 2.5rem;
+            font-weight: 900;
+            color: white;
+            margin-bottom: 1rem;
+            text-shadow: 0 4px 12px rgba(0, 0, 0, 0.5);
+            line-height: 1.2;
+        }
+
+        .banner-slide.active .banner-title {
+            animation: slideInUp 0.6s ease-out 0.2s both;
+        }
+
+        .banner-cta {
+            display: inline-flex;
+            align-items: center;
+            gap: 0.5rem;
+            padding: 0.75rem 1.5rem;
+            background: linear-gradient(135deg, #3b82f6 0%, #2563eb 100%);
+            color: white;
+            font-weight: 700;
+            font-size: 0.875rem;
+            border-radius: 12px;
+            text-decoration: none;
+            transition: all 0.3s ease;
+            box-shadow: 0 4px 15px rgba(59, 130, 246, 0.4);
+        }
+
+        .banner-slide.active .banner-cta {
+            animation: slideInUp 0.6s ease-out 0.4s both;
+        }
+
+        .banner-cta:hover {
+            background: linear-gradient(135deg, #2563eb 0%, #1d4ed8 100%);
+            transform: translateY(-2px);
+            box-shadow: 0 6px 20px rgba(59, 130, 246, 0.6);
+        }
+
+        .banner-nav {
+            position: absolute;
+            bottom: 1.5rem;
+            right: 1.5rem;
+            display: flex;
+            gap: 0.75rem;
+            z-index: 20;
+        }
+
+        .banner-dot {
+            width: 10px;
+            height: 10px;
+            border-radius: 50%;
+            background: rgba(255, 255, 255, 0.4);
+            border: 2px solid rgba(255, 255, 255, 0.6);
+            cursor: pointer;
+            transition: all 0.3s ease;
+        }
+
+        .banner-dot.active {
+            background: white;
+            width: 28px;
+            border-radius: 5px;
+            border-color: white;
+        }
+
+        .banner-arrow {
+            position: absolute;
+            top: 50%;
+            transform: translateY(-50%);
+            width: 44px;
+            height: 44px;
+            background: rgba(255, 255, 255, 0.15);
+            border: 1px solid rgba(255, 255, 255, 0.3);
             border-radius: 50%;
             display: flex;
             align-items: center;
             justify-content: center;
-            font-size: 2.5rem;
             color: white;
-            margin-bottom: 1.5rem;
-            box-shadow: 0 10px 25px rgba(0,0,0,0.2);
-            transition: transform 0.4s ease;
-        }
-
-        .accordion-panel:hover .panel-icon-wrap, .accordion-panel.active .panel-icon-wrap {
-            transform: scale(1.1) translateY(-10px);
-        }
-
-        .panel-title {
+            cursor: pointer;
+            z-index: 15;
+            transition: all 0.3s ease;
             font-size: 1.25rem;
-            font-weight: 800;
-            color: #1e293b;
-            white-space: nowrap;
-            opacity: 0;
-            transform: translateY(20px);
-            transition: all 0.4s ease;
-            transition-delay: 0.1s;
-        }
-        
-        html[data-theme="dark"] .panel-title {
-            color: #f8fafc;
         }
 
-        .accordion-panel:hover .panel-title, .accordion-panel.active .panel-title {
-            opacity: 1;
-            transform: translateY(0);
-            font-size: 2.5rem;
+        .banner-arrow:hover {
+            background: rgba(255, 255, 255, 0.25);
+            border-color: rgba(255, 255, 255, 0.5);
         }
 
-        .panel-cta {
-            opacity: 0;
-            transform: translateY(20px);
-            transition: all 0.4s ease;
-            transition-delay: 0.2s;
-            margin-top: 1.5rem;
+        .banner-prev {
+            left: 1.5rem;
         }
 
-        .accordion-panel:hover .panel-cta, .accordion-panel.active .panel-cta {
-            opacity: 1;
-            transform: translateY(0);
+        .banner-next {
+            right: 1.5rem;
         }
 
-        /* Mobile specific adjustments */
-        @media (max-width: 768px) {
-            .accordion-hero {
-                flex-direction: column;
-                height: 600px;
-                gap: 12px;
+        @keyframes slideInUp {
+            from {
+                opacity: 0;
+                transform: translateY(20px);
             }
-            .accordion-panel:hover, .accordion-panel.active {
-                flex: 3;
-            }
-            .panel-icon-wrap {
-                width: 50px;
-                height: 50px;
-                font-size: 1.5rem;
-                margin-bottom: 0.5rem;
-            }
-            .panel-title {
-                font-size: 1rem;
+            to {
                 opacity: 1;
                 transform: translateY(0);
             }
-            .accordion-panel:hover .panel-title, .accordion-panel.active .panel-title {
-                font-size: 1.5rem;
-            }
-            .panel-cta { display: none; }
         }
 
-        /* Custom Colors */
-        .theme-ig { background: linear-gradient(45deg, #f09433 0%, #e6683c 25%, #dc2743 50%, #cc2366 75%, #bc1888 100%); }
-        .theme-tk { background: #000000; box-shadow: -2px 2px 0 #00f2fe, 2px -2px 0 #fe0979; }
-        .theme-yt { background: #ff0000; }
-        .theme-fb { background: #1877f2; }
-        
-        /* Soft glows for light mode */
-        .accordion-panel:nth-child(1):hover { box-shadow: 0 10px 40px rgba(220, 39, 67, 0.2); }
-        .accordion-panel:nth-child(2):hover { box-shadow: 0 10px 40px rgba(0, 242, 254, 0.2); }
-        .accordion-panel:nth-child(3):hover { box-shadow: 0 10px 40px rgba(255, 0, 0, 0.2); }
-        .accordion-panel:nth-child(4):hover { box-shadow: 0 10px 40px rgba(24, 119, 242, 0.2); }
+        @media (max-width: 768px) {
+            .banner-slider-track {
+                height: 280px;
+            }
+
+            .banner-title {
+                font-size: 1.5rem;
+                margin-bottom: 0.75rem;
+            }
+
+            .banner-overlay {
+                padding: 1.5rem 1rem 2rem 1rem;
+            }
+
+            .banner-arrow {
+                width: 36px;
+                height: 36px;
+                font-size: 1rem;
+            }
+
+            .banner-prev {
+                left: 1rem;
+            }
+
+            .banner-next {
+                right: 1rem;
+            }
+
+            .banner-nav {
+                bottom: 1rem;
+                right: 1rem;
+            }
+        }
     </style>
 
-    <div class="accordion-hero">
-        <!-- Instagram -->
-        <a href="index.php?module=shop&page=search&q=Instagram" class="accordion-panel active" onmouseenter="this.classList.add('active'); siblings(this).forEach(s => s.classList.remove('active'));">
-            <div class="panel-bg" style="background-image: url('https://images.unsplash.com/photo-1611162617474-5b21e879e113?ixlib=rb-4.0.3&auto=format&fit=crop&w=1000&q=80');"></div>
-            <div class="panel-content">
-                <div class="panel-icon-wrap theme-ig"><i class="fab fa-instagram"></i></div>
-                <h3 class="panel-title">Instagram Followers</h3>
-                <div class="panel-cta">
-                    <span class="bg-slate-900 text-white dark:bg-white dark:text-slate-900 px-6 py-3 rounded-xl font-bold text-sm shadow-xl">Boost Profile</span>
+    <div class="banner-slider-container">
+        <div class="banner-slider-track" id="bannerSlider">
+            <?php foreach($banners as $index => $banner): ?>
+            <div class="banner-slide <?php echo $index === 0 ? 'active' : ''; ?>" data-slide="<?php echo $index; ?>">
+                <!-- Use 'eager' for the first slide to improve LCP, 'lazy' for the rest -->
+                <img src="<?php echo BASE_URL . $banner['image_path']; ?>" alt="<?php echo htmlspecialchars($banner['title']); ?>" loading="<?php echo $index === 0 ? 'eager' : 'lazy'; ?>" <?php echo $index === 0 ? 'fetchpriority="high"' : ''; ?>>
+                <div class="banner-overlay">
+                    <div class="banner-content">
+                        <span class="inline-block px-3 py-1 bg-blue-600/80 border border-white/10 text-white text-[10px] font-bold uppercase tracking-widest rounded-lg mb-4 backdrop-blur-md">Featured</span>
+                        <h2 class="banner-title"><?php echo htmlspecialchars($banner['title']); ?></h2>
+                        <?php if(!empty($banner['target_url'])): ?>
+                        <a href="<?php echo htmlspecialchars($banner['target_url']); ?>" class="banner-cta">
+                            Explore Now <i class="fas fa-arrow-right"></i>
+                        </a>
+                        <?php endif; ?>
+                    </div>
                 </div>
             </div>
-        </a>
+            <?php endforeach; ?>
+        </div>
 
-        <!-- TikTok -->
-        <a href="index.php?module=shop&page=search&q=TikTok" class="accordion-panel" onmouseenter="this.classList.add('active'); siblings(this).forEach(s => s.classList.remove('active'));">
-            <div class="panel-bg" style="background-image: url('https://images.unsplash.com/photo-1611605698335-8b1569810432?ixlib=rb-4.0.3&auto=format&fit=crop&w=1000&q=80'); filter: grayscale(100%);"></div>
-            <div class="panel-content">
-                <div class="panel-icon-wrap theme-tk"><i class="fab fa-tiktok"></i></div>
-                <h3 class="panel-title">TikTok Likes</h3>
-                <div class="panel-cta">
-                    <span class="bg-slate-900 text-white dark:bg-white dark:text-slate-900 px-6 py-3 rounded-xl font-bold text-sm shadow-xl">Go Viral</span>
-                </div>
-            </div>
-        </a>
+        <!-- Navigation Arrows -->
+        <div class="banner-prev banner-arrow" onclick="bannerSlide(-1);">
+            <i class="fas fa-chevron-left"></i>
+        </div>
+        <div class="banner-next banner-arrow" onclick="bannerSlide(1);">
+            <i class="fas fa-chevron-right"></i>
+        </div>
 
-        <!-- YouTube -->
-        <a href="index.php?module=shop&page=search&q=YouTube" class="accordion-panel" onmouseenter="this.classList.add('active'); siblings(this).forEach(s => s.classList.remove('active'));">
-            <div class="panel-bg" style="background-image: url('https://images.unsplash.com/photo-1611162616305-c69b3fa7fbe0?ixlib=rb-4.0.3&auto=format&fit=crop&w=1000&q=80');"></div>
-            <div class="panel-content">
-                <div class="panel-icon-wrap theme-yt"><i class="fab fa-youtube"></i></div>
-                <h3 class="panel-title">YouTube Subs</h3>
-                <div class="panel-cta">
-                    <span class="bg-slate-900 text-white dark:bg-white dark:text-slate-900 px-6 py-3 rounded-xl font-bold text-sm shadow-xl">Grow Channel</span>
-                </div>
-            </div>
-        </a>
-
-        <!-- Facebook -->
-        <a href="index.php?module=shop&page=search&q=Facebook" class="accordion-panel" onmouseenter="this.classList.add('active'); siblings(this).forEach(s => s.classList.remove('active'));">
-            <div class="panel-bg" style="background-image: url('https://images.unsplash.com/photo-1611162618479-ee89f5bc7087?ixlib=rb-4.0.3&auto=format&fit=crop&w=1000&q=80');"></div>
-            <div class="panel-content">
-                <div class="panel-icon-wrap theme-fb"><i class="fab fa-facebook-f"></i></div>
-                <h3 class="panel-title">Facebook Followers</h3>
-                <div class="panel-cta">
-                    <span class="bg-slate-900 text-white dark:bg-white dark:text-slate-900 px-6 py-3 rounded-xl font-bold text-sm shadow-xl">Expand Reach</span>
-                </div>
-            </div>
-        </a>
+        <!-- Navigation Dots -->
+        <div class="banner-nav">
+            <?php foreach($banners as $index => $banner): ?>
+            <div class="banner-dot <?php echo $index === 0 ? 'active' : ''; ?>" onclick="bannerGoTo(<?php echo $index; ?>);"></div>
+            <?php endforeach; ?>
+        </div>
     </div>
 
     <script>
-        function siblings(elem) {
-            return Array.from(elem.parentNode.children).filter(function(child) {
-                return child !== elem;
-            });
+        let currentBannerSlide = 0;
+        const bannerTotalSlides = document.querySelectorAll('.banner-slide').length;
+        let bannerAutoPlayInterval;
+
+        function showBannerSlide(n) {
+            const slides = document.querySelectorAll('.banner-slide');
+            const dots = document.querySelectorAll('.banner-dot');
+            if(!slides.length) return;
+
+            if(n >= bannerTotalSlides) { currentBannerSlide = 0; }
+            if(n < 0) { currentBannerSlide = bannerTotalSlides - 1; }
+
+            slides.forEach(slide => slide.classList.remove('active'));
+            dots.forEach(dot => dot.classList.remove('active'));
+
+            slides[currentBannerSlide].classList.add('active');
+            dots[currentBannerSlide].classList.add('active');
+
+            clearInterval(bannerAutoPlayInterval);
+            bannerAutoPlayInterval = setInterval(() => bannerSlide(1), 6000);
         }
+
+        function bannerSlide(n) {
+            currentBannerSlide += n;
+            showBannerSlide(currentBannerSlide);
+        }
+
+        function bannerGoTo(n) {
+            currentBannerSlide = n;
+            showBannerSlide(currentBannerSlide);
+        }
+
+        // Auto-play banners
+        if(bannerTotalSlides > 0) showBannerSlide(currentBannerSlide);
     </script>
+    <?php endif; ?>
 
     <!-- SECTION 2: Categories -->
     <div class="mb-20">

@@ -42,19 +42,19 @@ $coupon_code = null;
 // =====================================================================================
 // 5. ANTI-SPAM / RATE LIMITING ENGINE (10 Minute Cooldown)
 // =====================================================================================
-$stmt_last = $pdo->prepare("SELECT created_at FROM orders WHERE user_id = ? ORDER BY created_at DESC LIMIT 1");
-$stmt_last->execute([$user_id]);
-$last_order = $stmt_last->fetchColumn();
-
 $cooldown_seconds = 600; // 10 minutes
 $on_cooldown = false;
 $time_remaining = 0;
 
-if ($last_order) {
-    $elapsed = time() - strtotime($last_order);
-    if ($elapsed < $cooldown_seconds) {
+// Ask MySQL to calculate the exact elapsed seconds to avoid PHP/MySQL timezone mismatches
+$stmt_last = $pdo->prepare("SELECT TIMESTAMPDIFF(SECOND, created_at, NOW()) as elapsed FROM orders WHERE user_id = ? ORDER BY created_at DESC LIMIT 1");
+$stmt_last->execute([$user_id]);
+$elapsed = $stmt_last->fetchColumn();
+
+if ($elapsed !== false && $elapsed !== null) {
+    if ((int)$elapsed < $cooldown_seconds) {
         $on_cooldown = true;
-        $time_remaining = $cooldown_seconds - $elapsed;
+        $time_remaining = $cooldown_seconds - (int)$elapsed;
     }
 }
 
@@ -255,8 +255,9 @@ $display_image = !empty($product['image_path']) ? BASE_URL . $product['image_pat
                         </span>
                         <span id="cooldownDisplay" class="text-5xl font-bold text-white tracking-tight">
                             <?php 
-                                $m = floor($time_remaining / 60);
-                                $s = $time_remaining % 60;
+                                $safe_remaining = max(0, $time_remaining);
+                                $m = floor($safe_remaining / 60);
+                                $s = $safe_remaining % 60;
                                 echo sprintf("%02d:%02d", $m, $s);
                             ?>
                         </span>
