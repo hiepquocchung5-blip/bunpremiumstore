@@ -285,13 +285,17 @@ if ($active_chat_id) {
 <style>
     /* ⚡️ IMMERSIVE CHAT MODE: Hide Global Nav on Mobile */
     @media (max-width: 767px) {
+        body.orders-chat-page nav.glass.sticky,
         body.chat-active-mobile nav.glass.sticky,
+        body.orders-chat-page #mobile-bottom-nav,
         body.chat-active-mobile #mobile-bottom-nav,
+        body.orders-chat-page #global-footer,
         body.chat-active-mobile #global-footer { 
             display: none !important; 
         }
         
         /* Adjust Main Wrapper when Chat is Active */
+        body.orders-chat-page .max-w-7xl,
         body.chat-active-mobile .max-w-7xl {
             height: 100svh !important;
             max-height: 100svh !important;

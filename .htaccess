@@ -2,7 +2,7 @@
 
 # 1. Enable Rewrite Engine
 RewriteEngine On
-RewriteBase /scottsub/
+RewriteBase /
 
 # 2. Force HTTPS (Optional - Uncomment if you have SSL)
 # RewriteCond %{HTTPS} off
@@ -33,6 +33,6 @@ Options -Indexes
 RewriteRule ^shop/([A-Za-z0-9-]+)/?$ index.php?module=shop&page=product&slug=$1 [L,QSA,NC]
 
 # 7. Error Handling
-ErrorDocument 404 /scottsub/index.php?module=error&page=404
-ErrorDocument 403 /scottsub/index.php?module=error&page=403
-ErrorDocument 500 /scottsub/index.php?module=error&page=500
+ErrorDocument 404 /index.php?module=error&page=404
+ErrorDocument 403 /index.php?module=error&page=403
+ErrorDocument 500 /index.php?module=error&page=500

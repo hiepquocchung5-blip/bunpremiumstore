@@ -29,6 +29,11 @@ $curr_currency = $_SESSION['currency'] ?? 'MMK';
 $curr_symbol = $curr_currency == 'USD' ? '$' : 'Ks';
 $curr_theme = $_SESSION['theme'] ?? 'dark';
 $theme_color = $curr_theme === 'light' ? '#ffffff' : '#0b0f1a';
+$is_orders_chat_page = (
+    (($_GET['module'] ?? '') === 'user') &&
+    (($_GET['page'] ?? '') === 'orders') &&
+    !empty($_GET['view_chat'])
+);
 
 // ⚡️ NEW: PERFECT RESUME LOGIC (Track last visited page)
 $current_query = $_SERVER['QUERY_STRING'] ?? '';
@@ -217,7 +222,7 @@ if (isset($_SESSION['user_id'])) {
         };
     </script>
 </head>
-<body class="flex flex-col min-h-screen antialiased selection:bg-blue-500/30 selection:text-blue-200" data-theme="<?php echo $curr_theme; ?>">
+<body class="flex flex-col min-h-screen antialiased selection:bg-blue-500/30 selection:text-blue-200<?php echo $is_orders_chat_page ? ' orders-chat-page' : ''; ?>" data-theme="<?php echo $curr_theme; ?>">
 
     <div id="google_translate_element"></div>
 
@@ -346,7 +351,7 @@ if (isset($_SESSION['user_id'])) {
     </nav>
 
     <!-- Bottom Nav (Mobile Only) -->
-    <div class="fixed bottom-6 left-6 right-6 z-[90] lg:hidden">
+    <div id="mobile-bottom-nav" class="fixed bottom-6 left-6 right-6 z-[90] lg:hidden">
         <div class="glass-pill rounded-3xl px-8 py-3.5 flex justify-between items-center shadow-2xl relative">
             <a href="index.php" class="flex flex-col items-center gap-1 <?php echo isActive('home'); ?>">
                 <i class="fas fa-home text-lg"></i>
