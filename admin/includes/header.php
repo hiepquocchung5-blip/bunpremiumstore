@@ -15,6 +15,17 @@ if (!isset($_SESSION['admin_logged_in']) || $_SESSION['admin_logged_in'] !== tru
     exit;
 }
 
+// ⚡️ REAL-TIME ACTIVITY TRACKING
+// Update last_seen timestamp for this admin to power the frontend "Online" indicator
+try {
+    global $pdo;
+    $admin_id = $_SESSION['admin_id'] ?? 1; // Fallback to 1 if session doesn't store exact ID
+    $stmt = $pdo->prepare("INSERT INTO admin_activity (admin_id, last_seen) VALUES (?, NOW()) ON DUPLICATE KEY UPDATE last_seen = NOW()");
+    $stmt->execute([$admin_id]);
+} catch (Exception $e) {
+    // Fail silently if table not set up yet
+}
+
 // Current Page Detection Helper
 $current_page = isset($_GET['page']) ? $_GET['page'] : 'dashboard';
 

@@ -294,6 +294,14 @@ if (isset($_SESSION['user_id'])) {
                         <a href="index.php?module=user&page=agent" class="text-sm font-semibold flex items-center gap-2 <?php echo isActive('user', 'agent'); ?>">
                             <i class="fas fa-crown text-yellow-500 text-xs"></i> Reseller
                         </a>
+                        <?php if(is_logged_in()): ?>
+                        <div class="relative group">
+                            <div class="absolute -inset-1 bg-gradient-to-r from-emerald-600 to-cyan-600 rounded-xl blur opacity-25 group-hover:opacity-50 transition duration-500"></div>
+                            <a href="index.php?module=user&page=orders" class="relative bg-slate-900 border border-emerald-500/30 text-white px-5 py-2 rounded-xl text-sm font-bold flex items-center gap-2 transition-all shadow-xl hover:shadow-emerald-500/20 transform group-hover:-translate-y-0.5">
+                                <i class="fas fa-box text-emerald-400 drop-shadow-md"></i> Orders
+                            </a>
+                        </div>
+                        <?php endif; ?>
                     </div>
 
                     <button id="themeToggle" type="button" class="flex items-center gap-2 bg-slate-900/60 border border-white/5 hover:border-blue-500/30 rounded-xl px-3 py-2 transition-all duration-300" aria-label="Toggle theme">

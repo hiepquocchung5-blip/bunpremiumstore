@@ -184,7 +184,32 @@ function enforce_ban_protocol() {
  * --------------------------------------------------------------------------
  */
 
-// Get Active Agent Discount % for a User
+// ⚡️ LIVE ADMIN STATUS CHECKER
+function get_admin_status() {
+    global $pdo;
+    
+    // Matrix Cache: Status check (30s)
+    $cache_key = "global_admin_status";
+    $cached = matrix_cache_get($cache_key);
+    if ($cached !== false) return $cached;
+
+    try {
+        // Check if any admin was active in the last 5 minutes
+        $stmt = $pdo->query("SELECT MAX(last_seen) FROM admin_activity");
+        $last_seen = $stmt->fetchColumn();
+        
+        if ($last_seen && (time() - strtotime($last_seen)) < 300) {
+            $status = 'online';
+        } else {
+            $status = 'away';
+        }
+        
+        matrix_cache_set($cache_key, $status, 30);
+        return $status;
+    } catch (Exception $e) {
+        return 'offline';
+    }
+}
 function get_user_discount($user_id) {
     global $pdo;
     

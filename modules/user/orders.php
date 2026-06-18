@@ -954,4 +954,35 @@ if ($active_chat_id) {
             if(window.innerWidth < 768) showMobileSidebar();
         }
     });
+    // ⚡️ REAL-FETCH: Live Admin Status
+    async function updateAdminStatus() {
+        const node = document.getElementById('admin-status-node');
+        if (!node) return;
+
+        try {
+            const res = await fetch('api/admin_status.php');
+            const data = await res.json();
+            
+            const dot = node.querySelector('span:first-child');
+            const label = node.querySelector('.status-label');
+
+            if (data.status === 'online') {
+                node.className = "text-[10px] text-green-400 font-bold uppercase flex items-center gap-1 transition-all duration-500";
+                dot.className = "inline-block w-1.5 h-1.5 bg-green-500 rounded-full animate-pulse";
+            } else if (data.status === 'away') {
+                node.className = "text-[10px] text-orange-400 font-bold uppercase flex items-center gap-1 transition-all duration-500";
+                dot.className = "inline-block w-1.5 h-1.5 bg-orange-500 rounded-full";
+            } else {
+                node.className = "text-[10px] text-slate-500 font-bold uppercase flex items-center gap-1 transition-all duration-500";
+                dot.className = "inline-block w-1.5 h-1.5 bg-slate-600 rounded-full";
+            }
+            label.textContent = data.label;
+        } catch (err) {}
+    }
+    
+    // Initial fetch + interval (30s to match cache)
+    if (currentOrderId > 0) {
+        updateAdminStatus();
+        setInterval(updateAdminStatus, 30000);
+    }
 </script>
