@@ -6,7 +6,7 @@
     </button>
 
     <!-- Footer -->
-    <footer id="global-footer" class="border-t border-white/5 bg-[#0b0f1a] relative z-10 text-sm">
+    <footer id="global-footer" class="border-t border-white/5 dm-gradient-bg relative z-10 text-sm">
         
         <div class="max-w-7xl mx-auto px-6 py-16">
             <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-12 mb-16">
@@ -70,7 +70,7 @@
                 </p>
                 <div class="flex items-center gap-6 text-xs text-slate-600">
                     <span class="flex items-center gap-2"><span class="w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></span> Systems Active</span>
-                    <span>v2.0.0</span>
+                    <span>Ready for deployment</span>
                 </div>
             </div>
         </div>

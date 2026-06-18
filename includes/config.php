@@ -58,18 +58,30 @@ define('GOOGLE_REDIRECT_URL', BASE_URL . 'index.php?module=auth&page=login');
 
 // 6. Start Session
 if (session_status() === PHP_SESSION_NONE) {
-    // Secure session cookies settings
-    $is_https = isset($_SERVER['HTTPS']) && $_SERVER['HTTPS'] === 'on';
+    $is_https = (!empty($_SERVER['HTTPS']) && $_SERVER['HTTPS'] !== 'off') || (($_SERVER['SERVER_PORT'] ?? null) == 443);
+    $cookie_domain = $_SERVER['HTTP_HOST'] ?? '';
+    if (strpos($cookie_domain, ':') !== false) {
+        $cookie_domain = explode(':', $cookie_domain)[0];
+    }
     
     session_set_cookie_params([
-        'lifetime' => 86400 * 30, // 30 days
+        'lifetime' => 86400 * 30,
         'path' => '/',
-        'domain' => $_SERVER['HTTP_HOST'],
-        'secure' => $is_https,    // Only send over HTTPS if enabled
-        'httponly' => true,       // Prevent JavaScript access to session cookie
-        'samesite' => 'Lax'       // Protection against CSRF
+        'domain' => $cookie_domain ?: '',
+        'secure' => $is_https,
+        'httponly' => true,
+        'samesite' => 'Lax'
     ]);
+    ini_set('session.use_strict_mode', '1');
+    ini_set('session.use_only_cookies', '1');
     session_start();
+}
+
+$theme_cookie = $_COOKIE['site_theme'] ?? null;
+if ($theme_cookie === 'light' || $theme_cookie === 'dark') {
+    $_SESSION['theme'] = $theme_cookie;
+} elseif (!isset($_SESSION['theme'])) {
+    $_SESSION['theme'] = 'dark';
 }
 
 // 7. Handle Currency Switch Logic

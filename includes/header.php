@@ -4,14 +4,6 @@
 
 // 1. Secure Session Start
 if (session_status() === PHP_SESSION_NONE) {
-    session_set_cookie_params([
-        'lifetime' => 86400 * 30, // 30 days
-        'path' => '/',
-        'domain' => $_SERVER['HTTP_HOST'], // Dynamic domain
-        'secure' => true, // Force HTTPS
-        'httponly' => true, // Prevent JS access
-        'samesite' => 'Strict'
-    ]);
     session_start();
 }
 
@@ -35,6 +27,8 @@ $lang_text = $curr_lang == 'my' ? 'MY' : 'EN';
 // 4. Current Currency
 $curr_currency = $_SESSION['currency'] ?? 'MMK';
 $curr_symbol = $curr_currency == 'USD' ? '$' : 'Ks';
+$curr_theme = $_SESSION['theme'] ?? 'dark';
+$theme_color = $curr_theme === 'light' ? '#ffffff' : '#0b0f1a';
 
 // ⚡️ NEW: PERFECT RESUME LOGIC (Track last visited page)
 $current_query = $_SERVER['QUERY_STRING'] ?? '';
@@ -79,28 +73,89 @@ if (isset($_SESSION['user_id'])) {
 }
 ?>
 <!DOCTYPE html>
-<html lang="en" class="scroll-smooth">
+<html lang="en" class="scroll-smooth" data-theme="<?php echo $curr_theme; ?>">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
     <meta name="apple-mobile-web-app-title" content="DigitalMM">
-    <meta name="theme-color" content="#0b0f1a">
+    <meta name="theme-color" content="<?php echo $theme_color; ?>">
+    <meta name="description" content="<?php echo htmlspecialchars($page_description ?? 'Premium digital marketplace for games, software, passes, and instant delivery products.'); ?>">
+    <meta property="og:title" content="<?php echo htmlspecialchars($page_title ?? 'DigitalMM | Premium Digital Marketplace'); ?>">
+    <meta property="og:description" content="<?php echo htmlspecialchars($page_description ?? 'Premium digital marketplace for games, software, passes, and instant delivery products.'); ?>">
+    <meta property="og:type" content="<?php echo htmlspecialchars($page_type ?? 'website'); ?>">
+    <meta property="og:url" content="<?php echo htmlspecialchars($page_canonical ?? (defined('BASE_URL') ? BASE_URL : '/')); ?>">
+    <meta property="og:image" content="<?php echo htmlspecialchars($page_image ?? (defined('BASE_URL') ? BASE_URL . 'assets/images/og-image.png' : 'assets/images/og-image.png')); ?>">
+    <link rel="canonical" href="<?php echo htmlspecialchars($page_canonical ?? (defined('BASE_URL') ? BASE_URL : '/')); ?>">
     
-    <title>DigitalMM | Premium Digital Marketplace</title>
+    <title><?php echo htmlspecialchars($page_title ?? 'DigitalMM | Premium Digital Marketplace'); ?></title>
     
     <!-- CSS Dependencies -->
     <script src="https://cdn.tailwindcss.com"></script>
     <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@400;500;600;700;800&display=swap" rel="stylesheet">
     <link href="assets/css/style.css" rel="stylesheet">
 
     <!-- Inline Critical CSS -->
     <style>
-        .glass { background: rgba(11, 15, 26, 0.8); backdrop-filter: blur(20px); -webkit-backdrop-filter: blur(20px); border-bottom: 1px solid rgba(255, 255, 255, 0.05); }
-        .glass-pill { background: rgba(21, 28, 44, 0.9); backdrop-filter: blur(24px); -webkit-backdrop-filter: blur(24px); border: 1px solid rgba(255, 255, 255, 0.1); }
-        body { background-color: #0b0f1a; color: #f8fafc; font-family: 'Inter', sans-serif; -webkit-tap-highlight-color: transparent; }
+        :root {
+            --page-bg: #0b0f1a;
+            --page-surface: rgba(15, 23, 42, 0.86);
+            --page-surface-soft: rgba(15, 23, 42, 0.62);
+            --page-surface-strong: rgba(8, 15, 32, 0.96);
+            --page-border: rgba(255, 255, 255, 0.06);
+            --page-text: #f8fafc;
+            --page-muted: #94a3b8;
+            --page-accent: #ffba30;
+            --page-accent-2: #3b82f6;
+        }
+        html[data-theme="light"] {
+            --page-bg: #f6f8fc;
+            --page-surface: rgba(255, 255, 255, 0.88);
+            --page-surface-soft: rgba(255, 255, 255, 0.72);
+            --page-surface-strong: rgba(255, 255, 255, 0.98);
+            --page-border: rgba(15, 23, 42, 0.08);
+            --page-text: #303030;
+            --page-muted: #5f6472;
+            --page-accent: #ffba30;
+            --page-accent-2: #2563eb;
+        }
+        body { background: var(--page-bg); color: var(--page-text); font-family: 'Montserrat', sans-serif; -webkit-tap-highlight-color: transparent; transition: background-color .25s ease, color .25s ease; }
+        .glass { background: var(--page-surface); backdrop-filter: blur(20px); -webkit-backdrop-filter: blur(20px); border-bottom: 1px solid var(--page-border); }
+        .glass-pill { background: var(--page-surface); backdrop-filter: blur(24px); -webkit-backdrop-filter: blur(24px); border: 1px solid var(--page-border); }
+        .dm-surface { background: var(--page-surface); border: 1px solid var(--page-border); }
+        .dm-surface-soft { background: var(--page-surface-soft); border: 1px solid var(--page-border); }
+        .dm-strong { background: var(--page-surface-strong); border: 1px solid var(--page-border); }
+        .dm-text-muted { color: var(--page-muted); }
+        .dm-gradient-bg {
+            background:
+                radial-gradient(circle at top left, rgba(59,130,246,0.18), transparent 34%),
+                radial-gradient(circle at top right, rgba(255,186,48,0.16), transparent 28%),
+                var(--page-bg);
+        }
+        html[data-theme="light"] .text-white { color: #111827 !important; }
+        html[data-theme="light"] .text-slate-100,
+        html[data-theme="light"] .text-slate-200,
+        html[data-theme="light"] .text-slate-300 { color: #1f2937 !important; }
+        html[data-theme="light"] .text-slate-400 { color: #5f6472 !important; }
+        html[data-theme="light"] .text-slate-500 { color: #6b7280 !important; }
+        html[data-theme="light"] .text-slate-600 { color: #9ca3af !important; }
+        html[data-theme="light"] .bg-slate-900,
+        html[data-theme="light"] .bg-slate-900\/40,
+        html[data-theme="light"] .bg-slate-900\/50,
+        html[data-theme="light"] .bg-slate-800,
+        html[data-theme="light"] .bg-slate-800\/20,
+        html[data-theme="light"] .bg-slate-800\/30,
+        html[data-theme="light"] .bg-slate-800\/40,
+        html[data-theme="light"] .bg-slate-800\/50 {
+            background-color: rgba(255, 255, 255, 0.88) !important;
+        }
+        html[data-theme="light"] .border-white\/5,
+        html[data-theme="light"] .border-white\/10,
+        html[data-theme="light"] .border-slate-700\/50 {
+            border-color: var(--page-border) !important;
+        }
         
         /* Completely Hide Google Translate Default UI */
         .goog-te-banner-frame, .skiptranslate, #google_translate_element { display: none !important; }
@@ -140,7 +195,7 @@ if (isset($_SESSION['user_id'])) {
         };
     </script>
 </head>
-<body class="flex flex-col min-h-screen bg-[#0b0f1a] text-slate-100 antialiased selection:bg-blue-500/30 selection:text-blue-200">
+<body class="flex flex-col min-h-screen antialiased selection:bg-blue-500/30 selection:text-blue-200" data-theme="<?php echo $curr_theme; ?>">
 
     <div id="google_translate_element"></div>
 
@@ -182,6 +237,11 @@ if (isset($_SESSION['user_id'])) {
                             <i class="fas fa-crown text-yellow-500 text-xs"></i> Reseller
                         </a>
                     </div>
+
+                    <button id="themeToggle" type="button" class="flex items-center gap-2 bg-slate-900/60 border border-white/5 hover:border-blue-500/30 rounded-xl px-3 py-2 transition-all duration-300" aria-label="Toggle theme">
+                        <i id="themeToggleIcon" class="fas <?php echo $curr_theme === 'light' ? 'fa-sun text-amber-400' : 'fa-moon text-blue-400'; ?>"></i>
+                        <span class="hidden xl:inline text-xs font-bold text-white">Mode</span>
+                    </button>
 
                     <!-- Localization Dropdown -->
                     <div class="relative group">
@@ -294,7 +354,7 @@ if (isset($_SESSION['user_id'])) {
     <div id="mobile-menu" class="fixed inset-0 z-[100] lg:hidden transform translate-y-full opacity-0 transition-all duration-300 ease-in-out flex flex-col justify-end pointer-events-none">
         <div class="absolute inset-0 bg-slate-950/60 backdrop-blur-sm pointer-events-auto" onclick="document.getElementById('mobile-menu').classList.add('translate-y-full', 'opacity-0')"></div>
         
-        <div class="bg-slate-900 border-t border-white/10 rounded-t-[2.5rem] w-full relative z-10 pointer-events-auto pb-24 pt-8 px-6 shadow-2xl max-h-[85vh] overflow-y-auto">
+        <div class="dm-strong rounded-t-[2.5rem] w-full relative z-10 pointer-events-auto pb-24 pt-8 px-6 shadow-2xl max-h-[85vh] overflow-y-auto">
             <div class="w-12 h-1.5 bg-slate-700 rounded-full mx-auto mb-8"></div>
 
             <div class="grid grid-cols-2 gap-4 mb-8">
@@ -332,6 +392,9 @@ if (isset($_SESSION['user_id'])) {
                     <a href="index.php?module=auth&page=register" class="block w-full text-center p-4 bg-blue-600 text-white font-bold rounded-2xl shadow-lg shadow-blue-500/20">Sign Up</a>
                 </div>
             <?php endif; ?>
+            <button id="themeToggleMobile" type="button" class="flex items-center justify-center gap-3 p-4 bg-slate-800/30 text-white font-bold rounded-2xl border border-white/5 mt-3 w-full">
+                <i class="fas <?php echo $curr_theme === 'light' ? 'fa-sun text-amber-400' : 'fa-moon text-blue-400'; ?>"></i> Toggle Theme
+            </button>
         </div>
     </div>
 
@@ -372,6 +435,9 @@ if (isset($_SESSION['user_id'])) {
         </div>
 
     <script>
+        window.AppConfig = window.AppConfig || {};
+        window.AppConfig.theme = <?php echo json_encode($curr_theme); ?>;
+
         // Global Search Modal Controls
         function openSearchModal() {
             const modal = document.getElementById('search-modal');
@@ -409,6 +475,45 @@ if (isset($_SESSION['user_id'])) {
             searchTriggers.forEach(trigger => {
                 trigger.setAttribute('onclick', 'openSearchModal()');
             });
+        });
+
+        function setTheme(theme) {
+            const normalized = theme === 'light' ? 'light' : 'dark';
+            document.documentElement.setAttribute('data-theme', normalized);
+            document.body.setAttribute('data-theme', normalized);
+            document.cookie = `site_theme=${normalized}; path=/; max-age=31536000; SameSite=Lax`;
+            const themeColor = document.querySelector('meta[name="theme-color"]');
+            if (themeColor) {
+                themeColor.setAttribute('content', normalized === 'light' ? '#ffffff' : '#0b0f1a');
+            }
+            const icon = document.getElementById('themeToggleIcon');
+            if (icon) {
+                icon.className = normalized === 'light' ? 'fas fa-sun text-amber-400' : 'fas fa-moon text-blue-400';
+            }
+            window.AppConfig.theme = normalized;
+            try { localStorage.setItem('site_theme', normalized); } catch (e) {}
+        }
+
+        function toggleTheme() {
+            const current = document.documentElement.getAttribute('data-theme') || 'dark';
+            setTheme(current === 'light' ? 'dark' : 'light');
+        }
+
+        document.addEventListener('DOMContentLoaded', () => {
+            const savedTheme = (() => {
+                try { return localStorage.getItem('site_theme'); } catch (e) { return null; }
+            })();
+            const cookieTheme = document.cookie.split('; ').find(row => row.startsWith('site_theme='))?.split('=')[1];
+            if (savedTheme || cookieTheme) {
+                setTheme(savedTheme || cookieTheme);
+            } else {
+                setTheme(document.documentElement.getAttribute('data-theme') || 'dark');
+            }
+
+            const themeBtn = document.getElementById('themeToggle');
+            const themeBtnMobile = document.getElementById('themeToggleMobile');
+            if (themeBtn) themeBtn.addEventListener('click', toggleTheme);
+            if (themeBtnMobile) themeBtnMobile.addEventListener('click', toggleTheme);
         });
 
         // ⚡️ INLINE DEBUG & FAILSAFE FOR PUSH BUTTON (Overrides app.js if needed)

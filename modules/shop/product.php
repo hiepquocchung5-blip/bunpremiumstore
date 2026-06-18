@@ -134,7 +134,39 @@ if ($product['delivery_type'] === 'unique') {
 $has_image = !empty($product['image_path']) && file_exists($product['image_path']);
 $display_image = $has_image ? BASE_URL . $product['image_path'] : null;
 $has_cat_image = !empty($product['cat_image']);
+
+$schema_image = $has_image ? $display_image : ($has_cat_image ? BASE_URL . $product['cat_image'] : BASE_URL . 'assets/images/og-image.png');
+$schema_data = [
+    '@context' => 'https://schema.org',
+    '@type' => 'Product',
+    'name' => $product['name'],
+    'description' => trim($product['description'] ?: $product['user_instruction'] ?: 'Digital product available with instant delivery.'),
+    'image' => $schema_image,
+    'category' => $product['cat_name'] ?? 'Digital Goods',
+    'brand' => [
+        '@type' => 'Brand',
+        'name' => 'DigitalMM'
+    ],
+    'offers' => [
+        '@type' => 'Offer',
+        'priceCurrency' => 'MMK',
+        'price' => number_format($final_payable, 0, '.', ''),
+        'availability' => $can_buy ? 'https://schema.org/InStock' : 'https://schema.org/OutOfStock',
+        'url' => defined('BASE_URL') ? BASE_URL . 'index.php?module=shop&page=product&id=' . $product['id'] : 'index.php?module=shop&page=product&id=' . $product['id']
+    ]
+];
+if ($avg_rating > 0) {
+    $schema_data['aggregateRating'] = [
+        '@type' => 'AggregateRating',
+        'ratingValue' => (string)$avg_rating,
+        'reviewCount' => (string)count($reviews)
+    ];
+}
 ?>
+
+<script type="application/ld+json">
+<?php echo json_encode($schema_data, JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE | JSON_PRETTY_PRINT); ?>
+</script>
 
 <style>
     /* Lightbox Styles */
@@ -370,7 +402,7 @@ $has_cat_image = !empty($product['cat_image']);
                 </div>
 
                 <?php if($can_buy): ?>
-                    <a href="index.php?module=shop&page=checkout&id=<?php echo $product['id']; ?>" class="block w-full bg-blue-600 hover:bg-blue-500 text-white font-bold py-5 rounded-2xl text-center shadow-lg shadow-blue-500/20 transition-all hover:-translate-y-1 active:scale-95">
+                    <a href="index.php?module=shop&page=checkout&id=<?php echo $product['id']; ?>" class="block w-full dm-btn-primary py-5 text-center transition-all hover:-translate-y-1 active:scale-95">
                         Buy Now
                     </a>
                 <?php else: ?>
@@ -397,7 +429,7 @@ $has_cat_image = !empty($product['cat_image']);
 </div>
 
 <script>
-    function switchTab(tabId) {
+    window.switchTab = function(tabId) {
         document.querySelectorAll('.tab-content').forEach(el => el.classList.add('hidden'));
         document.getElementById('tab-' + tabId).classList.remove('hidden');
         
@@ -407,15 +439,19 @@ $has_cat_image = !empty($product['cat_image']);
         });
         document.getElementById('btn-tab-' + tabId).classList.add('border-blue-500', 'text-white');
         document.getElementById('btn-tab-' + tabId).classList.remove('border-transparent', 'text-slate-500');
-    }
+    };
 
-    function shareProduct() {
-        navigator.clipboard.writeText(window.location.href).then(() => {
-            const btnText = document.getElementById('shareText');
-            btnText.innerText = "Copied!";
-            setTimeout(() => { btnText.innerText = "Share"; }, 2000);
+    window.shareProduct = async function() {
+        const btnText = document.getElementById('shareText');
+        const ok = await window.shareCurrentPage({
+            title: <?php echo json_encode($product['name']); ?>,
+            text: <?php echo json_encode($product['name'] . ' from DigitalMM'); ?>
         });
-    }
+        if (btnText) {
+            btnText.innerText = ok ? 'Copied!' : 'Share';
+            setTimeout(() => { btnText.innerText = 'Share'; }, 2000);
+        }
+    };
 </script>
 
 <!-- Related Products Grid -->
@@ -423,7 +459,7 @@ $has_cat_image = !empty($product['cat_image']);
 <div class="max-w-7xl mx-auto px-4 pb-16 pt-12">
     <div class="border-t border-white/5 pt-12">
         <h3 class="text-2xl font-bold text-white mb-10 tracking-tight">You might also like</h3>
-        <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-8">
+        <div class="grid grid-cols-2 lg:grid-cols-4 gap-4 sm:gap-6">
             <?php 
             foreach($related_items as $item) {
                 $product_temp = $product; 
@@ -444,33 +480,6 @@ $has_cat_image = !empty($product['cat_image']);
 </div>
 
 <script>
-    // Tab System Logic
-    function switchTab(tabId) {
-        // Hide all contents
-        document.querySelectorAll('.tab-content').forEach(el => el.classList.remove('active'));
-        // Reset all buttons
-        document.querySelectorAll('[id^="btn-tab-"]').forEach(el => {
-            el.className = "px-5 py-3.5 text-xs md:text-sm font-bold uppercase tracking-wider text-slate-400 border-b-2 border-transparent hover:text-white transition-all whitespace-nowrap";
-        });
-        
-        // Show target
-        document.getElementById('tab-' + tabId).classList.add('active');
-        // Highlight button
-        document.getElementById('btn-tab-' + tabId).className = "px-5 py-3.5 text-xs md:text-sm font-black uppercase tracking-wider text-[#00f0ff] border-b-2 border-[#00f0ff] transition-all whitespace-nowrap";
-    }
-
-    // Share URL Logic
-    function shareProduct() {
-        const url = window.location.href;
-        navigator.clipboard.writeText(url).then(() => {
-            const btnText = document.getElementById('shareText');
-            btnText.innerText = "Copied!";
-            setTimeout(() => { btnText.innerText = "Share Node"; }, 2000);
-        }).catch(err => {
-            console.error('Failed to copy: ', err);
-        });
-    }
-
     // Lightbox Logic
     function openLightbox(src) {
         const lightbox = document.getElementById('productLightbox');

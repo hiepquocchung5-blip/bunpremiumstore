@@ -3,54 +3,78 @@
 // PRODUCTION READY v5.0 - Human-Friendly UI, Simple English & Reorganized Hub
 
 // 1. Fetch Banners (Active Slides)
-$stmt = $pdo->query("SELECT * FROM banners ORDER BY display_order ASC, id DESC LIMIT 5");
-$banners = $stmt->fetchAll();
+$banners = matrix_cache_get('home_banners_v2');
+if ($banners === false) {
+    $stmt = $pdo->query("SELECT * FROM banners ORDER BY display_order ASC, id DESC LIMIT 5");
+    $banners = $stmt->fetchAll();
+    matrix_cache_set('home_banners_v2', $banners, 300);
+}
 
 // 2. Fetch Categories
-$stmt = $pdo->query("SELECT id, name, image_url, description, type FROM categories ORDER BY id ASC");
-$categories = $stmt->fetchAll();
+$categories = matrix_cache_get('home_categories_v2');
+if ($categories === false) {
+    $stmt = $pdo->query("SELECT id, name, image_url, description, type FROM categories ORDER BY id ASC");
+    $categories = $stmt->fetchAll();
+    matrix_cache_set('home_categories_v2', $categories, 600);
+}
 
 // 3. Fetch "Hot Deals" (Sale Items)
-$stmt = $pdo->query("
-    SELECT p.*, c.name as cat_name, c.image_url as cat_image
-    FROM products p 
-    JOIN categories c ON p.category_id = c.id 
-    WHERE p.sale_price IS NOT NULL AND p.sale_price < p.price
-    ORDER BY RAND() LIMIT 4
-");
-$flash_sales = $stmt->fetchAll();
+$flash_sales = matrix_cache_get('home_flash_sales_v2');
+if ($flash_sales === false) {
+    $stmt = $pdo->query("
+        SELECT p.*, c.name as cat_name, c.image_url as cat_image
+        FROM products p 
+        JOIN categories c ON p.category_id = c.id 
+        WHERE p.sale_price IS NOT NULL AND p.sale_price < p.price
+        ORDER BY RAND() LIMIT 4
+    ");
+    $flash_sales = $stmt->fetchAll();
+    matrix_cache_set('home_flash_sales_v2', $flash_sales, 120);
+}
 
 // 4. Fetch "Best Sellers"
-$stmt = $pdo->query("
-    SELECT p.*, c.name as cat_name, c.image_url as cat_image, COUNT(o.id) as sales_count
-    FROM products p 
-    JOIN categories c ON p.category_id = c.id 
-    LEFT JOIN orders o ON p.id = o.product_id AND o.status = 'active'
-    GROUP BY p.id
-    ORDER BY sales_count DESC LIMIT 6
-");
-$best_sellers = $stmt->fetchAll();
+$best_sellers = matrix_cache_get('home_best_sellers_v2');
+if ($best_sellers === false) {
+    $stmt = $pdo->query("
+        SELECT p.*, c.name as cat_name, c.image_url as cat_image, COUNT(o.id) as sales_count
+        FROM products p 
+        JOIN categories c ON p.category_id = c.id 
+        LEFT JOIN orders o ON p.id = o.product_id AND o.status = 'active'
+        GROUP BY p.id
+        ORDER BY sales_count DESC LIMIT 6
+    ");
+    $best_sellers = $stmt->fetchAll();
+    matrix_cache_set('home_best_sellers_v2', $best_sellers, 180);
+}
 
 // 5. Fetch "Recent Arrivals"
-$stmt = $pdo->query("
-    SELECT p.*, c.name as cat_name, c.image_url as cat_image
-    FROM products p 
-    JOIN categories c ON p.category_id = c.id 
-    ORDER BY p.id DESC LIMIT 18
-");
-$recent_products = $stmt->fetchAll();
+$recent_products = matrix_cache_get('home_recent_products_v2');
+if ($recent_products === false) {
+    $stmt = $pdo->query("
+        SELECT p.*, c.name as cat_name, c.image_url as cat_image
+        FROM products p 
+        JOIN categories c ON p.category_id = c.id 
+        ORDER BY p.id DESC LIMIT 18
+    ");
+    $recent_products = $stmt->fetchAll();
+    matrix_cache_set('home_recent_products_v2', $recent_products, 120);
+}
 
 // 6. Fetch Recent User Activity (For "Recent Sales" at bottom)
-$stmt = $pdo->query("
-    SELECT o.id, u.username, COALESCE(p.name, ps.name) as item_name, o.created_at
-    FROM orders o 
-    JOIN users u ON o.user_id = u.id
-    LEFT JOIN products p ON o.product_id = p.id 
-    LEFT JOIN passes ps ON o.pass_id = ps.id
-    WHERE o.status = 'active'
-    ORDER BY o.id DESC LIMIT 10
-");
-$recent_activity = $stmt->fetchAll();
+$recent_activity = matrix_cache_get('home_recent_activity_v2');
+if ($recent_activity === false) {
+    $stmt = $pdo->query("
+        SELECT o.id, u.username, COALESCE(p.name, ps.name) as item_name, o.created_at
+        FROM orders o 
+        JOIN users u ON o.user_id = u.id
+        LEFT JOIN products p ON o.product_id = p.id 
+        LEFT JOIN passes ps ON o.pass_id = ps.id
+        WHERE o.status = 'active'
+        ORDER BY o.id DESC LIMIT 10
+    ");
+    $recent_activity = $stmt->fetchAll();
+    matrix_cache_set('home_recent_activity_v2', $recent_activity, 60);
+}
 
 // 7. Get Current User Discount & Stats
 $user_id = $_SESSION['user_id'] ?? 0;
@@ -285,7 +309,7 @@ if (is_logged_in()) {
                 <i class="fas fa-stopwatch"></i> Limited Offers
             </div>
         </div>
-        <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 sm:gap-6">
+        <div class="grid grid-cols-2 lg:grid-cols-4 gap-4 sm:gap-6">
             <?php foreach($flash_sales as $product): 
                 include __DIR__ . '/product_card.php'; 
             endforeach; ?>
@@ -329,7 +353,7 @@ if (is_logged_in()) {
                 Browse All <i class="fas fa-arrow-right text-[10px]"></i>
             </a>
         </div>
-        <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-8">
+        <div class="grid grid-cols-2 lg:grid-cols-4 gap-4 sm:gap-6">
             <?php foreach($recent_products as $product): 
                 include __DIR__ . '/product_card.php'; 
             endforeach; ?>

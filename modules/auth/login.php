@@ -119,6 +119,7 @@ if ($_SESSION['login_attempts'] >= 5 && time() < $_SESSION['login_lockout']) {
                         }
                         
                         // Log them in
+                        session_regenerate_id(true);
                         $_SESSION['user_id'] = $user['id'];
                         $_SESSION['user_name'] = $user['username'];
                         $_SESSION['user_email'] = $user['email'];
@@ -195,6 +196,7 @@ if ($_SESSION['login_attempts'] >= 5 && time() < $_SESSION['login_lockout']) {
                     $_SESSION['login_attempts'] = 0;
                     $_SESSION['login_lockout'] = 0;
 
+                    session_regenerate_id(true);
                     $_SESSION['user_id'] = $user['id'];
                     $_SESSION['user_name'] = $user['username'];
                     $_SESSION['user_email'] = $user['email'];

@@ -125,7 +125,7 @@ function get_page_url($page_num) {
 </style>
 
 <!-- Background -->
-<div class="fixed inset-0 w-full h-full bg-[#0b0f1a] -z-20"></div>
+<div class="fixed inset-0 w-full h-full dm-gradient-bg -z-20"></div>
 <div class="fixed top-0 left-0 w-full h-full -z-10 opacity-20 pointer-events-none">
     <div class="absolute top-[-10%] left-[-10%] w-[50%] h-[50%] bg-blue-600/20 rounded-full blur-[120px]"></div>
 </div>
@@ -201,7 +201,7 @@ function get_page_url($page_num) {
                         <div class="w-10 h-10 rounded-xl bg-orange-500/10 flex items-center justify-center border border-orange-500/20"><i class="fas fa-fire text-orange-500 text-lg"></i></div>
                         <h3 class="text-xl font-bold text-white tracking-tight">Trending Items</h3>
                     </div>
-                    <div class="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-8">
+                    <div class="grid grid-cols-2 lg:grid-cols-4 gap-4 sm:gap-6">
                         <?php foreach($trending_products as $product): ?>
                             <?php include __DIR__ . '/../home/product_card.php'; ?>
                         <?php endforeach; ?>
@@ -215,7 +215,7 @@ function get_page_url($page_num) {
                         <div class="w-10 h-10 rounded-xl bg-yellow-500/10 flex items-center justify-center border border-yellow-500/20"><i class="fas fa-star text-yellow-400 text-lg"></i></div>
                         <h3 class="text-xl font-bold text-white tracking-tight">Recommended Deals</h3>
                     </div>
-                    <div class="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-8">
+                    <div class="grid grid-cols-2 lg:grid-cols-4 gap-4 sm:gap-6">
                         <?php foreach($recommended_products as $product): ?>
                             <?php include __DIR__ . '/../home/product_card.php'; ?>
                         <?php endforeach; ?>
@@ -264,7 +264,7 @@ function get_page_url($page_num) {
                     <p class="text-slate-500 max-w-sm mx-auto mb-8 text-sm leading-relaxed">There are currently no items available in this category with the selected filters.</p>
                 </div>
             <?php else: ?>
-                <div class="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-8 relative z-10">
+                <div class="grid grid-cols-2 lg:grid-cols-4 gap-4 sm:gap-6 relative z-10">
                     <?php foreach($products as $product): ?>
                         <?php include __DIR__ . '/../home/product_card.php'; ?>
                     <?php endforeach; ?>

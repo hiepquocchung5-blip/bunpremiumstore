@@ -15,6 +15,11 @@ require_once 'includes/functions.php';
 // Get Request Parameters (Default to Home)
 $module = isset($_GET['module']) ? $_GET['module'] : 'home';
 $page   = isset($_GET['page'])   ? $_GET['page']   : 'index';
+$page_title = 'DigitalMM | Premium Digital Marketplace';
+$page_description = 'Premium digital marketplace for games, software, passes, and instant delivery products.';
+$page_type = 'website';
+$page_image = defined('BASE_URL') ? BASE_URL . 'assets/images/og-image.png' : 'assets/images/og-image.png';
+$page_canonical = defined('BASE_URL') ? BASE_URL . 'index.php' : 'index.php';
 
 /**
  * --------------------------------------------------------------------------
@@ -75,6 +80,50 @@ if (!array_key_exists($module, $allowed_routes) || !in_array($page, $allowed_rou
     // Force 404 if route doesn't exist
     $module = 'error';
     $page = '404';
+}
+
+if ($module === 'home' && $page === 'index') {
+    $page_title = 'DigitalMM | Fresh Digital Deals';
+    $page_description = 'Browse fresh digital products, curated picks, and instant delivery deals built for fast checkout.';
+} elseif ($module === 'shop' && $page === 'category') {
+    $cat_id_meta = isset($_GET['id']) ? (int)$_GET['id'] : 0;
+    $page_title = $cat_id_meta > 0 ? 'DigitalMM | Category View' : 'DigitalMM | All Products';
+    $page_description = 'Explore digital products with clean filters, fast browsing, and reliable delivery.';
+    if ($cat_id_meta > 0) {
+        $stmt = $pdo->prepare("SELECT name, description, image_url FROM categories WHERE id = ?");
+        $stmt->execute([$cat_id_meta]);
+        if ($cat = $stmt->fetch()) {
+            $page_title = 'DigitalMM | ' . $cat['name'];
+            $page_description = $cat['description'] ?: $page_description;
+            if (!empty($cat['image_url'])) {
+                $page_image = defined('BASE_URL') ? BASE_URL . $cat['image_url'] : $cat['image_url'];
+            }
+        }
+    }
+} elseif ($module === 'shop' && $page === 'product') {
+    $product_meta_id = isset($_GET['id']) ? (int)$_GET['id'] : 0;
+    if ($product_meta_id > 0) {
+        $stmt = $pdo->prepare("
+            SELECT p.name, p.description, p.image_path, c.name as cat_name
+            FROM products p
+            JOIN categories c ON p.category_id = c.id
+            WHERE p.id = ?
+        ");
+        $stmt->execute([$product_meta_id]);
+        if ($product_meta = $stmt->fetch()) {
+            $page_title = 'DigitalMM | ' . $product_meta['name'];
+            $page_description = $product_meta['description'] ?: ('Buy ' . $product_meta['name'] . ' from the ' . $product_meta['cat_name'] . ' collection.');
+            if (!empty($product_meta['image_path'])) {
+                $page_image = defined('BASE_URL') ? BASE_URL . $product_meta['image_path'] : $product_meta['image_path'];
+            }
+            $page_type = 'product';
+            $page_canonical = defined('BASE_URL') ? BASE_URL . 'index.php?module=shop&page=product&id=' . $product_meta_id : 'index.php?module=shop&page=product&id=' . $product_meta_id;
+        }
+    }
+} elseif ($module === 'shop' && $page === 'search') {
+    $q = trim($_GET['q'] ?? '');
+    $page_title = $q !== '' ? 'DigitalMM | Search: ' . $q : 'DigitalMM | Search';
+    $page_description = 'Search digital goods, software, and instant delivery products in one clean interface.';
 }
 
 /**

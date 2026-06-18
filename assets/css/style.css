@@ -1,23 +1,29 @@
 /* assets/css/style.css */
 
 :root {
-    /* Refined Color Palette - Premium Human-Centric Dark Mode */
-    --primary: #3b82f6;      /* Vibrant Blue */
+    /* Refined Color Palette */
+    --primary: #3b82f6;
     --primary-glow: rgba(59, 130, 246, 0.4);
-    --secondary: #6366f1;    /* Indigo */
-    --accent: #10b981;       /* Emerald for success */
-    --warning: #f59e0b;      /* Amber */
-    --danger: #ef4444;       /* Rose */
+    --secondary: #ffba30;
+    --accent: #10b981;
+    --warning: #f59e0b;
+    --danger: #ef4444;
     
-    --bg-main: #0b0f1a;      /* Deep midnight blue-black */
-    --bg-card: #151c2c;      /* Slightly lighter blue-gray */
+    --bg-main: #0b0f1a;
+    --bg-card: rgba(15, 23, 42, 0.78);
     --bg-hover: #1e293b;
     
-    --text-main: #f8fafc;    /* Off-white */
-    --text-muted: #94a3b8;   /* Muted slate */
+    --text-main: #f8fafc;
+    --text-muted: #94a3b8;
     
     --border-dim: rgba(255, 255, 255, 0.05);
     --border-glow: rgba(59, 130, 246, 0.2);
+    --surface-soft: rgba(15, 23, 42, 0.62);
+    --surface-strong: rgba(8, 15, 32, 0.96);
+    --surface-light: rgba(255, 255, 255, 0.88);
+    --surface-light-soft: rgba(255, 255, 255, 0.72);
+    --text-light: #303030;
+    --text-light-muted: #6b7280;
 
     --safe-top: env(safe-area-inset-top);
     --safe-bottom: env(safe-area-inset-bottom);
@@ -35,12 +41,17 @@ html {
 body {
     background-color: var(--bg-main);
     color: var(--text-main);
-    font-family: 'Inter', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+    font-family: 'Montserrat', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
     overflow-x: clip;
     overscroll-behavior-y: none;
     -webkit-tap-highlight-color: transparent;
     -webkit-font-smoothing: antialiased;
     -moz-osx-font-smoothing: grayscale;
+}
+
+html[data-theme="light"] body {
+    background: #f6f8fc;
+    color: var(--text-light);
 }
 
 /* Human-Centric Spacing & Transitions */
@@ -95,6 +106,53 @@ body {
     -webkit-text-fill-color: transparent;
 }
 
+.dm-divider {
+    height: 1px;
+    background: linear-gradient(90deg, transparent, rgba(59,130,246,0.35), rgba(255,186,48,0.35), transparent);
+}
+
+.dm-btn-primary {
+    background: linear-gradient(135deg, var(--secondary) 0%, #f59e0b 100%);
+    color: #111827;
+    border: 1px solid rgba(255, 255, 255, 0.12);
+    border-radius: 999px;
+    font-weight: 800;
+    letter-spacing: 0.02em;
+    box-shadow: 0 18px 35px rgba(255, 186, 48, 0.18);
+}
+
+.dm-btn-secondary {
+    background: rgba(255, 255, 255, 0.02);
+    color: var(--text-main);
+    border: 1px solid var(--border-dim);
+    border-radius: 999px;
+    font-weight: 700;
+}
+
+.dm-card {
+    background: var(--surface-soft);
+    border: 1px solid var(--border-dim);
+    border-radius: 2rem;
+    backdrop-filter: blur(16px);
+    -webkit-backdrop-filter: blur(16px);
+}
+
+html[data-theme="light"] .dm-card,
+html[data-theme="light"] .card-premium {
+    background: var(--surface-light);
+    border-color: rgba(15, 23, 42, 0.08);
+}
+
+html[data-theme="light"] .dm-btn-secondary {
+    background: rgba(255, 255, 255, 0.9);
+    color: var(--text-light);
+    border-color: rgba(15, 23, 42, 0.08);
+}
+
+html[data-theme="light"] .dm-btn-primary {
+    color: #111827;
+}
+
 /* Mobile Adjustments */
 @media (max-width: 425px) {
     .p-mobile-base { padding: 1rem; }
@@ -111,4 +169,3 @@ input:-webkit-autofill {
     -webkit-text-fill-color: white !important;
     -webkit-box-shadow: 0 0 0px 1000px #1a2234 inset !important;
 }
-

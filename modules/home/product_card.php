@@ -22,10 +22,10 @@ $product_url = "index.php?module=shop&page=product&id=" . $product['id'];
 ?>
 
 <!-- Entire Card is a Unified Anchor Tag -->
-<a href="<?php echo $product_url; ?>" class="block rounded-[2rem] overflow-hidden group hover:bg-slate-800/50 transition-all duration-500 flex flex-col h-full bg-slate-800/20 border border-white/5 hover:border-blue-500/30 shadow-xl hover:-translate-y-2 relative">
+<a href="<?php echo $product_url; ?>" class="dm-card block rounded-[1.75rem] overflow-hidden group transition-all duration-500 flex flex-col h-full hover:-translate-y-1.5 relative shadow-[0_12px_40px_rgba(0,0,0,0.18)]">
     
     <!-- Image / Icon Header -->
-    <div class="relative aspect-square overflow-hidden bg-slate-900">
+    <div class="relative aspect-square overflow-hidden bg-slate-900/90">
         <?php if($has_product_image): ?>
             <img src="<?php echo BASE_URL . $product['image_path']; ?>" alt="<?php echo htmlspecialchars($product['name']); ?>" class="w-full h-full object-cover transition-transform duration-700 group-hover:scale-110" loading="lazy">
         <?php elseif($has_cat_image): ?>
@@ -37,35 +37,35 @@ $product_url = "index.php?module=shop&page=product&id=" . $product['id'];
         <?php endif; ?>
         
         <!-- Badges -->
-        <div class="absolute top-4 right-4 flex flex-col gap-2 items-end">
+        <div class="absolute top-3 right-3 flex flex-col gap-2 items-end">
             <?php if($product['sale_price']): ?>
-                <span class="bg-rose-500 text-white text-[10px] font-bold px-3 py-1 rounded-lg shadow-lg uppercase tracking-widest">Sale</span>
+                <span class="bg-rose-500 text-white text-[10px] font-bold px-3 py-1 rounded-full shadow-lg uppercase tracking-widest">Sale</span>
             <?php endif; ?>
             
             <?php if($discount > 0): ?>
-                <span class="bg-amber-500 text-black text-[10px] font-bold px-3 py-1 rounded-lg shadow-lg uppercase tracking-widest">-<?php echo $discount; ?>%</span>
+                <span class="bg-amber-500 text-black text-[10px] font-bold px-3 py-1 rounded-full shadow-lg uppercase tracking-widest">-<?php echo $discount; ?>%</span>
             <?php endif; ?>
         </div>
     </div>
 
     <!-- Card Body -->
-    <div class="p-6 flex-grow flex flex-col">
+    <div class="p-4 sm:p-5 flex-grow flex flex-col">
         <div class="flex items-center gap-2 mb-3">
-            <span class="text-[10px] font-bold text-slate-500 uppercase tracking-widest"><?php echo htmlspecialchars($product['cat_name'] ?? 'General'); ?></span>
+            <span class="text-[10px] font-bold text-slate-500 uppercase tracking-[0.18em] truncate"><?php echo htmlspecialchars($product['cat_name'] ?? 'General'); ?></span>
         </div>
 
-        <h3 class="text-white font-bold text-lg mb-3 line-clamp-2 group-hover:text-blue-400 transition-colors leading-tight">
+        <h3 class="text-white font-bold text-[15px] sm:text-lg mb-2 line-clamp-2 group-hover:text-blue-400 transition-colors leading-tight">
             <?php echo htmlspecialchars($product['name']); ?>
         </h3>
         
-        <p class="text-slate-500 text-xs line-clamp-2 mb-6 leading-relaxed">
+        <p class="text-slate-500 text-[11px] sm:text-xs line-clamp-2 mb-5 leading-relaxed">
             <?php echo htmlspecialchars($product['user_instruction'] ?: "Fast and secure delivery to your account."); ?>
         </p>
         
         <!-- Footer -->
         <div class="mt-auto pt-4 border-t border-white/5 flex items-center justify-between">
             <div class="flex flex-col">
-                <span class="text-2xl font-bold <?php echo ($product['sale_price']||$discount>0)?'text-amber-400':'text-white'; ?>">
+                <span class="text-xl sm:text-2xl font-bold <?php echo ($product['sale_price']||$discount>0)?'text-amber-400':'text-white'; ?>">
                     <?php echo format_price($final_price); ?>
                 </span>
                 <?php if($product['sale_price'] || $discount > 0): ?>
@@ -75,7 +75,7 @@ $product_url = "index.php?module=shop&page=product&id=" . $product['id'];
                 <?php endif; ?>
             </div>
             
-            <div class="w-10 h-10 rounded-full bg-slate-800 group-hover:bg-blue-600 flex items-center justify-center text-white transition-all transform group-hover:rotate-[-45deg]">
+            <div class="w-9 h-9 rounded-full bg-slate-800/80 group-hover:bg-blue-600 flex items-center justify-center text-white transition-all transform group-hover:rotate-[-45deg]">
                 <i class="fas fa-arrow-right text-xs"></i>
             </div>
         </div>

@@ -10,6 +10,30 @@
 const PUBLIC_VAPID_KEY = window.AppConfig?.vapidPublicKey || '';
 const BASE_URL = window.AppConfig?.baseUrl || '/';
 
+window.shareCurrentPage = async function (payload = {}) {
+    const shareData = {
+        title: payload.title || document.title,
+        text: payload.text || document.querySelector('meta[name="description"]')?.content || '',
+        url: payload.url || window.location.href
+    };
+
+    if (navigator.share) {
+        try {
+            await navigator.share(shareData);
+            return true;
+        } catch (err) {
+            if (err && err.name === 'AbortError') return false;
+        }
+    }
+
+    if (navigator.clipboard && shareData.url) {
+        await navigator.clipboard.writeText(shareData.url);
+        return true;
+    }
+
+    return false;
+};
+
 /**
  * --------------------------------------------------------------------------
  * PUSH NOTIFICATION HELPERS
@@ -309,7 +333,7 @@ document.addEventListener('DOMContentLoaded', () => {
         };
 
         // Cache recently seen images in LocalStorage for 0ms visual presence (Metadata only)
-        if (img.src && img.src.includes('Imagecat_') || img.src.includes('Imageprod_')) {
+        if (img.src && (img.src.includes('Imagecat_') || img.src.includes('Imageprod_'))) {
             const cacheKey = 'img_seen_' + btoa(img.src).substring(0, 16);
             localStorage.setItem(cacheKey, Date.now());
         }

@@ -39,7 +39,7 @@ $discount = is_logged_in() ? get_user_discount($_SESSION['user_id']) : 0;
 </style>
 
 <!-- Background Effects -->
-<div class="fixed inset-0 w-full h-full bg-[#0b0f1a] -z-20"></div>
+<div class="fixed inset-0 w-full h-full dm-gradient-bg -z-20"></div>
 <div class="fixed top-0 left-0 w-full h-full -z-10 opacity-20 pointer-events-none">
     <div class="absolute top-[-10%] left-[-10%] w-[50%] h-[50%] bg-blue-600/20 rounded-full blur-[120px]"></div>
 </div>
@@ -67,7 +67,7 @@ $discount = is_logged_in() ? get_user_discount($_SESSION['user_id']) : 0;
             <input type="text" name="q" value="<?php echo htmlspecialchars($query); ?>" 
                    class="w-full bg-slate-800/40 border border-white/5 focus:border-blue-500/50 rounded-2xl py-5 pl-6 pr-32 text-white placeholder-slate-600 outline-none shadow-2xl backdrop-blur-xl transition-all">
             
-            <button type="submit" class="absolute right-2 top-2 bottom-2 bg-blue-600 hover:bg-blue-500 text-white font-bold px-8 rounded-xl transition-all active:scale-95 text-xs uppercase tracking-widest">
+            <button type="submit" class="absolute right-2 top-2 bottom-2 dm-btn-primary px-8 transition-all active:scale-95 text-xs uppercase tracking-widest">
                 Search
             </button>
         </form>
@@ -83,12 +83,12 @@ $discount = is_logged_in() ? get_user_discount($_SESSION['user_id']) : 0;
                 <h3 class="text-2xl font-bold text-white">No items found</h3>
                 <p class="text-slate-500 max-w-sm mx-auto text-sm leading-relaxed">We couldn't find any products matching your search. Try different keywords or browse our categories.</p>
             </div>
-            <a href="index.php?module=shop&page=category" class="inline-flex items-center gap-3 bg-white text-black font-bold px-8 py-4 rounded-2xl transition-all hover:scale-105 active:scale-95 shadow-xl">
+            <a href="index.php?module=shop&page=category" class="inline-flex items-center gap-3 dm-btn-primary px-8 py-4 transition-all hover:scale-105 active:scale-95 shadow-xl">
                 Browse Categories
             </a>
         </div>
     <?php else: ?>
-        <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-8">
+        <div class="grid grid-cols-2 lg:grid-cols-4 gap-4 sm:gap-6">
             <?php foreach($results as $product): ?>
                 <?php include __DIR__ . '/../home/product_card.php'; ?>
             <?php endforeach; ?>
