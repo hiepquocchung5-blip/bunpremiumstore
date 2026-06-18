@@ -49,29 +49,40 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 }
 ?>
 <!DOCTYPE html>
-<html lang="en">
+<html lang="en" data-theme="<?php echo $curr_theme ?? 'dark'; ?>">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Resend Verification - DigitalMarketplaceMM</title>
+    <title>Request Credentials - DigitalMarketplaceMM</title>
     <script src="https://cdn.tailwindcss.com"></script>
-    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;700;900&display=swap" rel="stylesheet">
     <style>
+        :root { --page-bg: #0b0f1a; }
+        html[data-theme="light"] { --page-bg: #f8fafc; }
         body { 
-            background: #0f172a; 
+            background: var(--page-bg); 
             color: white; 
             font-family: 'Inter', sans-serif; 
             min-height: 100vh;
+            -webkit-tap-highlight-color: transparent;
         }
+        html[data-theme="light"] body { color: #0f172a; }
+        html[data-theme="light"] .text-white { color: #0f172a !important; }
+        html[data-theme="light"] .text-slate-400 { color: #64748b !important; }
+
         .glass { 
             background: rgba(15, 23, 42, 0.85); 
             backdrop-filter: blur(20px); 
             -webkit-backdrop-filter: blur(20px);
             border: 1px solid rgba(0, 240, 255, 0.15); 
-            box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.5), 0 0 30px rgba(0, 240, 255, 0.05); 
+            box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.5); 
         }
-        
+        html[data-theme="light"] .glass {
+            background: rgba(255, 255, 255, 0.85);
+            border-color: #e2e8f0;
+        }
+
         .input-group { position: relative; }
         .input-icon { 
             position: absolute; 
@@ -109,7 +120,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 <body class="flex items-center justify-center relative overflow-hidden px-4 py-8 md:p-4">
     
     <!-- Animated Cyberpunk Background -->
-    <div class="fixed inset-0 w-full h-full bg-slate-950 -z-20"></div>
+    <div class="fixed inset-0 w-full h-full bg-[var(--page-bg)] -z-20"></div>
     <div class="fixed top-0 -left-4 w-72 h-72 bg-emerald-600 rounded-full mix-blend-multiply filter blur-[128px] opacity-20 animate-blob -z-10"></div>
     <div class="fixed top-0 -right-4 w-72 h-72 bg-blue-600 rounded-full mix-blend-multiply filter blur-[128px] opacity-20 animate-blob animation-delay-2000 -z-10"></div>
     <div class="fixed -bottom-8 left-20 w-72 h-72 bg-[#00f0ff] rounded-full mix-blend-multiply filter blur-[128px] opacity-10 animate-blob animation-delay-4000 -z-10"></div>

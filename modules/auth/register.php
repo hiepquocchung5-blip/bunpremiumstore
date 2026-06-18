@@ -119,7 +119,7 @@ if (empty($_SESSION['g_state'])) {
 $google_login_url = "https://accounts.google.com/o/oauth2/v2/auth?response_type=code&client_id=" . urlencode($google_client_id) . "&redirect_uri=" . urlencode($google_redirect_url) . "&scope=email%20profile&state=" . $_SESSION['g_state'];
 ?>
 <!DOCTYPE html>
-<html lang="en">
+<html lang="en" data-theme="<?php echo $curr_theme ?? 'dark'; ?>">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
@@ -128,13 +128,20 @@ $google_login_url = "https://accounts.google.com/o/oauth2/v2/auth?response_type=
     <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;900&display=swap" rel="stylesheet">
     <style>
+        :root { --page-bg: #0b0f1a; }
+        html[data-theme="light"] { --page-bg: #f8fafc; }
         body { 
-            background: #0f172a; 
+            background: var(--page-bg); 
             color: white; 
             font-family: 'Inter', sans-serif; 
             min-height: 100vh;
             -webkit-tap-highlight-color: transparent;
         }
+        html[data-theme="light"] body { color: #0f172a; }
+        html[data-theme="light"] .text-white { color: #0f172a !important; }
+        html[data-theme="light"] .bg-slate-900, html[data-theme="light"] .bg-slate-900\/50, html[data-theme="light"] .bg-slate-800\/50 { background-color: rgba(255,255,255,0.9) !important; }
+        html[data-theme="light"] .border-white\/10 { border-color: #e2e8f0 !important; }
+
         .glass { 
             background: rgba(15, 23, 42, 0.85); 
             backdrop-filter: blur(20px); 
@@ -142,6 +149,11 @@ $google_login_url = "https://accounts.google.com/o/oauth2/v2/auth?response_type=
             border: 1px solid rgba(0, 240, 255, 0.15); 
             box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.5), 0 0 30px rgba(0, 240, 255, 0.05); 
         }
+        html[data-theme="light"] .glass {
+            background: rgba(255, 255, 255, 0.85);
+            border-color: #e2e8f0;
+        }
+
         
         .input-group { position: relative; }
         .input-icon { 
@@ -191,7 +203,7 @@ $google_login_url = "https://accounts.google.com/o/oauth2/v2/auth?response_type=
 <body class="flex items-center justify-center relative overflow-hidden px-4 py-12">
     
     <!-- Background Effects -->
-    <div class="fixed inset-0 w-full h-full bg-[#0b0f1a] -z-20"></div>
+    <div class="fixed inset-0 w-full h-full bg-[var(--page-bg)] -z-20"></div>
     <div class="fixed top-0 left-0 w-full h-full -z-10 opacity-30">
         <div class="absolute top-[-10%] left-[-10%] w-[50%] h-[50%] bg-blue-600/20 rounded-full blur-[120px]"></div>
         <div class="absolute bottom-[-10%] right-[-10%] w-[50%] h-[50%] bg-indigo-600/20 rounded-full blur-[120px]"></div>

@@ -458,7 +458,7 @@ if ($avg_rating > 0) {
         const btnText = document.getElementById('shareText');
         const payload = {
             title: <?php echo json_encode($product['name']); ?>,
-            text: <?php echo json_encode($product['name'] . ' from DigitalMM'); ?>,
+            text: '',
             url: <?php echo json_encode($product_url); ?>
         };
         const ok = typeof window.shareCurrentPage === 'function'

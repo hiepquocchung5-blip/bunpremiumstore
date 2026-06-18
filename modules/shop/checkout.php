@@ -25,7 +25,12 @@ $stmt->execute([$product_id]);
 $instructions = $stmt->fetchAll();
 
 // 3. Fetch Active Payment Methods (Standard Gateways Only)
-$payment_methods = $pdo->query("SELECT * FROM payment_methods WHERE is_active = 1")->fetchAll();
+$cache_pm_key = "active_payment_methods";
+$payment_methods = matrix_cache_get($cache_pm_key);
+if (!$payment_methods) {
+    $payment_methods = $pdo->query("SELECT * FROM payment_methods WHERE is_active = 1")->fetchAll();
+    matrix_cache_set($cache_pm_key, $payment_methods, 3600); // Cache for 1 hour
+}
 
 // 4. Pricing Logic
 $discount = get_user_discount($user_id);
@@ -129,26 +134,51 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                         $pdo->prepare("UPDATE coupons SET used_count = used_count + 1 WHERE id = ?")->execute([$coupon['id']]);
                     }
 
-                    // Notifications
-                    if (function_exists('send_telegram_alert')) {
-                        send_telegram_alert($new_order_id, $product['name'], $final_price, $_SESSION['user_name']);
-                    }
-                    
-                    require_once 'includes/MailService.php';
-                    $mailer = new MailService();
-                    $mailer->sendOrderConfirmation($_SESSION['user_email'], $_SESSION['user_name'], $new_order_id, $product['name'], $final_price);
+                    // ⚡️ PERFORMANCE PROTOCOL: Offload heavy tasks to finish request if possible
+                    if (function_exists('fastcgi_finish_request')) {
+                        header('Location: ' . BASE_URL . 'index.php?module=user&page=orders&view_chat=' . $new_order_id);
+                        session_write_close();
+                        fastcgi_finish_request();
+                        
+                        // Run heavy background tasks
+                        if (function_exists('send_telegram_alert')) {
+                            send_telegram_alert($new_order_id, $product['name'], $final_price, $_SESSION['user_name']);
+                        }
+                        
+                        require_once 'includes/MailService.php';
+                        $mailer = new MailService();
+                        $mailer->sendOrderConfirmation($_SESSION['user_email'], $_SESSION['user_name'], $new_order_id, $product['name'], $final_price);
 
-                    // --- PUSH NOTIFICATION TO USER FOR PENDING ORDER ---
-                    if (file_exists('includes/PushService.php')) {
-                        require_once 'includes/PushService.php';
-                        try {
-                            $push = new PushService($pdo);
-                            $target_url = BASE_URL . "index.php?module=user&page=orders&view_chat=" . $new_order_id;
-                            $push->sendToUser($user_id, "Order Processing ⏳", "Your payment for Order #{$new_order_id} is currently under verification.", $target_url);
-                        } catch (Exception $e) {}
-                    }
+                        if (file_exists('includes/PushService.php')) {
+                            require_once 'includes/PushService.php';
+                            try {
+                                $push = new PushService($pdo);
+                                $target_url = BASE_URL . "index.php?module=user&page=orders&view_chat=" . $new_order_id;
+                                $push->sendToUser($user_id, "Order Processing ⏳", "Your payment for Order #{$new_order_id} is currently under verification.", $target_url);
+                            } catch (Exception $e) {}
+                        }
+                        exit;
+                    } else {
+                        // Fallback: Normal Synchronous Flow
+                        if (function_exists('send_telegram_alert')) {
+                            send_telegram_alert($new_order_id, $product['name'], $final_price, $_SESSION['user_name']);
+                        }
+                        
+                        require_once 'includes/MailService.php';
+                        $mailer = new MailService();
+                        $mailer->sendOrderConfirmation($_SESSION['user_email'], $_SESSION['user_name'], $new_order_id, $product['name'], $final_price);
 
-                    redirect('index.php?module=user&page=orders&view_chat=' . $new_order_id);
+                        if (file_exists('includes/PushService.php')) {
+                            require_once 'includes/PushService.php';
+                            try {
+                                $push = new PushService($pdo);
+                                $target_url = BASE_URL . "index.php?module=user&page=orders&view_chat=" . $new_order_id;
+                                $push->sendToUser($user_id, "Order Processing ⏳", "Your payment for Order #{$new_order_id} is currently under verification.", $target_url);
+                            } catch (Exception $e) {}
+                        }
+
+                        redirect('index.php?module=user&page=orders&view_chat=' . $new_order_id);
+                    }
                 } else {
                     $error = "Failed to upload the image. Please try a different screenshot.";
                 }
@@ -174,12 +204,12 @@ $display_image = !empty($product['image_path']) ? BASE_URL . $product['image_pat
     .input-wrapper input:not(:placeholder-shown) + label {
         transform: translateY(-130%) scale(0.85);
         color: #3b82f6;
-        background-color: #0b0f1a;
+        background-color: var(--page-bg);
         padding: 0 4px;
     }
 </style>
 
-<div class="fixed inset-0 w-full h-full bg-[#0b0f1a] -z-20"></div>
+<div class="fixed inset-0 w-full h-full bg-[var(--page-bg)] -z-20"></div>
 
 <div class="max-w-7xl mx-auto px-4 py-8 lg:py-12 relative z-10">
     

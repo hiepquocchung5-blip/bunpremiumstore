@@ -48,32 +48,51 @@ if (!$is_auth_page && !$is_ajax) {
 $has_unread_chat = false;
 if (isset($_SESSION['user_id'])) {
     global $pdo;
-    try {
-        $stmt_unread = $pdo->prepare("
-            SELECT id FROM orders o 
-            WHERE user_id = ? 
-            AND (
-                SELECT sender_type FROM order_messages 
-                WHERE order_id = o.id 
-                ORDER BY id DESC LIMIT 1
-            ) IN ('admin', 'admin_ai')
-            LIMIT 1
-        ");
-        $stmt_unread->execute([$_SESSION['user_id']]);
-        $has_unread_chat = $stmt_unread->rowCount() > 0;
-    } catch (Exception $e) {}
+    
+    // Matrix Cache: Chat status check (30s cache to balance performance/real-time)
+    $cache_key_chat = "user_unread_chat_{$_SESSION['user_id']}";
+    $cached_chat = matrix_cache_get($cache_key_chat);
+    
+    if ($cached_chat !== false) {
+        $has_unread_chat = (bool)$cached_chat;
+    } else {
+        try {
+            $stmt_unread = $pdo->prepare("
+                SELECT id FROM orders o 
+                WHERE user_id = ? 
+                AND (
+                    SELECT sender_type FROM order_messages 
+                    WHERE order_id = o.id 
+                    ORDER BY id DESC LIMIT 1
+                ) IN ('admin', 'admin_ai')
+                LIMIT 1
+            ");
+            $stmt_unread->execute([$_SESSION['user_id']]);
+            $has_unread_chat = $stmt_unread->rowCount() > 0;
+            matrix_cache_set($cache_key_chat, $has_unread_chat, 30);
+        } catch (Exception $e) {}
+    }
 }
 
 // 5. Database State Check: Is User Subscribed?
 $is_push_subscribed = false;
 if (isset($_SESSION['user_id'])) {
     global $pdo;
-    try {
-        $stmt_push = $pdo->prepare("SELECT id FROM push_subscriptions WHERE user_id = ? LIMIT 1");
-        $stmt_push->execute([$_SESSION['user_id']]);
-        $is_push_subscribed = $stmt_push->rowCount() > 0;
-    } catch (Exception $e) {
-        // Fail silently if table doesn't exist yet
+    
+    $cache_key_push = "user_push_sub_{$_SESSION['user_id']}";
+    $cached_push = matrix_cache_get($cache_key_push);
+    
+    if ($cached_push !== false) {
+        $is_push_subscribed = (bool)$cached_push;
+    } else {
+        try {
+            $stmt_push = $pdo->prepare("SELECT id FROM push_subscriptions WHERE user_id = ? LIMIT 1");
+            $stmt_push->execute([$_SESSION['user_id']]);
+            $is_push_subscribed = $stmt_push->rowCount() > 0;
+            matrix_cache_set($cache_key_push, $is_push_subscribed, 300); // 5 minute cache
+        } catch (Exception $e) {
+            // Fail silently if table doesn't exist yet
+        }
     }
 }
 ?>
@@ -167,9 +186,18 @@ if (isset($_SESSION['user_id'])) {
         html[data-theme="light"] .hover\:bg-blue-600:hover {
             background: linear-gradient(135deg, var(--page-accent) 0%, var(--page-accent-2) 100%) !important;
         }
+        html[data-theme="light"] .bg-slate-950,
+        html[data-theme="light"] .bg-slate-950\/40,
+        html[data-theme="light"] .bg-slate-950\/50,
+        html[data-theme="light"] .bg-slate-950\/60,
+        html[data-theme="light"] .bg-slate-950\/80,
+        html[data-theme="light"] .bg-slate-950\/90,
+        html[data-theme="light"] .bg-slate-950\/95,
         html[data-theme="light"] .bg-slate-900,
         html[data-theme="light"] .bg-slate-900\/40,
         html[data-theme="light"] .bg-slate-900\/50,
+        html[data-theme="light"] .bg-slate-900\/60,
+        html[data-theme="light"] .bg-slate-900\/80,
         html[data-theme="light"] .bg-slate-800,
         html[data-theme="light"] .bg-slate-800\/20,
         html[data-theme="light"] .bg-slate-800\/30,

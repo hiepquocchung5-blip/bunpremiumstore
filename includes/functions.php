@@ -187,6 +187,12 @@ function enforce_ban_protocol() {
 // Get Active Agent Discount % for a User
 function get_user_discount($user_id) {
     global $pdo;
+    
+    // ⚡️ Matrix Cache: Discount percents rarely change mid-session
+    $cache_key = "user_discount_pct_{$user_id}";
+    $cached = matrix_cache_get($cache_key);
+    if ($cached !== false) return (int)$cached;
+
     try {
         $stmt = $pdo->prepare("
             SELECT p.discount_percent FROM user_passes up
@@ -195,7 +201,10 @@ function get_user_discount($user_id) {
             ORDER BY p.discount_percent DESC LIMIT 1
         ");
         $stmt->execute([$user_id]);
-        return (int) $stmt->fetchColumn() ?: 0;
+        $discount = (int) $stmt->fetchColumn() ?: 0;
+        
+        matrix_cache_set($cache_key, $discount, 600); // Cache for 10 minutes
+        return $discount;
     } catch (PDOException $e) {
         return 0;
     }
@@ -249,17 +258,14 @@ function send_telegram_alert($order_id, $product_name, $price, $username) {
         error_log('Telegram Alert DB Error: ' . $e->getMessage());
     }
 
-    $full_msg = "🆕 <b>New Order Alert</b>\n";
+    // CONSOLIDATED PROTOCOL: Send ONE photo message with full caption to minimize network load
+    $full_msg = "🆕 <b>New Order Alert #{$order_id}</b>\n";
     $full_msg .= "━━━━━━━━━━━━━━━━\n";
-    $full_msg .= "🆔 <b>ID:</b> #{$order_id}\n";
     $full_msg .= "👤 <b>User:</b> @{$username}\n";
     $full_msg .= "📦 <b>Item:</b> {$product_name}\n";
     $full_msg .= "💰 <b>Price:</b> " . number_format($price) . " Ks\n";
     $full_msg .= "💳 <b>Txn:</b> <code>{$txn_id}</code>\n";
     $full_msg .= "📌 <b>Status:</b> Awaiting review\n";
-    if (!empty($proof_path)) {
-        $full_msg .= "🧾 <b>Proof Path:</b> <code>" . htmlspecialchars($proof_path) . "</code>\n";
-    }
     $full_msg .= "━━━━━━━━━━━━━━━━\n";
     $full_msg .= "🔗 <a href='{$admin_url}'>View Order Terminal</a>";
 
@@ -277,41 +283,17 @@ function send_telegram_alert($order_id, $product_name, $price, $username) {
 
     foreach ($admin_ids as $chat_id) {
         if (empty($chat_id)) continue;
-        if (!empty($order_image_url)) {
-            $product_caption = "🖼 <b>Product Preview</b>\n";
-            $product_caption .= "Order #{$order_id} • @{$username}\n";
-            $product_caption .= "📦 {$product_name}\n";
-            $product_caption .= "💰 " . number_format($price) . " Ks\n";
-            $product_caption .= "📌 Tap to open preview";
-            send_telegram_photo($chat_id, $order_image_url, $product_caption);
-        }
 
+        // If we have a proof, send it as the main image with the details as caption
         if (!empty($proof_url)) {
-            $proof_caption = "🧾 <b>Payment Proof</b>\n";
-            $proof_caption .= "Order #{$order_id} • @{$username}\n";
-            $proof_caption .= "📦 {$product_name}\n";
-            $proof_caption .= "💰 " . number_format($price) . " Ks";
-            if (!empty($proof_path)) {
-                $proof_caption .= "\n🧾 <code>" . htmlspecialchars($proof_path) . "</code>";
-            }
-            send_telegram_photo($chat_id, $proof_url, $proof_caption);
+            send_telegram_photo($chat_id, $proof_url, $full_msg);
+        } else if (!empty($order_image_url)) {
+            // Fallback to product image if no proof (shouldn't happen on checkout)
+            send_telegram_photo($chat_id, $order_image_url, $full_msg);
+        } else {
+            // Final fallback to text only
+            send_reply($chat_id, $full_msg);
         }
-
-        $text_url = "https://api.telegram.org/bot{$token}/sendMessage";
-        $text_data = [
-            'chat_id' => $chat_id,
-            'text' => $full_msg,
-            'parse_mode' => 'HTML',
-            'disable_web_page_preview' => true
-        ];
-
-        $ch = curl_init($text_url);
-        curl_setopt($ch, CURLOPT_POST, true);
-        curl_setopt($ch, CURLOPT_POSTFIELDS, http_build_query($text_data));
-        curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
-        curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, false);
-        curl_exec($ch);
-        curl_close($ch);
     }
 }
 
