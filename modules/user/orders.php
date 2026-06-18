@@ -473,7 +473,9 @@ if ($active_chat_id) {
                                 <?php echo htmlspecialchars($active_order['name']); ?>
                             </h2>
                             <div class="flex items-center gap-2 mt-0.5">
-                                <span class="text-[10px] text-slate-400 font-mono">Order #<?php echo $active_order['id']; ?></span>
+                                <button onclick="copyToClipboard('<?php echo $active_order['id']; ?>', this)" class="text-[10px] text-slate-400 font-mono hover:text-[#00f0ff] transition-colors flex items-center gap-1">
+                                    #<?php echo $active_order['id']; ?> <i class="far fa-copy"></i>
+                                </button>
                                 <span class="w-1 h-1 bg-slate-600 rounded-full"></span>
                                 <span class="text-[10px] text-green-400 font-bold uppercase flex items-center gap-1">
                                     <span class="inline-block w-1.5 h-1.5 bg-green-500 rounded-full animate-pulse"></span> Agent Online
@@ -491,52 +493,97 @@ if ($active_chat_id) {
                 </div>
             </div>
 
-            <!-- CHAT AREA OR REJECTED STATE -->
-            <?php if($active_order['status'] === 'rejected' || $active_order['status'] === 'closed'): ?>
-                <div class="flex-grow flex flex-col items-center justify-center p-8 text-center relative overflow-hidden bg-slate-950 matrix-grid">
-                    <div class="absolute inset-0 bg-gradient-to-t from-red-900/10 to-transparent pointer-events-none"></div>
-                    <div class="w-20 h-20 bg-red-500/10 rounded-full flex items-center justify-center mb-4 border border-red-500/30 shadow-[0_0_30px_rgba(239,68,68,0.15)] relative z-10">
-                        <i class="fas fa-lock text-4xl text-red-500"></i>
-                    </div>
-                    <h3 class="text-xl font-bold text-white mb-2 relative z-10 tracking-tight">Support Chat Closed</h3>
-                    <p class="text-slate-400 text-sm max-w-sm mb-6 relative z-10 leading-relaxed">
-                        This thread has been closed by our team. Existing messages stay visible, but new AI replies are disabled.
-                    </p>
-                </div>
-            <?php else: ?>
-                <!-- LIVE CHAT AREA (Scrollable Container) -->
-                <div class="flex-grow overflow-y-auto p-4 md:p-6 pb-36 md:pb-6 bg-slate-950 md:bg-slate-900/40 chat-scroll-container relative z-0" id="chatBox">
-                    <div class="flex justify-center mb-6 mt-2">
-                        <div class="bg-yellow-500/10 text-yellow-500 text-[10px] font-bold px-3 py-1.5 rounded-lg border border-yellow-500/20 backdrop-blur-sm shadow-sm flex items-center gap-2 text-center max-w-sm">
-                            <i class="fas fa-lock"></i> Messages are end-to-End encrypted. Admins will never ask for your passwords outside of the checkout form.
-                        </div>
-                    </div>
-
-                    <!-- AUTO-DELIVERY CONTENT BOX (Rendered inside chat flow) -->
-                    <?php if($active_order['delivery_type'] == 'universal' && in_array($active_order['status'], ['active', 'completed']) && !empty($active_order['universal_content'])): ?>
-                        <div class="flex w-full justify-start mb-6 animate-fade-in-up">
-                            <div class="max-w-[85%] md:max-w-[75%] flex flex-col items-start">
-                                <div class="px-4 py-3 text-sm relative bg-slate-800 text-slate-200 border border-[#00f0ff]/50 rounded-2xl rounded-bl-sm shadow-[0_0_15px_rgba(0,240,255,0.1)]">
-                                    <div class="text-[10px] font-black text-[#00f0ff] mb-2 border-b border-white/10 pb-1 uppercase tracking-wider flex items-center gap-1.5">
-                                        <i class="fas fa-gift"></i> Auto Delivery System
+            <!-- LIVE CHAT AREA (Scrollable Container) -->
+            <div class="flex-grow overflow-y-auto p-4 md:p-6 pb-36 md:pb-6 bg-slate-950 md:bg-slate-900/40 chat-scroll-container relative z-0" id="chatBox">
+                
+                <!-- ⚡️ DIGITAL RECEIPT CARD (Premium UX) -->
+                <div class="mb-10 animate-fade-in-up">
+                    <div class="bg-slate-800/40 border border-white/5 rounded-3xl overflow-hidden shadow-2xl backdrop-blur-sm">
+                        <div class="p-6 md:p-8">
+                            <div class="flex flex-col md:flex-row justify-between gap-6">
+                                <div class="space-y-4">
+                                    <div class="flex items-center gap-3">
+                                        <div class="w-12 h-12 bg-white/5 rounded-2xl flex items-center justify-center text-xl text-[#00f0ff] border border-white/10">
+                                            <i class="fas fa-receipt"></i>
+                                        </div>
+                                        <div>
+                                            <p class="text-[10px] font-black uppercase tracking-[0.2em] text-slate-500">Order Receipt</p>
+                                            <h3 class="text-lg font-bold text-white"><?php echo htmlspecialchars($active_order['name']); ?></h3>
+                                        </div>
                                     </div>
-                                    <p class="mb-2 text-xs">Here are your requested credentials/details:</p>
-                                    <div class="font-mono text-xs whitespace-pre-wrap select-all bg-black/40 text-green-400 p-2.5 rounded-lg border border-white/10">
-                                        <?php echo htmlspecialchars($active_order['universal_content']); ?>
+                                    <div class="grid grid-cols-2 gap-4">
+                                        <div class="bg-black/20 p-3 rounded-2xl border border-white/5">
+                                            <p class="text-[9px] text-slate-500 font-bold uppercase mb-1">Total Paid</p>
+                                            <p class="text-sm font-black text-emerald-400"><?php echo number_format($active_order['total_price_paid']); ?> Ks</p>
+                                        </div>
+                                        <div class="bg-black/20 p-3 rounded-2xl border border-white/5">
+                                            <p class="text-[9px] text-slate-500 font-bold uppercase mb-1">Purchased</p>
+                                            <p class="text-sm font-bold text-slate-300"><?php echo date('M d, Y', strtotime($active_order['created_at'])); ?></p>
+                                        </div>
+                                    </div>
+                                </div>
+                                <div class="flex md:flex-col justify-end gap-3">
+                                    <?php if($active_order['product_id']): ?>
+                                        <a href="index.php?module=shop&page=product&id=<?php echo $active_order['product_id']; ?>" class="bg-white/10 hover:bg-white/20 text-white text-xs font-bold px-4 py-3 rounded-xl border border-white/10 transition flex items-center gap-2">
+                                            <i class="fas fa-external-link-alt"></i> View Product
+                                        </a>
+                                    <?php endif; ?>
+                                    <button onclick="window.print()" class="bg-blue-600/20 hover:bg-blue-600/30 text-blue-400 text-xs font-bold px-4 py-3 rounded-xl border border-blue-500/30 transition flex items-center gap-2">
+                                        <i class="fas fa-file-invoice"></i> Get PDF
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+                        <?php if($active_order['status'] === 'pending'): ?>
+                            <div class="bg-yellow-500/10 border-t border-yellow-500/20 px-6 py-3 flex items-center gap-3">
+                                <span class="flex h-2 w-2 rounded-full bg-yellow-500 animate-pulse"></span>
+                                <p class="text-[10px] font-bold text-yellow-500 uppercase tracking-widest">Payment under verification by Matrix Core</p>
+                            </div>
+                        <?php endif; ?>
+                    </div>
+                </div>
+
+                <div class="flex justify-center mb-6">
+                    <div class="bg-slate-900/80 text-slate-500 text-[10px] font-medium px-4 py-2 rounded-full border border-white/5 flex items-center gap-2 shadow-sm">
+                        <i class="fas fa-lock text-[#00f0ff]/50"></i> Encrypted Session Active
+                    </div>
+                </div>
+
+                <!-- AUTO-DELIVERY CONTENT BOX -->
+                <?php if($active_order['delivery_type'] == 'universal' && in_array($active_order['status'], ['active', 'completed']) && !empty($active_order['universal_content'])): ?>
+                    <div class="flex w-full justify-start mb-10 animate-fade-in-up">
+                        <div class="max-w-[85%] md:max-w-[75%] flex flex-col items-start">
+                            <div class="p-1 rounded-[2rem] bg-gradient-to-br from-cyan-500/30 via-transparent to-blue-500/30 shadow-2xl">
+                                <div class="px-6 py-5 relative bg-slate-900 text-slate-200 border border-white/10 rounded-[1.8rem] shadow-inner">
+                                    <div class="text-[10px] font-black text-[#00f0ff] mb-4 border-b border-white/5 pb-2 uppercase tracking-[0.2em] flex items-center justify-between">
+                                        <span class="flex items-center gap-2"><i class="fas fa-bolt"></i> Instant Delivery</span>
+                                        <span class="text-[8px] bg-green-500/10 text-green-400 px-2 py-0.5 rounded border border-green-500/20">Secured</span>
+                                    </div>
+                                    <p class="mb-4 text-xs font-medium text-slate-400 leading-relaxed">Your digital assets have been provisioned. Copy the details below:</p>
+                                    <div class="relative group">
+                                        <div class="font-mono text-[13px] whitespace-pre-wrap select-all bg-black/60 text-emerald-400 p-5 rounded-2xl border border-white/5 shadow-inner leading-relaxed min-w-[200px]">
+                                            <?php echo htmlspecialchars($active_order['universal_content']); ?>
+                                        </div>
+                                        <button onclick="copyToClipboard(<?php echo json_encode($active_order['universal_content']); ?>, this)" class="absolute top-3 right-3 w-8 h-8 bg-white/5 hover:bg-white/10 rounded-lg flex items-center justify-center text-slate-500 hover:text-white transition border border-white/10">
+                                            <i class="far fa-copy"></i>
+                                        </button>
                                     </div>
                                 </div>
                             </div>
                         </div>
-                    <?php endif; ?>
-                    
-                    <div id="chatMessagesContainer" class="space-y-4">
-                        <div class="text-center py-4 text-slate-500 text-xs flex justify-center items-center gap-2">
-                            <i class="fas fa-circle-notch fa-spin text-[#00f0ff]"></i> Loading messages...
-                        </div>
+                    </div>
+                <?php endif; ?>
+                
+                <div id="chatMessagesContainer" class="space-y-4">
+                    <div class="text-center py-4 text-slate-500 text-xs flex justify-center items-center gap-2">
+                        <i class="fas fa-circle-notch fa-spin text-[#00f0ff]"></i> Connecting to Matrix...
                     </div>
                 </div>
+            </div>
 
-                <!-- CHAT COMPOSER (Raised above mobile chrome / floating bars) -->
+            <!-- CHAT COMPOSER OR CLOSED NOTICE -->
+            <?php if(!in_array($active_order['status'], ['rejected', 'closed'])): ?>
+                <!-- CHAT COMPOSER -->
                 <form id="chatForm" class="sticky bottom-0 z-30 border-t border-slate-800 bg-slate-950/95 backdrop-blur-xl px-3 md:px-5 pt-3 pb-[calc(0.9rem+env(safe-area-inset-bottom))]">
                     <input type="hidden" name="csrf_token" value="<?php echo generate_csrf_token(); ?>">
                     <input type="hidden" name="order_id" value="<?php echo $active_chat_id; ?>">
@@ -564,6 +611,20 @@ if ($active_chat_id) {
                         </div>
                     </div>
                 </form>
+            <?php else: ?>
+                <!-- SLEEK CLOSED NOTICE -->
+                <div class="sticky bottom-0 z-30 border-t border-slate-800 bg-slate-900/95 backdrop-blur-xl px-6 py-5 flex items-center justify-between gap-4 pb-[calc(1.25rem+env(safe-area-inset-bottom))]">
+                    <div class="flex items-center gap-4">
+                        <div class="w-10 h-10 bg-red-500/10 rounded-xl flex items-center justify-center text-red-500 border border-red-500/20">
+                            <i class="fas fa-lock"></i>
+                        </div>
+                        <div>
+                            <p class="text-xs font-bold text-white uppercase tracking-wider">Communication Closed</p>
+                            <p class="text-[10px] text-slate-500">This order thread is archived. AI replies are inactive.</p>
+                        </div>
+                    </div>
+                    <a href="index.php?module=info&page=support" class="text-[10px] font-black uppercase tracking-widest text-[#00f0ff] hover:underline">New Ticket</a>
+                </div>
             <?php endif; ?>
         <?php endif; ?>
     </div>
@@ -577,6 +638,16 @@ if ($active_chat_id) {
     let isUserScrolling = false;
     let lastChatHtml = '';
     let pollInterval = null;
+
+    // Helper: Copy to Clipboard
+    function copyToClipboard(text, btn) {
+        if (!text) return;
+        navigator.clipboard.writeText(text).then(() => {
+            const original = btn.innerHTML;
+            btn.innerHTML = btn.tagName === 'I' ? '<i class="fas fa-check text-[#00f0ff]"></i>' : '<i class="fas fa-check"></i> Copied';
+            setTimeout(() => { btn.innerHTML = original; }, 2000);
+        });
+    }
 
     // Toggle body scroll lock for mobile
     function toggleMobileFullscreen(isActive) {
