@@ -200,7 +200,7 @@ $google_login_url = "https://accounts.google.com/o/oauth2/v2/auth?response_type=
         }
     </style>
 </head>
-<body class="flex items-center justify-center relative overflow-hidden px-4 py-12">
+<body class="flex items-center justify-center relative overflow-x-hidden px-4 py-12 min-h-screen">
     
     <!-- Background Effects -->
     <div class="fixed inset-0 w-full h-full bg-[var(--page-bg)] -z-20"></div>
@@ -248,59 +248,68 @@ $google_login_url = "https://accounts.google.com/o/oauth2/v2/auth?response_type=
             <?php endif; ?>
 
             <!-- Form -->
-            <form method="POST" id="registerForm" class="space-y-8">
+            <form method="POST" id="registerForm" class="space-y-6">
                 <input type="hidden" name="csrf_token" value="<?php echo generate_csrf_token(); ?>">
                 <input type="text" name="fax" class="hidden" tabindex="-1" autocomplete="off">
                 
-                <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <div class="space-y-5">
                     <div class="space-y-2">
                         <label class="text-[10px] font-bold text-slate-500 uppercase tracking-widest ml-1">Full Name</label>
-                        <input type="text" name="full_name" placeholder="John Doe" required value="<?php echo htmlspecialchars($form_name); ?>"
-                               class="w-full bg-slate-900/40 border border-white/5 rounded-2xl py-4 px-6 text-white focus:border-blue-500 outline-none transition-all placeholder-slate-600">
+                        <input type="text" name="full_name" placeholder="E.g. Kyaw Kyaw" required value="<?php echo htmlspecialchars($form_name); ?>"
+                               class="w-full bg-slate-900/40 border border-white/5 rounded-2xl py-4 px-5 text-white focus:border-blue-500 outline-none transition-all placeholder-slate-600 shadow-inner">
                     </div>
+
                     <div class="space-y-2">
                         <label class="text-[10px] font-bold text-slate-500 uppercase tracking-widest ml-1">Username</label>
-                        <input type="text" name="username" placeholder="johndoe" required value="<?php echo htmlspecialchars($form_user); ?>"
-                               class="w-full bg-slate-900/40 border border-white/5 rounded-2xl py-4 px-6 text-white focus:border-blue-500 outline-none transition-all placeholder-slate-600">
+                        <div class="relative">
+                            <i class="fas fa-at absolute left-5 top-1/2 -translate-y-1/2 text-slate-600"></i>
+                            <input type="text" name="username" placeholder="unique_name" required value="<?php echo htmlspecialchars($form_user); ?>"
+                                   class="w-full bg-slate-900/40 border border-white/5 rounded-2xl py-4 pl-12 pr-5 text-white focus:border-blue-500 outline-none transition-all placeholder-slate-600 shadow-inner">
+                        </div>
                     </div>
-                </div>
 
-                <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
                     <div class="space-y-2">
                         <label class="text-[10px] font-bold text-slate-500 uppercase tracking-widest ml-1">Email Address</label>
-                        <input type="email" name="email" placeholder="name@example.com" required value="<?php echo htmlspecialchars($form_email); ?>"
-                               class="w-full bg-slate-900/40 border border-white/5 rounded-2xl py-4 px-6 text-white focus:border-blue-500 outline-none transition-all placeholder-slate-600">
+                        <div class="relative">
+                            <i class="fas fa-envelope absolute left-5 top-1/2 -translate-y-1/2 text-slate-600"></i>
+                            <input type="email" name="email" placeholder="name@example.com" required value="<?php echo htmlspecialchars($form_email); ?>"
+                                   class="w-full bg-slate-900/40 border border-white/5 rounded-2xl py-4 pl-12 pr-5 text-white focus:border-blue-500 outline-none transition-all placeholder-slate-600 shadow-inner">
+                        </div>
                     </div>
-                    <div class="space-y-2">
-                        <label class="text-[10px] font-bold text-slate-500 uppercase tracking-widest ml-1">Phone Number (Optional)</label>
-                        <input type="tel" name="phone" placeholder="09xxxxxxx" value="<?php echo htmlspecialchars($form_phone); ?>"
-                               class="w-full bg-slate-900/40 border border-white/5 rounded-2xl py-4 px-6 text-white focus:border-blue-500 outline-none transition-all placeholder-slate-600">
-                    </div>
-                </div>
 
-                <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
-                    <div class="space-y-2 relative">
-                        <label class="text-[10px] font-bold text-slate-500 uppercase tracking-widest ml-1">Password</label>
-                        <input type="password" name="password" id="password" placeholder="••••••••" required 
-                               class="w-full bg-slate-900/40 border border-white/5 rounded-2xl py-4 px-6 text-white focus:border-blue-500 outline-none transition-all placeholder-slate-600">
-                        <button type="button" id="togglePassword" class="absolute right-4 top-11 text-slate-600 hover:text-blue-500 transition-colors">
-                            <i class="fas fa-eye"></i>
-                        </button>
+                    <div class="space-y-2">
+                        <label class="text-[10px] font-bold text-slate-500 uppercase tracking-widest ml-1">Phone Number <span class="text-slate-600 lowercase tracking-normal font-normal">(Optional)</span></label>
+                        <div class="relative">
+                            <i class="fas fa-phone absolute left-5 top-1/2 -translate-y-1/2 text-slate-600"></i>
+                            <input type="tel" name="phone" placeholder="09xxxxxxx" value="<?php echo htmlspecialchars($form_phone); ?>"
+                                   class="w-full bg-slate-900/40 border border-white/5 rounded-2xl py-4 pl-12 pr-5 text-white focus:border-blue-500 outline-none transition-all placeholder-slate-600 shadow-inner">
+                        </div>
                     </div>
-                    <div class="space-y-2 relative">
-                        <label class="text-[10px] font-bold text-slate-500 uppercase tracking-widest ml-1">Confirm Password</label>
-                        <input type="password" name="confirm_password" id="confirm_password" placeholder="••••••••" required 
-                               class="w-full bg-slate-900/40 border border-white/5 rounded-2xl py-4 px-6 text-white focus:border-blue-500 outline-none transition-all placeholder-slate-600">
-                        <button type="button" id="toggleConfirmPassword" class="absolute right-4 top-11 text-slate-600 hover:text-blue-500 transition-colors">
-                            <i class="fas fa-eye"></i>
-                        </button>
+
+                    <div class="grid grid-cols-1 sm:grid-cols-2 gap-5 pt-2">
+                        <div class="space-y-2 relative">
+                            <label class="text-[10px] font-bold text-slate-500 uppercase tracking-widest ml-1">Password</label>
+                            <input type="password" name="password" id="password" placeholder="••••••••" required 
+                                   class="w-full bg-slate-900/40 border border-white/5 rounded-2xl py-4 px-5 text-white focus:border-blue-500 outline-none transition-all placeholder-slate-600 shadow-inner pr-12">
+                            <button type="button" id="togglePassword" class="absolute right-4 top-11 text-slate-600 hover:text-blue-500 transition-colors">
+                                <i class="fas fa-eye"></i>
+                            </button>
+                        </div>
+                        <div class="space-y-2 relative">
+                            <label class="text-[10px] font-bold text-slate-500 uppercase tracking-widest ml-1">Confirm Password</label>
+                            <input type="password" name="confirm_password" id="confirm_password" placeholder="••••••••" required 
+                                   class="w-full bg-slate-900/40 border border-white/5 rounded-2xl py-4 px-5 text-white focus:border-blue-500 outline-none transition-all placeholder-slate-600 shadow-inner pr-12">
+                            <button type="button" id="toggleConfirmPassword" class="absolute right-4 top-11 text-slate-600 hover:text-blue-500 transition-colors">
+                                <i class="fas fa-eye"></i>
+                            </button>
+                        </div>
                     </div>
                 </div>
 
                 <!-- Strength -->
-                <div class="bg-slate-900/50 rounded-2xl p-5 border border-white/5 space-y-4">
+                <div class="bg-slate-900/30 rounded-2xl p-5 border border-white/5 space-y-3 mt-6">
                     <div class="flex justify-between items-center">
-                        <span class="text-[10px] font-bold text-slate-500 uppercase tracking-widest">Strength</span>
+                        <span class="text-[10px] font-bold text-slate-500 uppercase tracking-widest">Security Level</span>
                         <span id="strengthText" class="text-[10px] font-bold text-slate-500 uppercase tracking-widest">Weak</span>
                     </div>
                     <div class="flex gap-2 h-1.5">
@@ -310,21 +319,26 @@ $google_login_url = "https://accounts.google.com/o/oauth2/v2/auth?response_type=
                     </div>
                 </div>
 
-                <label class="flex items-start gap-4 cursor-pointer group select-none">
-                    <div class="relative flex items-center pt-0.5">
-                        <input type="checkbox" name="terms" required class="peer sr-only">
-                        <div class="w-6 h-6 rounded-lg border-2 border-slate-700 bg-slate-900 peer-checked:bg-blue-600 peer-checked:border-blue-600 transition-all flex items-center justify-center shadow-inner">
-                            <i class="fas fa-check text-white text-[10px] opacity-0 peer-checked:opacity-100 transition-opacity"></i>
+                <div class="pt-2 pb-4">
+                    <label class="flex items-start gap-4 cursor-pointer group select-none">
+                        <div class="relative flex items-center pt-0.5">
+                            <input type="checkbox" name="terms" required class="peer sr-only">
+                            <div class="w-6 h-6 rounded-[0.4rem] border-2 border-slate-700 bg-slate-900 peer-checked:bg-blue-600 peer-checked:border-blue-600 transition-all flex items-center justify-center shadow-inner">
+                                <i class="fas fa-check text-white text-[10px] opacity-0 peer-checked:opacity-100 transition-opacity"></i>
+                            </div>
                         </div>
-                    </div>
-                    <span class="text-xs text-slate-500 group-hover:text-slate-300 transition-colors leading-relaxed">
-                        I agree to the <a href="index.php?module=info&page=terms" target="_blank" class="text-blue-500 font-bold hover:underline">Terms of Service</a> and <a href="index.php?module=info&page=privacy" target="_blank" class="text-blue-500 font-bold hover:underline">Privacy Policy</a>
-                    </span>
-                </label>
+                        <span class="text-xs text-slate-500 group-hover:text-slate-300 transition-colors leading-relaxed">
+                            I agree to the <a href="index.php?module=info&page=terms" target="_blank" class="text-blue-500 font-bold hover:underline">Terms of Service</a> and acknowledge the <a href="index.php?module=info&page=privacy" target="_blank" class="text-blue-500 font-bold hover:underline">Privacy Policy</a>.
+                        </span>
+                    </label>
+                </div>
 
-                <button type="submit" id="submitBtn" class="w-full bg-blue-600 hover:bg-blue-500 text-white font-bold py-5 rounded-2xl shadow-lg shadow-blue-500/20 transition-all active:scale-[0.98] flex justify-center items-center gap-3 group/btn">
-                    <span id="btnContent">Create My Account</span>
-                    <i class="fas fa-arrow-right text-xs group-hover/btn:translate-x-1 transition-transform"></i>
+                <button type="submit" id="submitBtn" class="relative w-full group/btn">
+                    <div class="absolute -inset-1 bg-gradient-to-r from-blue-600 to-[#00f0ff] rounded-2xl blur opacity-25 group-hover/btn:opacity-50 transition duration-500"></div>
+                    <div class="relative bg-slate-900 border border-blue-500/30 text-white font-bold py-5 rounded-2xl shadow-xl transition-all active:scale-[0.98] flex justify-center items-center gap-3">
+                        <span id="btnContent">Create My Account</span>
+                        <i class="fas fa-arrow-right text-xs text-blue-400 group-hover/btn:translate-x-1 transition-transform"></i>
+                    </div>
                 </button>
             </form>
         </div>

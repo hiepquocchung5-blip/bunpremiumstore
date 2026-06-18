@@ -723,7 +723,7 @@ if ($active_chat_id) {
     // Start Initial Polling
     if(currentOrderId) {
         fetchChat();
-        pollInterval = setInterval(fetchChat, 3000);
+        pollInterval = setInterval(fetchChat, 8000);
         
         if(window.innerWidth > 768) {
             const input = document.getElementById('chatInput');
@@ -906,7 +906,7 @@ if ($active_chat_id) {
                 rightPane.innerHTML = newPane.innerHTML;
                 clearInterval(pollInterval);
                 fetchChat();
-                pollInterval = setInterval(fetchChat, 3000);
+                pollInterval = setInterval(fetchChat, 8000);
             }
         } catch(err) {
             rightPane.innerHTML = '<div class="p-8 text-red-500 text-center flex flex-col items-center justify-center h-full"><i class="fas fa-exclamation-triangle text-4xl mb-3"></i><p>Connection lost. Please refresh.</p></div>';
@@ -940,9 +940,9 @@ if ($active_chat_id) {
             clearInterval(pollInterval);
             if (document.visibilityState === 'visible') {
                 fetchChat();
-                pollInterval = setInterval(fetchChat, 3000); // Fast 3s when active
+                pollInterval = setInterval(fetchChat, 8000); // 8s when active to reduce network load
             } else {
-                pollInterval = setInterval(fetchChat, 15000); // Slow 15s when backgrounded
+                pollInterval = setInterval(fetchChat, 30000); // 30s when backgrounded
             }
         }
     });
@@ -954,6 +954,12 @@ if ($active_chat_id) {
             if(window.innerWidth < 768) showMobileSidebar();
         }
     });
+
+    // Handle initial load intervals
+    if (currentOrderId > 0) {
+        clearInterval(pollInterval);
+        pollInterval = setInterval(fetchChat, 8000);
+    }
     // ⚡️ REAL-FETCH: Live Admin Status
     async function updateAdminStatus() {
         const node = document.getElementById('admin-status-node');

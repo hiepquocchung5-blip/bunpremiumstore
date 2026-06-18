@@ -298,7 +298,7 @@ if ($_SESSION['login_attempts'] >= 5 && time() < $_SESSION['login_lockout']) {
         .animation-delay-4000 { animation-delay: 4s; }
     </style>
 </head>
-<body class="flex items-center justify-center relative overflow-hidden px-4 py-12">
+<body class="flex items-center justify-center relative overflow-x-hidden px-4 py-12 min-h-screen">
     
     <!-- Background Effects -->
     <div class="fixed inset-0 w-full h-full bg-[var(--page-bg)] -z-20"></div>

@@ -183,7 +183,7 @@ function get_page_url($page_num) {
             <div class="bg-slate-800/20 border border-white/5 rounded-[2.5rem] p-8 md:p-12 shadow-xl flex flex-col md:flex-row items-center md:items-start gap-8 text-center md:text-left">
                 <div class="w-24 h-24 bg-slate-900 rounded-[1.5rem] flex items-center justify-center border border-white/10 shrink-0 overflow-hidden shadow-lg">
                     <?php if(!empty($current_category['image_url'])): ?>
-                        <img src="<?php echo BASE_URL . $current_category['image_url']; ?>" alt="<?php echo htmlspecialchars($current_category['name']); ?>" class="w-full h-full object-cover">
+                        <img src="<?php echo BASE_URL . $current_category['image_url']; ?>" alt="<?php echo htmlspecialchars($current_category['name']); ?>" class="w-full h-full object-cover" loading="lazy">
                     <?php else: ?>
                         <i class="fas fa-layer-group text-4xl text-blue-400"></i>
                     <?php endif; ?>

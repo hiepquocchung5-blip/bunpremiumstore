@@ -205,9 +205,9 @@ if ($avg_rating > 0) {
                 <div class="shrink-0">
                     <div class="w-full md:w-64 aspect-square rounded-3xl overflow-hidden bg-slate-900 border border-white/10 shadow-2xl relative group">
                         <?php if($has_image): ?>
-                            <img src="<?php echo $display_image; ?>" class="w-full h-full object-cover transition-transform duration-700 group-hover:scale-110">
+                            <img src="<?php echo $display_image; ?>" class="w-full h-full object-cover transition-transform duration-700 group-hover:scale-110" loading="eager" fetchpriority="high">
                         <?php elseif($has_cat_image): ?>
-                            <img src="<?php echo BASE_URL . $product['cat_image']; ?>" class="w-full h-full object-cover transition-transform duration-700 group-hover:scale-110">
+                            <img src="<?php echo BASE_URL . $product['cat_image']; ?>" class="w-full h-full object-cover transition-transform duration-700 group-hover:scale-110" loading="eager" fetchpriority="high">
                         <?php else: ?>
                             <div class="w-full h-full flex items-center justify-center text-6xl text-slate-700">
                                 <i class="fas fa-box"></i>

@@ -191,40 +191,230 @@ if (is_logged_in()) {
         </div>
     </div>
 
-    <!-- SECTION 1: Banner Slider -->
-    <?php if(!empty($banners)): ?>
-    <div class="relative w-full aspect-[16/9] lg:max-h-[500px] mb-16 rounded-[2rem] overflow-hidden group shadow-2xl bg-slate-900 border border-white/5" id="heroSliderContainer">
-        <div class="flex h-full overflow-x-auto snap-x snap-mandatory no-scrollbar scroll-smooth home-slider-track" id="bannerSlider">
-            <?php foreach($banners as $index => $b): ?>
-                <div class="w-full h-full flex-shrink-0 snap-center relative overflow-hidden">
-                    <a href="<?php echo $b['target_url'] ?: '#'; ?>" class="block w-full h-full">
-                        <img src="<?php echo BASE_URL . $b['image_path']; ?>" class="w-full h-full object-cover transition-transform duration-[10s] group-hover:scale-110" loading="eager">
-                        <div class="absolute inset-0 bg-gradient-to-t from-[#0b0f1a] via-transparent to-transparent opacity-80"></div>
-                        
-                        <div class="absolute inset-0 flex flex-col justify-end p-8 md:p-16">
-                            <div class="max-w-2xl">
-                                <span class="inline-block px-3 py-1 bg-blue-600 text-white text-[10px] font-bold uppercase tracking-widest rounded-lg mb-4">Featured</span>
-                                <h3 class="text-white text-3xl md:text-6xl font-bold mb-6 leading-tight tracking-tight">
-                                    <?php echo htmlspecialchars($b['title']); ?>
-                                </h3>
-                                <div class="flex items-center gap-4">
-                                    <span class="px-8 py-3 bg-white text-black font-bold rounded-xl text-sm transition-transform hover:scale-105 active:scale-95 shadow-xl">Explore Deals</span>
-                                </div>
-                            </div>
-                        </div>
-                    </a>
-                </div>
-            <?php endforeach; ?>
-        </div>
+    <!-- SECTION 1: PREMIUM ACCORDION HERO (GameSeal Inspired) -->
+    <style>
+        .accordion-hero {
+            display: flex;
+            width: 100%;
+            max-width: 1440px;
+            height: 520px;
+            gap: 16px;
+            margin: 0 auto 4rem auto;
+            border-radius: 24px;
+            overflow: hidden;
+            background: transparent;
+        }
 
-        <!-- Navigation -->
-        <div class="absolute bottom-8 right-8 z-20 flex items-center gap-3">
-            <?php foreach($banners as $index => $b): ?>
-                <button class="slider-dot w-2 h-2 rounded-full bg-white/20 transition-all duration-300" data-index="<?php echo $index; ?>"></button>
-            <?php endforeach; ?>
-        </div>
+        .accordion-panel {
+            position: relative;
+            flex: 1;
+            height: 100%;
+            border-radius: 24px;
+            overflow: hidden;
+            transition: all 0.6s cubic-bezier(0.25, 1, 0.5, 1);
+            cursor: pointer;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.05);
+            background: white; /* Forced Light Mode requested */
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            text-decoration: none;
+        }
+
+        html[data-theme="dark"] .accordion-panel {
+            box-shadow: 0 10px 40px rgba(0,0,0,0.4);
+            border: 1px solid rgba(255,255,255,0.05);
+            background: #0f172a;
+        }
+
+        .accordion-panel:hover, .accordion-panel.active {
+            flex: 4; /* Expands to ~65% */
+        }
+
+        .panel-bg {
+            position: absolute;
+            inset: 0;
+            background-size: cover;
+            background-position: center;
+            opacity: 0.15;
+            transition: opacity 0.6s ease;
+            z-index: 0;
+        }
+
+        html[data-theme="dark"] .panel-bg {
+            opacity: 0.1;
+        }
+
+        .accordion-panel:hover .panel-bg, .accordion-panel.active .panel-bg {
+            opacity: 0.4;
+        }
+        
+        html[data-theme="dark"] .accordion-panel:hover .panel-bg, html[data-theme="dark"] .accordion-panel.active .panel-bg {
+            opacity: 0.3;
+        }
+
+        .panel-content {
+            position: relative;
+            z-index: 1;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            text-align: center;
+            padding: 2rem;
+            width: 100%;
+            height: 100%;
+        }
+
+        .panel-icon-wrap {
+            width: 80px;
+            height: 80px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 2.5rem;
+            color: white;
+            margin-bottom: 1.5rem;
+            box-shadow: 0 10px 25px rgba(0,0,0,0.2);
+            transition: transform 0.4s ease;
+        }
+
+        .accordion-panel:hover .panel-icon-wrap, .accordion-panel.active .panel-icon-wrap {
+            transform: scale(1.1) translateY(-10px);
+        }
+
+        .panel-title {
+            font-size: 1.25rem;
+            font-weight: 800;
+            color: #1e293b;
+            white-space: nowrap;
+            opacity: 0;
+            transform: translateY(20px);
+            transition: all 0.4s ease;
+            transition-delay: 0.1s;
+        }
+        
+        html[data-theme="dark"] .panel-title {
+            color: #f8fafc;
+        }
+
+        .accordion-panel:hover .panel-title, .accordion-panel.active .panel-title {
+            opacity: 1;
+            transform: translateY(0);
+            font-size: 2.5rem;
+        }
+
+        .panel-cta {
+            opacity: 0;
+            transform: translateY(20px);
+            transition: all 0.4s ease;
+            transition-delay: 0.2s;
+            margin-top: 1.5rem;
+        }
+
+        .accordion-panel:hover .panel-cta, .accordion-panel.active .panel-cta {
+            opacity: 1;
+            transform: translateY(0);
+        }
+
+        /* Mobile specific adjustments */
+        @media (max-width: 768px) {
+            .accordion-hero {
+                flex-direction: column;
+                height: 600px;
+                gap: 12px;
+            }
+            .accordion-panel:hover, .accordion-panel.active {
+                flex: 3;
+            }
+            .panel-icon-wrap {
+                width: 50px;
+                height: 50px;
+                font-size: 1.5rem;
+                margin-bottom: 0.5rem;
+            }
+            .panel-title {
+                font-size: 1rem;
+                opacity: 1;
+                transform: translateY(0);
+            }
+            .accordion-panel:hover .panel-title, .accordion-panel.active .panel-title {
+                font-size: 1.5rem;
+            }
+            .panel-cta { display: none; }
+        }
+
+        /* Custom Colors */
+        .theme-ig { background: linear-gradient(45deg, #f09433 0%, #e6683c 25%, #dc2743 50%, #cc2366 75%, #bc1888 100%); }
+        .theme-tk { background: #000000; box-shadow: -2px 2px 0 #00f2fe, 2px -2px 0 #fe0979; }
+        .theme-yt { background: #ff0000; }
+        .theme-fb { background: #1877f2; }
+        
+        /* Soft glows for light mode */
+        .accordion-panel:nth-child(1):hover { box-shadow: 0 10px 40px rgba(220, 39, 67, 0.2); }
+        .accordion-panel:nth-child(2):hover { box-shadow: 0 10px 40px rgba(0, 242, 254, 0.2); }
+        .accordion-panel:nth-child(3):hover { box-shadow: 0 10px 40px rgba(255, 0, 0, 0.2); }
+        .accordion-panel:nth-child(4):hover { box-shadow: 0 10px 40px rgba(24, 119, 242, 0.2); }
+    </style>
+
+    <div class="accordion-hero">
+        <!-- Instagram -->
+        <a href="index.php?module=shop&page=search&q=Instagram" class="accordion-panel active" onmouseenter="this.classList.add('active'); siblings(this).forEach(s => s.classList.remove('active'));">
+            <div class="panel-bg" style="background-image: url('https://images.unsplash.com/photo-1611162617474-5b21e879e113?ixlib=rb-4.0.3&auto=format&fit=crop&w=1000&q=80');"></div>
+            <div class="panel-content">
+                <div class="panel-icon-wrap theme-ig"><i class="fab fa-instagram"></i></div>
+                <h3 class="panel-title">Instagram Followers</h3>
+                <div class="panel-cta">
+                    <span class="bg-slate-900 text-white dark:bg-white dark:text-slate-900 px-6 py-3 rounded-xl font-bold text-sm shadow-xl">Boost Profile</span>
+                </div>
+            </div>
+        </a>
+
+        <!-- TikTok -->
+        <a href="index.php?module=shop&page=search&q=TikTok" class="accordion-panel" onmouseenter="this.classList.add('active'); siblings(this).forEach(s => s.classList.remove('active'));">
+            <div class="panel-bg" style="background-image: url('https://images.unsplash.com/photo-1611605698335-8b1569810432?ixlib=rb-4.0.3&auto=format&fit=crop&w=1000&q=80'); filter: grayscale(100%);"></div>
+            <div class="panel-content">
+                <div class="panel-icon-wrap theme-tk"><i class="fab fa-tiktok"></i></div>
+                <h3 class="panel-title">TikTok Likes</h3>
+                <div class="panel-cta">
+                    <span class="bg-slate-900 text-white dark:bg-white dark:text-slate-900 px-6 py-3 rounded-xl font-bold text-sm shadow-xl">Go Viral</span>
+                </div>
+            </div>
+        </a>
+
+        <!-- YouTube -->
+        <a href="index.php?module=shop&page=search&q=YouTube" class="accordion-panel" onmouseenter="this.classList.add('active'); siblings(this).forEach(s => s.classList.remove('active'));">
+            <div class="panel-bg" style="background-image: url('https://images.unsplash.com/photo-1611162616305-c69b3fa7fbe0?ixlib=rb-4.0.3&auto=format&fit=crop&w=1000&q=80');"></div>
+            <div class="panel-content">
+                <div class="panel-icon-wrap theme-yt"><i class="fab fa-youtube"></i></div>
+                <h3 class="panel-title">YouTube Subs</h3>
+                <div class="panel-cta">
+                    <span class="bg-slate-900 text-white dark:bg-white dark:text-slate-900 px-6 py-3 rounded-xl font-bold text-sm shadow-xl">Grow Channel</span>
+                </div>
+            </div>
+        </a>
+
+        <!-- Facebook -->
+        <a href="index.php?module=shop&page=search&q=Facebook" class="accordion-panel" onmouseenter="this.classList.add('active'); siblings(this).forEach(s => s.classList.remove('active'));">
+            <div class="panel-bg" style="background-image: url('https://images.unsplash.com/photo-1611162618479-ee89f5bc7087?ixlib=rb-4.0.3&auto=format&fit=crop&w=1000&q=80');"></div>
+            <div class="panel-content">
+                <div class="panel-icon-wrap theme-fb"><i class="fab fa-facebook-f"></i></div>
+                <h3 class="panel-title">Facebook Followers</h3>
+                <div class="panel-cta">
+                    <span class="bg-slate-900 text-white dark:bg-white dark:text-slate-900 px-6 py-3 rounded-xl font-bold text-sm shadow-xl">Expand Reach</span>
+                </div>
+            </div>
+        </a>
     </div>
-    <?php endif; ?>
+
+    <script>
+        function siblings(elem) {
+            return Array.from(elem.parentNode.children).filter(function(child) {
+                return child !== elem;
+            });
+        }
+    </script>
 
     <!-- SECTION 2: Categories -->
     <div class="mb-20">
@@ -242,7 +432,7 @@ if (is_logged_in()) {
                     <a href="index.php?module=shop&page=category&id=<?php echo $cat['id']; ?>" class="shrink-0 w-44 md:w-56 bg-slate-800/50 rounded-[2rem] p-6 border border-white/5 hover:border-blue-500/30 hover:bg-slate-800 transition-all group">
                         <div class="w-16 h-16 bg-slate-900 rounded-2xl flex items-center justify-center mb-6 shadow-lg group-hover:scale-110 transition-transform overflow-hidden border border-white/5">
                             <?php if(!empty($cat['image_url'])): ?>
-                                <img src="<?php echo BASE_URL . $cat['image_url']; ?>" class="w-full h-full object-cover">
+                                <img src="<?php echo BASE_URL . $cat['image_url']; ?>" class="w-full h-full object-cover" loading="lazy">
                             <?php else: ?>
                                 <i class="fas fa-th-large text-blue-400"></i>
                             <?php endif; ?>
@@ -268,7 +458,7 @@ if (is_logged_in()) {
             ?>
             <div class="lg:w-2/3 relative group rounded-[2.5rem] overflow-hidden border border-white/5 shadow-2xl bg-slate-900">
                 <div class="aspect-[16/9] md:aspect-auto md:h-[450px] relative">
-                    <img src="<?php echo BASE_URL . ($f['image_path'] ?: $f['cat_image']); ?>" class="w-full h-full object-cover transition-transform duration-700 group-hover:scale-105">
+                    <img src="<?php echo BASE_URL . ($f['image_path'] ?: $f['cat_image']); ?>" class="w-full h-full object-cover transition-transform duration-700 group-hover:scale-105" loading="lazy">
                     <div class="absolute inset-0 bg-gradient-to-r from-[#0b0f1a] via-transparent to-transparent"></div>
                     <div class="absolute inset-0 p-8 md:p-16 flex flex-col justify-end md:justify-center max-w-xl">
                         <span class="text-[10px] font-bold text-blue-400 uppercase tracking-[0.2em] mb-4">Top Rated Choice</span>
@@ -288,7 +478,7 @@ if (is_logged_in()) {
                 ?>
                 <a href="<?php echo product_public_url($p); ?>" class="flex-1 bg-slate-800/30 border border-white/5 rounded-[2rem] p-6 group hover:border-blue-500/30 transition-all flex items-center gap-6">
                     <div class="w-20 h-20 rounded-2xl bg-slate-900 border border-white/5 overflow-hidden shrink-0 shadow-lg">
-                        <img src="<?php echo BASE_URL . ($p['image_path'] ?: $p['cat_image']); ?>" class="w-full h-full object-cover opacity-80 group-hover:opacity-100 transition-opacity">
+                        <img src="<?php echo BASE_URL . ($p['image_path'] ?: $p['cat_image']); ?>" class="w-full h-full object-cover opacity-80 group-hover:opacity-100 transition-opacity" loading="lazy">
                     </div>
                     <div class="min-w-0">
                         <h4 class="text-white font-bold mb-1 truncate group-hover:text-blue-400 transition-colors"><?php echo htmlspecialchars($p['name']); ?></h4>
@@ -390,67 +580,6 @@ if (is_logged_in()) {
 
 <script>
 document.addEventListener('DOMContentLoaded', () => {
-    // 1. HERO SLIDER (Matrix Core Edition)
-    const hSlider = document.getElementById('bannerSlider');
-    const hDots = document.querySelectorAll('.slider-dot');
-    const hProgress = document.getElementById('slideProgress');
-    let hInterval, hTime = 6000;
-    let heroScrollTimer = null;
-
-    const updateHero = (idx) => {
-        if (!hDots.length) return;
-        const safeIndex = Math.max(0, Math.min(idx, hDots.length - 1));
-        hDots.forEach((dot, i) => {
-            if (i === safeIndex) {
-                dot.className = 'slider-dot w-6 h-1.5 rounded-full bg-blue-500 transition-all duration-500 shadow-[0_0_10px_#3b82f6]';
-            } else {
-                dot.className = 'slider-dot w-1.5 h-1.5 rounded-full bg-white/20 transition-all duration-500 hover:bg-white/40';
-            }
-        });
-        if(hProgress) {
-            hProgress.style.transition = 'none';
-            hProgress.style.width = '0%';
-            setTimeout(() => {
-                hProgress.style.transition = `width ${hTime}ms linear`;
-                hProgress.style.width = '100%';
-            }, 50);
-        }
-    };
-
-    const moveHero = (next = true) => {
-        if(!hSlider) return;
-        const w = Math.max(1, hSlider.clientWidth);
-        let nextIdx = Math.round(hSlider.scrollLeft / w) + (next ? 1 : -1);
-        
-        if (nextIdx >= hDots.length) nextIdx = 0;
-        if (nextIdx < 0) nextIdx = hDots.length - 1;
-
-        hSlider.scrollTo({ left: nextIdx * w, behavior: 'smooth' });
-        updateHero(nextIdx);
-    };
-
-    if(hSlider && hDots.length > 0) {
-        hInterval = setInterval(() => moveHero(true), hTime);
-        hDots.forEach((dot, idx) => {
-            dot.onclick = () => {
-                clearInterval(hInterval);
-                hSlider.scrollTo({ left: idx * Math.max(1, hSlider.clientWidth), behavior: 'smooth' });
-                updateHero(idx);
-                hInterval = setInterval(() => moveHero(true), hTime);
-            };
-        });
-        
-        // Sync dots on manual scroll
-        hSlider.addEventListener('scroll', () => {
-            clearTimeout(heroScrollTimer);
-            heroScrollTimer = setTimeout(() => {
-                const idx = Math.round(hSlider.scrollLeft / Math.max(1, hSlider.clientWidth));
-                updateHero(idx);
-            }, 80);
-        }, { passive: true });
-
-        updateHero(0);
-    }
 
     // 2. CATEGORY SLIDER
     const cSlider = document.getElementById('categorySlider');

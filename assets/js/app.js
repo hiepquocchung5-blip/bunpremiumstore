@@ -14,7 +14,7 @@ window.shareCurrentPage = async function (payload = {}) {
     const canonicalUrl = document.querySelector('link[rel="canonical"]')?.href || window.AppConfig?.canonicalUrl || window.location.href;
     const shareData = {
         title: payload.title || document.title,
-        text: payload.text || document.querySelector('meta[name="description"]')?.content || '',
+        text: payload.text !== undefined ? payload.text : (document.querySelector('meta[name="description"]')?.content || ''),
         url: payload.url || canonicalUrl
     };
 
