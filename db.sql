@@ -331,6 +331,7 @@ CREATE TABLE `users` (
   `referral_code` varchar(20) DEFAULT NULL,
   `referred_by` int(11) DEFAULT NULL,
   `email` varchar(100) NOT NULL,
+  `avatar_path` varchar(255) DEFAULT NULL,
   `password` varchar(255) NOT NULL,
   `phone` varchar(20) DEFAULT NULL,
   `wallet_balance` decimal(10,2) DEFAULT 0.00,
@@ -382,6 +383,25 @@ CREATE TABLE `wishlist` (
   `product_id` int(11) NOT NULL,
   `created_at` timestamp NULL DEFAULT current_timestamp()
 ) ENGINE=InnoDB DEFAULT CHARSET=latin1 COLLATE=latin1_swedish_ci;
+
+-- --------------------------------------------------------
+
+--
+-- Table structure for table `user_notifications`
+--
+
+CREATE TABLE `user_notifications` (
+  `id` int(11) NOT NULL AUTO_INCREMENT,
+  `user_id` int(11) NOT NULL,
+  `title` varchar(255) NOT NULL,
+  `body` text NOT NULL,
+  `url` varchar(255) DEFAULT NULL,
+  `is_read` tinyint(1) DEFAULT 0,
+  `created_at` timestamp NULL DEFAULT current_timestamp(),
+  PRIMARY KEY (`id`),
+  KEY `user_id` (`user_id`),
+  CONSTRAINT `fk_notification_user` FOREIGN KEY (`user_id`) REFERENCES `users` (`id`) ON DELETE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 --
 -- Indexes for dumped tables
