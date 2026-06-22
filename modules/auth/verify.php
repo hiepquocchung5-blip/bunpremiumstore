@@ -87,10 +87,8 @@ if (!empty($token)) {
         $status = 'error';
         $message = "This verification link is invalid or has already been consumed. If you just clicked it, your account may already be active.";
     }
-} else {
-    $status = 'error';
-    $message = "No security token provided in the request parameters.";
 }
+?>
 <!DOCTYPE html>
 <html lang="en" data-theme="<?php echo $curr_theme ?? 'dark'; ?>">
 <head>
@@ -118,14 +116,11 @@ if (!empty($token)) {
             backdrop-filter: blur(20px); 
             -webkit-backdrop-filter: blur(20px);
             border: 1px solid rgba(0, 240, 255, 0.2); 
-            box-shadow: 0 0 40px rgba(0, 0, 0, 0.5); 
+            box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.5), 0 0 30px rgba(0, 240, 255, 0.05); 
         }
         html[data-theme="light"] .glass {
             background: rgba(255, 255, 255, 0.85);
             border-color: #e2e8f0;
-        }
-
-            box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.5), 0 0 30px rgba(0, 240, 255, 0.05); 
         }
         /* Abstract Background Animations */
         @keyframes blob {
