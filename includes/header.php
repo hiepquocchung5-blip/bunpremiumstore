@@ -603,7 +603,7 @@ if (isset($_SESSION['user_id'])) {
         // ⚡️ INLINE DEBUG & FAILSAFE FOR PUSH BUTTON (Overrides app.js if needed)
         document.addEventListener('DOMContentLoaded', () => {
             // Premium iOS Helper Injector
-            function showIosHelper() {
+            window.showIosHelper = function() {
                 const helper = document.createElement('div');
                 helper.id = 'ios-helper-modal';
                 helper.className = 'fixed inset-0 z-[200] flex items-center justify-center p-4 animate-fade-in';
@@ -728,3 +728,73 @@ if (isset($_SESSION['user_id'])) {
         });
         <?php endif; ?>
     </script>
+
+    <?php if(isset($_SESSION['user_id']) && !$is_push_subscribed): ?>
+    <!-- Premium Soft Push Prompt Banner -->
+    <div id="soft-push-prompt" class="fixed bottom-24 right-6 left-6 sm:left-auto sm:w-[360px] z-[99] transform translate-y-32 opacity-0 transition-all duration-500 ease-out pointer-events-none">
+        <div class="bg-slate-900/95 backdrop-blur-xl border border-blue-500/30 rounded-3xl p-5 shadow-[0_20px_50px_rgba(0,0,0,0.6)] pointer-events-auto relative overflow-hidden group">
+            <!-- Background Glow Decor -->
+            <div class="absolute -top-10 -right-10 w-24 h-24 bg-blue-500/10 rounded-full blur-2xl group-hover:bg-blue-500/20 transition-all"></div>
+            
+            <div class="flex gap-4">
+                <div class="w-12 h-12 rounded-2xl bg-blue-500/10 border border-blue-500/20 flex items-center justify-center text-blue-400 shrink-0 shadow-[0_0_15px_rgba(59,130,246,0.1)]">
+                    <i class="fas fa-bell text-lg animate-bounce"></i>
+                </div>
+                <div class="flex-grow">
+                    <h4 class="text-xs font-black uppercase tracking-widest text-blue-400 mb-1">Instant Order Updates</h4>
+                    <p class="text-xs text-slate-300 leading-relaxed">Enable push notifications to receive real-time alerts when your order status changes.</p>
+                </div>
+            </div>
+            
+            <div class="flex gap-3 mt-4 justify-end">
+                <button onclick="dismissSoftPrompt()" class="px-4 py-2 rounded-xl text-xs font-bold text-slate-400 hover:text-white transition">Later</button>
+                <button onclick="acceptSoftPrompt()" class="bg-blue-600 hover:bg-blue-500 text-white px-5 py-2 rounded-xl text-xs font-black uppercase tracking-wider transition-all shadow-lg shadow-blue-500/20 active:scale-95">Enable Alerts</button>
+            </div>
+        </div>
+    </div>
+    
+    <script>
+        document.addEventListener('DOMContentLoaded', () => {
+            const prompt = document.getElementById('soft-push-prompt');
+            if (prompt && 'Notification' in window && Notification.permission === 'default' && !localStorage.getItem('dismiss_push_prompt')) {
+                setTimeout(() => {
+                    prompt.classList.remove('translate-y-32', 'opacity-0');
+                }, 3000); // Show after 3 seconds for a smooth presence
+            }
+        });
+        
+        function dismissSoftPrompt() {
+            const prompt = document.getElementById('soft-push-prompt');
+            if (prompt) {
+                prompt.classList.add('translate-y-32', 'opacity-0');
+                localStorage.setItem('dismiss_push_prompt', 'true');
+            }
+        }
+        
+        function acceptSoftPrompt() {
+            const prompt = document.getElementById('soft-push-prompt');
+            const isIos = /iPad|iPhone|iPod/.test(navigator.userAgent) && !window.MSStream;
+            const isStandalone = window.navigator.standalone || window.matchMedia('(display-mode: standalone)').matches;
+
+            if (prompt) {
+                prompt.classList.add('translate-y-32', 'opacity-0');
+            }
+            
+            if (isIos && !isStandalone) {
+                if (typeof window.showIosHelper === 'function') {
+                    window.showIosHelper();
+                } else {
+                    alert("To enable notifications on iOS, please add this app to your Home Screen first.");
+                }
+            } else {
+                if (typeof window.registerServiceWorker === 'function') {
+                    window.registerServiceWorker(true).then(() => {
+                        console.log("Push notifications activated via soft prompt.");
+                    }).catch(err => {
+                        console.error("Failed to enable push via soft prompt:", err);
+                    });
+                }
+            }
+        }
+    </script>
+    <?php endif; ?>

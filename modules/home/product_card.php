@@ -1,6 +1,6 @@
 <?php
 // modules/home/product_card.php
-// PRODUCTION DEPLOYMENT v4.7 - Refined UI/UX for Non-Tech Users (Circuit Chaos Edition)
+// PRODUCTION DEPLOYMENT v4.8 - Refined UI/UX for Non-Tech Users (Failsafe Edition)
 
 /**
  * Expects: 
@@ -8,8 +8,13 @@
  * $discount (int - User's agent discount percentage)
  */
 
-// Calculate Final Price
-$base_price = $product['sale_price'] ?: $product['price'];
+if (!is_array($product)) {
+    return;
+}
+
+// Calculate Final Price Safely
+$base_price = (!empty($product['sale_price']) ? $product['sale_price'] : ($product['price'] ?? 0));
+$discount = isset($discount) ? (int)$discount : 0;
 $final_price = $base_price * ((100 - $discount) / 100);
 
 // Determine Image/Icon to display
@@ -21,7 +26,7 @@ $fallback_icon = $product['icon_class'] ?? 'fa-cube';
 $product_url = product_public_url($product);
 
 // Calculate Stock Count for Unique Delivery if not already set
-if (isset($product['delivery_type']) && $product['delivery_type'] === 'unique' && !isset($product['stock_count']) && isset($pdo)) {
+if (isset($product['delivery_type']) && $product['delivery_type'] === 'unique' && !isset($product['stock_count']) && isset($pdo) && isset($product['id'])) {
     $stmt = $pdo->prepare("SELECT COUNT(*) FROM product_keys WHERE product_id = ? AND is_sold = 0");
     $stmt->execute([$product['id']]);
     $product['stock_count'] = (int)$stmt->fetchColumn();
@@ -34,7 +39,7 @@ if (isset($product['delivery_type']) && $product['delivery_type'] === 'unique' &
     <!-- Image / Icon Header -->
     <div class="prod-img-wrap">
         <?php if($has_product_image): ?>
-            <img src="<?php echo BASE_URL . $product['image_path']; ?>" alt="<?php echo htmlspecialchars($product['name']); ?>" class="w-full h-full object-cover transition-transform duration-700 group-hover:scale-105" loading="lazy">
+            <img src="<?php echo BASE_URL . $product['image_path']; ?>" alt="<?php echo htmlspecialchars($product['name'] ?? 'Product Image'); ?>" class="w-full h-full object-cover transition-transform duration-700 group-hover:scale-105" loading="lazy">
         <?php elseif($has_cat_image): ?>
             <img src="<?php echo BASE_URL . $product['cat_image']; ?>" alt="Category" class="w-full h-full object-cover opacity-70 transition-transform duration-700 group-hover:scale-105" loading="lazy">
         <?php else: ?>
@@ -45,7 +50,7 @@ if (isset($product['delivery_type']) && $product['delivery_type'] === 'unique' &
 
         <!-- Badges -->
         <div class="absolute top-2.5 right-2.5 flex flex-col gap-1.5 items-end">
-            <?php if($product['sale_price']): ?>
+            <?php if(!empty($product['sale_price'])): ?>
                 <span class="bg-rose-500 text-white text-[9px] font-bold px-2.5 py-0.5 rounded-full shadow-md uppercase tracking-widest">Sale</span>
             <?php endif; ?>
             <?php if($discount > 0): ?>
@@ -72,22 +77,22 @@ if (isset($product['delivery_type']) && $product['delivery_type'] === 'unique' &
         </div>
 
         <h3 class="text-white font-bold text-[15px] sm:text-lg mb-2 line-clamp-2 group-hover:text-blue-400 transition-colors leading-tight">
-            <?php echo htmlspecialchars($product['name']); ?>
+            <?php echo htmlspecialchars($product['name'] ?? 'Unnamed Product'); ?>
         </h3>
         
         <p class="text-slate-500 text-[11px] sm:text-xs line-clamp-2 mb-5 leading-relaxed">
-            <?php echo htmlspecialchars($product['user_instruction'] ?: "Fast and secure delivery to your account."); ?>
+            <?php echo htmlspecialchars(($product['user_instruction'] ?? '') ?: "Fast and secure delivery to your account."); ?>
         </p>
         
         <!-- Footer -->
         <div class="mt-auto pt-4 border-t border-white/5 flex items-center justify-between">
             <div class="flex flex-col">
-                <span class="text-xl sm:text-2xl font-bold <?php echo ($product['sale_price']||$discount>0)?'text-amber-400':'text-white'; ?>">
+                <span class="text-xl sm:text-2xl font-bold <?php echo (!empty($product['sale_price'])||$discount>0)?'text-amber-400':'text-white'; ?>">
                     <?php echo format_price($final_price); ?>
                 </span>
-                <?php if($product['sale_price'] || $discount > 0): ?>
+                <?php if(!empty($product['sale_price']) || $discount > 0): ?>
                     <span class="text-[10px] text-slate-500 line-through font-medium">
-                        <?php echo format_price($product['price']); ?>
+                        <?php echo format_price($product['price'] ?? 0); ?>
                     </span>
                 <?php endif; ?>
             </div>
