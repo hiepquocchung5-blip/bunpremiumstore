@@ -102,9 +102,14 @@ function admin_url($page, $params = []) {
  */
 
 // Get Total Revenue (Sum of active orders)
-function get_total_revenue($pdo) {
+function get_total_revenue($pdo, $start_date = null, $end_date = null) {
     try {
-        $stmt = $pdo->query("SELECT SUM(total_price_paid) FROM orders WHERE status = 'active'");
+        if ($start_date && $end_date) {
+            $stmt = $pdo->prepare("SELECT SUM(total_price_paid) FROM orders WHERE status = 'active' AND created_at BETWEEN ? AND ?");
+            $stmt->execute([$start_date . ' 00:00:00', $end_date . ' 23:59:59']);
+        } else {
+            $stmt = $pdo->query("SELECT SUM(total_price_paid) FROM orders WHERE status = 'active'");
+        }
         return (float) $stmt->fetchColumn();
     } catch (PDOException $e) {
         return 0.00;
@@ -112,9 +117,14 @@ function get_total_revenue($pdo) {
 }
 
 // Get Total Expenses
-function get_total_expenses($pdo) {
+function get_total_expenses($pdo, $start_date = null, $end_date = null) {
     try {
-        $stmt = $pdo->query("SELECT SUM(amount) FROM expenses");
+        if ($start_date && $end_date) {
+            $stmt = $pdo->prepare("SELECT SUM(amount) FROM expenses WHERE created_at BETWEEN ? AND ?");
+            $stmt->execute([$start_date . ' 00:00:00', $end_date . ' 23:59:59']);
+        } else {
+            $stmt = $pdo->query("SELECT SUM(amount) FROM expenses");
+        }
         return (float) $stmt->fetchColumn();
     } catch (PDOException $e) {
         return 0.00;

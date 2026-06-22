@@ -38,35 +38,35 @@
 
 ---
 
-## 🧩 Medium Priority (Feature Additions)
+## 🧩 Medium Priority (Feature Additions) [ALL COMPLETED]
 
-### 6. Wishlist → Cart Flow
+### 6. Wishlist → Cart Flow [COMPLETED]
 **File:** `modules/user/wishlist.php`
-- Add "Move to Cart / Buy Now" button directly on wishlist items
-- Currently wishlist just links to the product page — one extra click wasted
+- Add "Move to Cart / Buy Now" button directly on wishlist items [DONE]
+- Currently wishlist just links to the product page — one extra click wasted [DONE]
 
-### 7. Order Page — Download Invoice Button
+### 7. Order Page — Download Invoice Button [COMPLETED]
 **File:** `modules/user/invoice.php`
-- A "Download PDF" button that triggers browser print/save on the invoice page
-- Simple: `window.print()` with a print-specific CSS (`@media print`) to hide nav/footer
+- A "Download PDF" button that triggers browser print/save on the invoice page [DONE]
+- Simple: `window.print()` with a print-specific CSS (`@media print`) to hide nav/footer [DONE]
 
-### 8. Coupon — User-Facing Input at Checkout
+### 8. Coupon — User-Facing Input at Checkout [COMPLETED]
 **File:** `modules/shop/checkout.php`
-- The coupon system exists in admin (`admin/coupons.php`) and `includes/coupon.php`
-- But there's no visible coupon input on the checkout form for the customer
-- Add a collapsible "Have a coupon code?" field that calls the coupon validation API
+- The coupon system exists in admin (`admin/coupons.php`) and `includes/coupon.php` [DONE]
+- But there's no visible coupon input on the checkout form for the customer [DONE]
+- Add a collapsible "Have a coupon code?" field that calls the coupon validation API [DONE]
 
-### 9. Reviews — Display on Product Page
+### 9. Reviews — Display on Product Page [COMPLETED]
 **File:** `modules/shop/product.php`
-- Admin `reviews.php` shows reviews exist in the DB
-- Add a reviews section at the bottom of the product page with star display + comment
-- Show average rating as a star bar near the price
+- Admin `reviews.php` shows reviews exist in the DB [DONE]
+- Add a reviews section at the bottom of the product page with star display + comment [DONE]
+- Show average rating as a star bar near the price [DONE]
 
-### 10. Admin Reports — Date Range Filter
+### 10. Admin Reports — Date Range Filter [COMPLETED]
 **File:** `admin/reports.php`
-- Currently shows all-time totals
-- Add a date range picker (start date / end date) to filter revenue & expenses
-- Export filtered data to CSV
+- Currently shows all-time totals [DONE]
+- Add a date range picker (start date / end date) to filter revenue & expenses [DONE]
+- Export filtered data to CSV [DONE]
 
 ---
 

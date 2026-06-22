@@ -136,11 +136,18 @@ $discount = get_user_discount($user_id);
                                 <p class="text-[9px] text-slate-500 font-bold uppercase tracking-widest mt-1">Instant Delivery</p>
                             </div>
                             
-                            <a href="<?php echo product_public_url($product); ?>" 
-                               class="bg-blue-600 hover:bg-[#00f0ff] text-white hover:text-slate-900 w-12 h-12 rounded-2xl flex items-center justify-center shadow-lg transform hover:scale-110 active:scale-95 transition-all duration-300" 
-                               title="View Product">
-                                <i class="fas fa-shopping-cart"></i>
-                            </a>
+                            <div class="flex gap-2">
+                                <a href="<?php echo product_public_url($product); ?>" 
+                                   class="bg-slate-800 hover:bg-slate-700 text-slate-300 w-11 h-11 rounded-xl flex items-center justify-center border border-white/5 shadow-md transform hover:scale-105 active:scale-95 transition-all duration-300" 
+                                   title="View Details">
+                                    <i class="fas fa-eye text-sm"></i>
+                                </a>
+                                <a href="index.php?module=shop&page=checkout&id=<?php echo $product['id']; ?>" 
+                                   class="bg-blue-600 hover:bg-emerald-500 text-white w-11 h-11 rounded-xl flex items-center justify-center shadow-lg transform hover:scale-105 active:scale-95 transition-all duration-300" 
+                                   title="Buy Now">
+                                    <i class="fas fa-shopping-cart text-sm"></i>
+                                </a>
+                            </div>
                         </div>
                     </div>
                 </div>

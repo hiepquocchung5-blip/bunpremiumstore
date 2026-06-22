@@ -22,21 +22,100 @@ if (isset($_GET['delete'])) {
     redirect(admin_url('reports', ['deleted' => 1]));
 }
 
+// Get Filters
+$start_date = isset($_GET['start_date']) ? $_GET['start_date'] : '';
+$end_date = isset($_GET['end_date']) ? $_GET['end_date'] : '';
+
 // 3. Stats Calculation
-$revenue = get_total_revenue($pdo);
-$expenses = get_total_expenses($pdo);
+if (!empty($start_date) && !empty($end_date)) {
+    $revenue = get_total_revenue($pdo, $start_date, $end_date);
+    $expenses = get_total_expenses($pdo, $start_date, $end_date);
+} else {
+    $revenue = get_total_revenue($pdo);
+    $expenses = get_total_expenses($pdo);
+}
 $profit = $revenue - $expenses;
 $profit_color = $profit >= 0 ? 'text-blue-400' : 'text-red-400';
 
 // 4. Fetch Expense History
-$expense_list = $pdo->query("SELECT * FROM expenses ORDER BY created_at DESC LIMIT 50")->fetchAll();
+if (!empty($start_date) && !empty($end_date)) {
+    $stmt = $pdo->prepare("SELECT * FROM expenses WHERE created_at BETWEEN ? AND ? ORDER BY created_at DESC");
+    $stmt->execute([$start_date . ' 00:00:00', $end_date . ' 23:59:59']);
+    $expense_list = $stmt->fetchAll();
+} else {
+    $expense_list = $pdo->query("SELECT * FROM expenses ORDER BY created_at DESC LIMIT 50")->fetchAll();
+}
+
+// 5. Handle CSV Export
+if (isset($_GET['export']) && $_GET['export'] === 'csv') {
+    ob_clean();
+    header('Content-Type: text/csv; charset=utf-8');
+    header('Content-Disposition: attachment; filename=financial_report_' . date('Y-m-d') . '.csv');
+    
+    $output = fopen('php://output', 'w');
+    fputcsv($output, ['Financial Report', '', 'Generated: ' . date('Y-m-d H:i:s')]);
+    if ($start_date && $end_date) {
+        fputcsv($output, ['Range:', $start_date . ' to ' . $end_date]);
+    }
+    fputcsv($output, []);
+    fputcsv($output, ['Summary Metrics']);
+    fputcsv($output, ['Total Revenue', number_format($revenue) . ' Ks']);
+    fputcsv($output, ['Total Expenses', number_format($expenses) . ' Ks']);
+    fputcsv($output, ['Net Profit', number_format($profit) . ' Ks']);
+    fputcsv($output, []);
+    fputcsv($output, ['Expense Breakdown']);
+    fputcsv($output, ['ID', 'Title', 'Category', 'Note', 'Amount', 'Date']);
+    foreach ($expense_list as $ex) {
+        fputcsv($output, [
+            $ex['id'],
+            $ex['title'],
+            $ex['category'],
+            $ex['note'],
+            $ex['amount'],
+            $ex['created_at']
+        ]);
+    }
+    fclose($output);
+    exit;
+}
 ?>
 
-<div class="mb-8 flex justify-between items-center">
+<div class="mb-8 flex flex-col md:flex-row md:items-center justify-between gap-4">
     <div>
         <h1 class="text-3xl font-bold text-white">Financial Reports</h1>
         <p class="text-slate-400 text-sm mt-1">Track revenue, expenses, and net profit.</p>
     </div>
+    <!-- Date Range Filter Form -->
+    <form method="GET" class="flex flex-wrap items-center gap-3 bg-slate-800 p-4 rounded-xl border border-slate-700">
+        <input type="hidden" name="module" value="reports">
+        
+        <div class="flex items-center gap-2">
+            <span class="text-xs text-slate-400 uppercase font-bold text-[10px]">From</span>
+            <input type="date" name="start_date" value="<?php echo htmlspecialchars($start_date); ?>" class="bg-slate-900 border border-slate-700 text-white rounded-lg px-3 py-1.5 text-xs outline-none focus:border-blue-500">
+        </div>
+        
+        <div class="flex items-center gap-2">
+            <span class="text-xs text-slate-400 uppercase font-bold text-[10px]">To</span>
+            <input type="date" name="end_date" value="<?php echo htmlspecialchars($end_date); ?>" class="bg-slate-900 border border-slate-700 text-white rounded-lg px-3 py-1.5 text-xs outline-none focus:border-blue-500">
+        </div>
+        
+        <div class="flex gap-2">
+            <button type="submit" class="bg-blue-600 hover:bg-blue-500 text-white px-4 py-1.5 rounded-lg text-xs font-bold transition">
+                Filter
+            </button>
+            <?php if ($start_date || $end_date): ?>
+                <a href="<?php echo admin_url('reports'); ?>" class="bg-slate-700 hover:bg-slate-600 text-white px-4 py-1.5 rounded-lg text-xs font-bold transition">
+                    Clear
+                </a>
+                <a href="<?php echo admin_url('reports', ['start_date' => $start_date, 'end_date' => $end_date, 'export' => 'csv']); ?>" class="bg-emerald-600 hover:bg-emerald-500 text-white px-4 py-1.5 rounded-lg text-xs font-bold transition flex items-center gap-1.5">
+                    <i class="fas fa-file-csv"></i> Export CSV
+                </a>
+            <?php else: ?>
+                <a href="<?php echo admin_url('reports', ['export' => 'csv']); ?>" class="bg-emerald-600 hover:bg-emerald-500 text-white px-4 py-1.5 rounded-lg text-xs font-bold transition flex items-center gap-1.5">
+                    <i class="fas fa-file-csv"></i> Export CSV
+                </a>
+            <?php endif; ?>
+        </div>
 </div>
 
 <!-- Financial Summary Cards -->
@@ -110,7 +189,9 @@ $expense_list = $pdo->query("SELECT * FROM expenses ORDER BY created_at DESC LIM
         <div class="bg-slate-800 rounded-xl border border-slate-700 overflow-hidden shadow-lg">
             <div class="p-4 border-b border-slate-700 font-bold text-sm text-slate-300 flex justify-between items-center">
                 <span>Recent Transactions</span>
-                <span class="text-xs bg-slate-700 px-2 py-1 rounded text-slate-400">Last 50</span>
+                <span class="text-xs bg-slate-700 px-2 py-1 rounded text-slate-400">
+                    <?php echo ($start_date && $end_date) ? 'Filtered View' : 'Last 50'; ?>
+                </span>
             </div>
             <div class="overflow-x-auto">
                 <table class="w-full text-left text-sm">
