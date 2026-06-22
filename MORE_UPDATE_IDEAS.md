@@ -7,12 +7,11 @@
 
 ## 💳 Checkout & Payment
 
-### 1. Wallet Balance Payment at Checkout `S`
-**File:** `modules/shop/checkout.php`
-- `users.wallet_balance` already exists (seen in `user/dashboard.php`)
-- Add a "Pay with Wallet" checkbox — deducts from `wallet_balance` instead of requiring screenshot
-- Show current balance below the checkbox so user knows if they have enough
-- If wallet < total: show "partial pay" — wallet covers what it can, user tops up the rest
+### 1. Wishlist Item Count Badges in Header & Mobile Nav `S`
+**File:** `includes/header.php` + `includes/footer.php`
+- Retrieve wishlist count from `wishlist` table or session cache
+- Render a vibrant notification badge (e.g. red indicator dot/number) next to the "Wishlist" link in desktop navigation and mobile bottom bar
+- Keeps user engaged and reminds them of products they intended to purchase
 
 ### 2. Order Cooldown Countdown Timer `S`
 **File:** `modules/shop/checkout.php`
@@ -132,11 +131,11 @@
 - Motivates agents to sell more to climb the board
 - Query: `SELECT referred_by, COUNT(*) as sales FROM orders WHERE ... GROUP BY referred_by ORDER BY sales DESC LIMIT 10`
 
-### 19. Referral Wallet — Cashout Request `M`
+### 19. Referral Conversion Detail Log `M`
 **File:** `modules/user/referrals.php`
-- `wallet_balance` and `wallet_transactions` already exist
-- Add a "Request Cashout" button: minimum threshold (e.g., 5,000 Ks)
-- Creates a pending cashout record → admin approves/rejects in `admin/users.php`
+- Show list of purchased items from referred users (anonymized first character + ***)
+- Displays what products they successfully purchased to help referrers track which products convert best
+- Query: `SELECT u.username, o.created_at, p.name FROM users u JOIN orders o ON o.user_id = u.id JOIN products p ON o.product_id = p.id WHERE u.referred_by = ? AND o.status = 'active'`
 
 ---
 

@@ -58,7 +58,6 @@ $allowed_routes = [
         'profile', 
         'agent', 
         'wishlist',
-        'wallet',           // Added Wallet
         'referrals',        // Added Referrals
         'invoice'
     ],
@@ -132,7 +131,7 @@ if ($module === 'home' && $page === 'index') {
  * --------------------------------------------------------------------------
  */
 $protected_pages = [
-    'user' => ['dashboard', 'orders', 'profile', 'agent', 'wishlist', 'wallet', 'referrals', 'invoice'],
+    'user' => ['dashboard', 'orders', 'profile', 'agent', 'wishlist', 'referrals', 'invoice'],
     'shop' => ['checkout']
 ];
 

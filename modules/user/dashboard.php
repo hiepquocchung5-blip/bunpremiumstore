@@ -8,20 +8,15 @@ if (!is_logged_in()) {
 
 $user_id = $_SESSION['user_id'];
 
-// 2. Fetch User Data (Checking if wallet exists, falling back to 0 if not)
+// 2. Fetch User Data
 $stmt = $pdo->prepare("SELECT full_name, email, created_at FROM users WHERE id = ?");
 $stmt->execute([$user_id]);
 $user = $stmt->fetch();
 
-// Fetch Wallet Balance if it exists (from the referral system update)
-$wallet_balance = 0;
-try {
-    $stmt = $pdo->prepare("SELECT wallet_balance FROM users WHERE id = ?");
-    $stmt->execute([$user_id]);
-    $wallet_balance = $stmt->fetchColumn() ?: 0;
-} catch(PDOException $e) {
-    // Ignore if wallet column isn't created yet
-}
+// Fetch Wishlist Count
+$stmt = $pdo->prepare("SELECT COUNT(*) FROM wishlist WHERE user_id = ?");
+$stmt->execute([$user_id]);
+$wishlist_count = $stmt->fetchColumn();
 
 // 3. Fetch Quick Stats
 // Order Count
@@ -78,13 +73,13 @@ $recent_orders = $stmt->fetchAll();
             </div>
         </div>
 
-        <div class="bg-slate-800/20 border border-white/5 p-8 rounded-[2.5rem] flex items-center justify-between group hover:border-emerald-500/30 transition-all">
+        <div class="bg-slate-800/20 border border-white/5 p-8 rounded-[2.5rem] flex items-center justify-between group hover:border-rose-500/30 transition-all">
             <div>
-                <p class="text-[10px] font-bold text-slate-500 uppercase tracking-widest mb-2">Wallet Balance</p>
-                <h3 class="text-4xl font-bold text-emerald-400"><?php echo number_format($wallet_balance); ?> <span class="text-sm font-medium text-slate-500 ml-1">Ks</span></h3>
+                <p class="text-[10px] font-bold text-slate-500 uppercase tracking-widest mb-2">Saved Wishlist</p>
+                <h3 class="text-4xl font-bold text-rose-400"><?php echo $wishlist_count; ?> <span class="text-sm font-medium text-slate-500 ml-1">Items</span></h3>
             </div>
-            <div class="w-16 h-16 rounded-2xl bg-emerald-500/10 flex items-center justify-center text-emerald-400 text-2xl group-hover:scale-110 transition-transform">
-                <i class="fas fa-wallet"></i>
+            <div class="w-16 h-16 rounded-2xl bg-rose-500/10 flex items-center justify-center text-rose-400 text-2xl group-hover:scale-110 transition-transform">
+                <i class="fas fa-heart"></i>
             </div>
         </div>
     </div>

@@ -6,7 +6,7 @@ if (!is_logged_in()) redirect('index.php?module=auth&page=login');
 $user_id = $_SESSION['user_id'];
 
 // 1. Generate Code if missing
-$stmt = $pdo->prepare("SELECT referral_code, wallet_balance FROM users WHERE id = ?");
+$stmt = $pdo->prepare("SELECT referral_code FROM users WHERE id = ?");
 $stmt->execute([$user_id]);
 $user_data = $stmt->fetch();
 
@@ -30,11 +30,6 @@ $stmt = $pdo->prepare("
 ");
 $stmt->execute([$user_id]);
 $referrals = $stmt->fetchAll();
-
-// 3. Fetch Wallet History
-$stmt = $pdo->prepare("SELECT * FROM wallet_transactions WHERE user_id = ? ORDER BY created_at DESC LIMIT 10");
-$stmt->execute([$user_id]);
-$transactions = $stmt->fetchAll();
 ?>
 
 <div class="max-w-6xl mx-auto space-y-8">
@@ -57,7 +52,7 @@ $transactions = $stmt->fetchAll();
         </div>
     </div>
 
-    <div class="grid grid-cols-1 lg:grid-cols-2 gap-8">
+    <div class="space-y-8">
         
         <!-- Referral List -->
         <div class="glass rounded-2xl border border-gray-700 overflow-hidden">
@@ -95,36 +90,6 @@ $transactions = $stmt->fetchAll();
                             <?php endforeach; ?>
                         </tbody>
                     </table>
-                <?php endif; ?>
-            </div>
-        </div>
-
-        <!-- Wallet History -->
-        <div class="glass rounded-2xl border border-gray-700 overflow-hidden">
-            <div class="p-6 border-b border-gray-700/50 flex justify-between items-center bg-gray-800/30">
-                <h3 class="font-bold text-white">Wallet History</h3>
-            </div>
-            
-            <div class="max-h-96 overflow-y-auto custom-scrollbar">
-                <?php if(empty($transactions)): ?>
-                    <div class="text-center py-10 text-gray-500">
-                        <i class="fas fa-history text-3xl mb-2 opacity-30"></i>
-                        <p class="text-xs">No transactions yet.</p>
-                    </div>
-                <?php else: ?>
-                    <div class="divide-y divide-gray-700/50">
-                        <?php foreach($transactions as $txn): ?>
-                            <div class="p-4 flex justify-between items-center hover:bg-gray-800/50 transition">
-                                <div>
-                                    <p class="text-sm text-gray-200 font-medium"><?php echo htmlspecialchars($txn['description']); ?></p>
-                                    <p class="text-xs text-gray-500"><?php echo date('M d, H:i', strtotime($txn['created_at'])); ?></p>
-                                </div>
-                                <span class="font-mono font-bold <?php echo $txn['type'] == 'credit' ? 'text-green-400' : 'text-red-400'; ?>">
-                                    <?php echo ($txn['type'] == 'credit' ? '+' : '-') . format_price($txn['amount']); ?>
-                                </span>
-                            </div>
-                        <?php endforeach; ?>
-                    </div>
                 <?php endif; ?>
             </div>
         </div>
