@@ -98,259 +98,7 @@ if (is_logged_in()) {
 }
 ?>
 
-<style>
-/* ─── Page Shell ─────────────────────────────────────── */
-.home-page-shell { overflow-x: clip; position: relative; }
 
-/* ─── Ticker ─────────────────────────────────────────── */
-.animate-marquee { animation: marquee 38s linear infinite; }
-@keyframes marquee { 0% { transform: translateX(100vw); } 100% { transform: translateX(-100%); } }
-
-/* ─── Hero Grid ──────────────────────────────────────── */
-.hero-grid {
-    display: grid;
-    grid-template-columns: 1fr;
-    gap: 1.25rem;
-    margin-bottom: 3.5rem;
-}
-@media (min-width: 1024px) {
-    .hero-grid { grid-template-columns: minmax(0,1.9fr) minmax(0,1fr); }
-}
-
-/* ─── Banner Slider ──────────────────────────────────── */
-.banner-wrap {
-    position: relative;
-    border-radius: 1.75rem;
-    overflow: hidden;
-    box-shadow: 0 24px 60px rgba(0,0,0,.35);
-    background: #0b0f1a;
-}
-.banner-track { position: relative; height: 380px; }
-@media (max-width: 640px) { .banner-track { height: 230px; } }
-
-.banner-slide {
-    position: absolute; inset: 0;
-    opacity: 0;
-    transition: opacity .9s cubic-bezier(.4,0,.2,1);
-    z-index: 0;
-}
-.banner-slide.active { opacity: 1; z-index: 2; }
-.banner-slide img { width: 100%; height: 100%; object-fit: cover; display: block; }
-
-.banner-overlay {
-    position: absolute; inset: 0;
-    background: linear-gradient(160deg, rgba(11,15,26,.15) 0%, rgba(11,15,26,.65) 100%);
-    display: flex; flex-direction: column; justify-content: flex-end;
-    padding: 2rem 2rem 2.5rem;
-    z-index: 3;
-}
-.banner-title {
-    font-size: clamp(1.25rem, 3vw, 2.25rem);
-    font-weight: 900;
-    color: #fff;
-    line-height: 1.2;
-    text-shadow: 0 3px 10px rgba(0,0,0,.5);
-    margin-bottom: .85rem;
-}
-.banner-slide.active .banner-title { animation: slideInUp .55s ease-out .15s both; }
-
-.banner-cta {
-    display: inline-flex; align-items: center; gap: .5rem;
-    padding: .6rem 1.25rem;
-    background: linear-gradient(135deg, #3b82f6, #2563eb);
-    color: #fff; font-weight: 700; font-size: .8rem;
-    border-radius: 10px; text-decoration: none;
-    transition: transform .25s, box-shadow .25s;
-    box-shadow: 0 4px 14px rgba(59,130,246,.4);
-}
-.banner-slide.active .banner-cta { animation: slideInUp .55s ease-out .3s both; }
-.banner-cta:hover { transform: translateY(-2px); box-shadow: 0 6px 20px rgba(59,130,246,.55); }
-
-.banner-arrow {
-    position: absolute; top: 50%; transform: translateY(-50%);
-    width: 38px; height: 38px;
-    background: rgba(255,255,255,.13);
-    border: 1px solid rgba(255,255,255,.28);
-    border-radius: 50%;
-    display: flex; align-items: center; justify-content: center;
-    color: #fff; cursor: pointer; z-index: 10;
-    transition: background .25s, border-color .25s;
-}
-.banner-arrow:hover { background: rgba(255,255,255,.24); border-color: rgba(255,255,255,.5); }
-.banner-prev { left: 1rem; }
-.banner-next { right: 1rem; }
-
-.banner-dots {
-    position: absolute; bottom: 1.1rem; left: 50%; transform: translateX(-50%);
-    display: flex; gap: .5rem; z-index: 10;
-}
-.banner-dot {
-    width: 8px; height: 8px; border-radius: 4px;
-    background: rgba(255,255,255,.35); border: 1.5px solid rgba(255,255,255,.5);
-    cursor: pointer; transition: all .3s ease;
-}
-.banner-dot.active { width: 26px; background: #fff; border-color: #fff; }
-
-@keyframes slideInUp {
-    from { opacity: 0; transform: translateY(18px); }
-    to   { opacity: 1; transform: translateY(0); }
-}
-
-/* ─── Category Panel ─────────────────────────────────── */
-.cat-panel {
-    display: flex; flex-direction: column;
-    background: rgba(15,23,42,.55);
-    backdrop-filter: blur(20px);
-    -webkit-backdrop-filter: blur(20px);
-    border: 1px solid rgba(255,255,255,.06);
-    border-radius: 1.75rem;
-    overflow: hidden;
-    height: 380px;
-}
-@media (max-width: 1023px) {
-    .cat-panel { height: auto; }
-    .cat-grid-scroll { max-height: none; }
-}
-@media (max-width: 640px) {
-    .cat-panel { background: transparent; border: none; border-radius: 0; }
-}
-
-.cat-panel-header {
-    padding: 1.1rem 1.4rem .75rem;
-    font-size: .65rem; font-weight: 800;
-    text-transform: uppercase; letter-spacing: .18em;
-    color: #64748b;
-    border-bottom: 1px solid rgba(255,255,255,.05);
-    display: flex; align-items: center; justify-content: space-between;
-    flex-shrink: 0;
-}
-
-/* Desktop: vertical scrollable grid */
-.cat-grid-scroll {
-    display: grid;
-    grid-template-columns: repeat(2, 1fr);
-    gap: .6rem;
-    padding: .75rem;
-    overflow-y: auto;
-    flex: 1;
-    scrollbar-width: none;
-}
-.cat-grid-scroll::-webkit-scrollbar { display: none; }
-
-/* Mobile: horizontal scroll row */
-@media (max-width: 1023px) {
-    .cat-grid-scroll {
-        display: flex;
-        flex-direction: row;
-        flex-wrap: nowrap;
-        overflow-x: auto;
-        overflow-y: visible;
-        flex: unset;
-        padding: .75rem .5rem;
-        scroll-snap-type: x mandatory;
-        gap: .6rem;
-    }
-}
-
-.cat-card {
-    position: relative;
-    display: flex; flex-direction: column; align-items: center; justify-content: center;
-    gap: .5rem;
-    padding: .85rem .5rem;
-    border-radius: 1.1rem;
-    border: 1px solid rgba(255,255,255,.05);
-    background: rgba(15,23,42,.5);
-    text-decoration: none;
-    transition: transform .25s cubic-bezier(.4,0,.2,1), border-color .25s, background .25s, box-shadow .25s;
-    text-align: center;
-    overflow: hidden;
-    cursor: pointer;
-    flex-shrink: 0;
-}
-@media (max-width: 1023px) {
-    .cat-card {
-        min-width: 90px;
-        scroll-snap-align: start;
-        flex-direction: column;
-    }
-}
-.cat-card::before {
-    content: '';
-    position: absolute; inset: 0;
-    background: linear-gradient(135deg, rgba(59,130,246,.06), transparent);
-    opacity: 0; transition: opacity .3s;
-    border-radius: inherit;
-}
-.cat-card:hover { transform: translateY(-3px); border-color: rgba(59,130,246,.3); box-shadow: 0 8px 24px rgba(0,0,0,.3); }
-.cat-card:hover::before { opacity: 1; }
-
-.cat-img-ring {
-    width: 48px; height: 48px;
-    border-radius: 50%;
-    border: 2px solid rgba(59,130,246,.2);
-    overflow: hidden;
-    background: rgba(15,23,42,.8);
-    flex-shrink: 0;
-    transition: border-color .25s, box-shadow .25s;
-}
-.cat-card:hover .cat-img-ring {
-    border-color: rgba(59,130,246,.5);
-    box-shadow: 0 0 0 4px rgba(59,130,246,.08);
-}
-.cat-img-ring img { width: 100%; height: 100%; object-fit: cover; }
-.cat-img-ring .cat-icon { width: 100%; height: 100%; display: flex; align-items: center; justify-content: center; font-size: 1.3rem; color: #475569; }
-
-.cat-name {
-    font-size: .67rem; font-weight: 700;
-    color: #94a3b8; text-transform: uppercase;
-    letter-spacing: .08em; line-height: 1.2;
-    max-width: 80px; text-align: center;
-    transition: color .2s;
-}
-.cat-card:hover .cat-name { color: #fff; }
-
-/* ─── Section Headings ───────────────────────────────── */
-.section-heading {
-    display: flex; align-items: flex-end; justify-content: space-between;
-    margin-bottom: 1.5rem;
-}
-.section-title { font-size: 1.5rem; font-weight: 900; color: #fff; letter-spacing: -.02em; }
-.section-badge {
-    font-size: .65rem; font-weight: 800; text-transform: uppercase;
-    letter-spacing: .15em; padding: .4rem .9rem;
-    border-radius: .75rem;
-}
-
-/* ─── Product Card Image (size fix) ─────────────────── */
-.prod-img-wrap {
-    position: relative;
-    width: 100%;
-    aspect-ratio: 3/2;
-    overflow: hidden;
-    background: rgba(15,23,42,.9);
-}
-@media (max-width: 480px) {
-    .prod-img-wrap { aspect-ratio: 4/3; }
-}
-
-/* ─── Feature Cards ──────────────────────────────────── */
-.feature-card {
-    background: rgba(15,23,42,.55);
-    border: 1px solid rgba(255,255,255,.05);
-    border-radius: 1.5rem;
-    padding: 1.75rem;
-    display: flex; flex-direction: column; align-items: center; text-align: center; gap: 1rem;
-    transition: border-color .25s, transform .25s;
-}
-.feature-card:hover { border-color: rgba(59,130,246,.2); transform: translateY(-2px); }
-
-/* ─── Activity Feed ──────────────────────────────────── */
-@keyframes fadeSlideIn {
-    from { opacity: 0; transform: translateY(-8px); }
-    to   { opacity: 1; transform: translateY(0); }
-}
-.activity-new { animation: fadeSlideIn .4s ease-out; }
-</style>
 
 <!-- Top News Ticker -->
 <div class="w-full bg-slate-900/80 border-b border-white/5 py-2.5 mb-8 overflow-hidden relative">
@@ -464,6 +212,13 @@ if (is_logged_in()) {
                     <span class="cat-name"><?php echo htmlspecialchars($cat['name']); ?></span>
                 </a>
                 <?php endforeach; ?>
+            </div>
+
+            <!-- Category Scroll Progress Bar for Mobile/Tablet -->
+            <div class="px-4 pb-3 lg:hidden">
+                <div class="scroll-progress-bar">
+                    <div class="scroll-progress-bar-fill" id="catScrollProgress"></div>
+                </div>
             </div>
         </div>
 
@@ -608,6 +363,25 @@ if (is_logged_in()) {
     show(0);
 })();
 
+/* ── Category Slider Progress ──────────────────── */
+document.addEventListener('DOMContentLoaded', () => {
+    const cSlider = document.getElementById('categorySlider');
+    const cProgress = document.getElementById('catScrollProgress');
+    if (cSlider && cProgress) {
+        const updateCategoryProgress = () => {
+            const max = cSlider.scrollWidth - cSlider.clientWidth;
+            cProgress.style.width = max > 0 ? ((cSlider.scrollLeft / max) * 100) + '%' : '0%';
+        };
+        cSlider.addEventListener('scroll', updateCategoryProgress, { passive: true });
+        // Initial call
+        updateCategoryProgress();
+        // Resize observer to recalculate if screen size changes
+        if (window.ResizeObserver) {
+            new ResizeObserver(updateCategoryProgress).observe(cSlider);
+        }
+    }
+});
+
 /* ── Activity Feed Live Ticker ─────────────────── */
 document.addEventListener('DOMContentLoaded', () => {
     const feed  = document.getElementById('activityFeed');
@@ -627,7 +401,7 @@ document.addEventListener('DOMContentLoaded', () => {
             el.className = 'activity-new flex items-center gap-4 p-4 bg-slate-900/40 rounded-2xl border border-blue-500/10';
             el.innerHTML = `
                 <div class="w-9 h-9 rounded-full bg-slate-800 flex items-center justify-center text-blue-400 text-xs shrink-0">
-                    <i class="fas fa-shopping-cart"></i>
+                     <i class="fas fa-shopping-cart"></i>
                 </div>
                 <div class="min-w-0">
                     <p class="text-sm font-bold text-slate-200 truncate">Customer <span class="text-blue-400">@${it.u}</span></p>

@@ -218,18 +218,16 @@ function get_page_url($page_num) {
         <!-- RIGHT MAIN -->
         <div class="lg:col-span-3 space-y-8">
             
-            <!-- Category Header -->
-            <div class="bg-slate-800/20 border border-white/5 rounded-[2.5rem] p-8 md:p-12 shadow-xl flex flex-col md:flex-row items-center md:items-start gap-8 text-center md:text-left">
-                <div class="w-24 h-24 bg-slate-900 rounded-[1.5rem] flex items-center justify-center border border-white/10 shrink-0 overflow-hidden shadow-lg">
-                    <?php if(!empty($current_category['image_url'])): ?>
-                        <img src="<?php echo BASE_URL . $current_category['image_url']; ?>" alt="<?php echo htmlspecialchars($current_category['name']); ?>" class="w-full h-full object-cover" loading="lazy">
-                    <?php else: ?>
-                        <i class="fas fa-layer-group text-4xl text-blue-400"></i>
-                    <?php endif; ?>
-                </div>
-                <div>
-                    <h1 class="text-3xl md:text-4xl font-bold text-white mb-3 tracking-tight"><?php echo htmlspecialchars($current_category['name']); ?></h1>
-                    <p class="text-slate-500 text-sm leading-relaxed max-w-2xl"><?php echo htmlspecialchars($current_category['description']); ?></p>
+            <!-- Category Hero Header Banner -->
+            <div class="relative rounded-[2.5rem] overflow-hidden border border-white/5 shadow-2xl bg-slate-950 min-h-[220px] flex items-end p-8 md:p-12">
+                <?php if(!empty($current_category['image_url'])): ?>
+                    <img src="<?php echo BASE_URL . $current_category['image_url']; ?>" alt="<?php echo htmlspecialchars($current_category['name']); ?>" class="absolute inset-0 w-full h-full object-cover opacity-25 filter blur-[2px] transition-transform duration-700 hover:scale-105" loading="lazy">
+                <?php endif; ?>
+                <div class="absolute inset-0 bg-gradient-to-t from-slate-950 via-slate-950/60 to-transparent"></div>
+                <div class="relative z-10 max-w-3xl">
+                    <span class="text-[9px] font-bold text-blue-400 uppercase tracking-[0.25em] bg-blue-500/10 px-3.5 py-1 rounded-full border border-blue-500/20">Category Hub</span>
+                    <h1 class="text-3xl md:text-5xl font-black text-white tracking-tight mt-3 leading-tight"><?php echo htmlspecialchars($current_category['name']); ?></h1>
+                    <p class="text-slate-400 text-xs md:text-sm leading-relaxed font-medium mt-2 max-w-2xl"><?php echo htmlspecialchars($current_category['description']); ?></p>
                 </div>
             </div>
 

@@ -39,6 +39,17 @@ $recent_reviews = $pdo->query("
     JOIN products p ON r.product_id = p.id
     ORDER BY r.created_at DESC LIMIT 3
 ")->fetchAll();
+
+// 5. Query unique delivery products with stock count < 3
+$low_stock_items = $pdo->query("
+    SELECT p.id, p.name, COUNT(pk.id) as stock 
+    FROM products p 
+    LEFT JOIN product_keys pk ON pk.product_id = p.id AND pk.is_sold = 0 
+    WHERE p.delivery_type = 'unique' 
+    GROUP BY p.id 
+    HAVING stock < 3
+")->fetchAll();
+$low_stock_count = count($low_stock_items);
 ?>
 
 <!-- Chart.js CDN -->
@@ -50,11 +61,16 @@ $recent_reviews = $pdo->query("
         <p class="text-slate-500 text-sm mt-3 max-w-md leading-relaxed">System overview and real-time performance metrics for your digital marketplace.</p>
     </div>
     <div class="flex flex-wrap gap-4">
-        <a href="<?php echo admin_url('products'); ?>" class="group bg-slate-800/40 hover:bg-slate-700/60 border border-white/5 text-white px-6 py-3 rounded-2xl font-bold text-sm transition-all flex items-center gap-3 backdrop-blur-sm">
+        <a href="<?php echo admin_url('products'); ?>" class="group bg-slate-800/40 hover:bg-slate-700/60 border border-white/5 text-white px-6 py-3 rounded-2xl font-bold text-sm transition-all flex items-center gap-3 backdrop-blur-sm relative">
             <div class="w-8 h-8 rounded-lg bg-indigo-500/10 flex items-center justify-center text-indigo-400 group-hover:scale-110 transition-transform">
                 <i class="fas fa-plus"></i>
             </div>
             <span>Catalog Item</span>
+            <?php if ($low_stock_count > 0): ?>
+                <span class="absolute -top-1.5 -right-1.5 flex h-5 w-5 items-center justify-center rounded-full bg-rose-500 text-[10px] font-bold text-white animate-pulse shadow-lg shadow-rose-500/30">
+                    <?php echo $low_stock_count; ?>
+                </span>
+            <?php endif; ?>
         </a>
         <a href="<?php echo admin_url('reports'); ?>" class="bg-indigo-600 hover:bg-indigo-500 text-white px-8 py-3 rounded-2xl font-bold text-sm shadow-xl shadow-indigo-600/20 transition-all flex items-center gap-3 active:scale-95">
             <i class="fas fa-chart-line"></i>
@@ -62,6 +78,31 @@ $recent_reviews = $pdo->query("
         </a>
     </div>
 </div>
+
+<!-- Low Stock Warning Widget -->
+<?php if ($low_stock_count > 0): ?>
+<div class="mb-12 bg-rose-500/10 border border-rose-500/20 rounded-[2rem] p-6 flex flex-col md:flex-row items-center justify-between gap-6">
+    <div class="flex items-center gap-5">
+        <div class="w-14 h-14 rounded-2xl bg-rose-500/20 flex items-center justify-center text-rose-400 text-2xl shrink-0 animate-pulse">
+            <i class="fas fa-exclamation-triangle"></i>
+        </div>
+        <div>
+            <h3 class="text-lg font-bold text-white leading-tight">Low Stock Alert!</h3>
+            <p class="text-rose-400/80 text-xs mt-1 font-medium">Some unique key items are running low on keys in the warehouse.</p>
+        </div>
+    </div>
+    <div class="flex flex-wrap items-center gap-3">
+        <?php foreach ($low_stock_items as $item): ?>
+            <span class="bg-rose-500/20 border border-rose-500/30 text-rose-300 text-[10px] font-bold px-3 py-1.5 rounded-xl uppercase tracking-wider">
+                <?php echo htmlspecialchars($item['name']); ?> (<?php echo $item['stock']; ?> left)
+            </span>
+        <?php endforeach; ?>
+        <a href="<?php echo admin_url('products'); ?>" class="bg-rose-600 hover:bg-rose-500 text-white font-bold text-xs px-6 py-2.5 rounded-xl transition-all shadow-lg active:scale-95">
+            Restock
+        </a>
+    </div>
+</div>
+<?php endif; ?>
 
 <!-- Top Stats Grid -->
 <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-8 mb-12">

@@ -307,6 +307,7 @@ $products = $pdo->query("
                 <tr class="bg-black/20 text-slate-500 uppercase text-[10px] font-bold tracking-[0.2em]">
                     <th class="p-6 pl-10">Asset</th>
                     <th class="p-6">Classification</th>
+                    <th class="p-6">Slug</th>
                     <th class="p-6 text-center">Inventory</th>
                     <th class="p-6 text-center">Duration</th>
                     <th class="p-6 text-right">MSRP</th>
@@ -346,6 +347,16 @@ $products = $pdo->query("
                                         <i class="fas fa-globe-asia"></i> Locked
                                     </span>
                                 <?php endif; ?>
+                            </div>
+                        </td>
+                        <td class="p-6">
+                            <div class="flex items-center gap-2">
+                                <span class="bg-slate-900 border border-white/5 text-slate-400 px-3 py-1.5 rounded-lg font-mono text-xs select-all">
+                                    <?php echo htmlspecialchars($p['slug']); ?>
+                                </span>
+                                <button type="button" onclick="copySlugToClipboard(this, '<?php echo htmlspecialchars($p['slug']); ?>')" class="w-8 h-8 rounded-lg bg-slate-800 hover:bg-indigo-600 text-slate-400 hover:text-white transition flex items-center justify-center border border-white/5" title="Copy Slug">
+                                    <i class="fas fa-copy text-xs"></i>
+                                </button>
                             </div>
                         </td>
                         <td class="p-6 text-center">
@@ -403,7 +414,7 @@ $products = $pdo->query("
                 
                 <?php if(empty($products)): ?>
                     <tr>
-                        <td colspan="7" class="p-20 text-center">
+                        <td colspan="8" class="p-20 text-center">
                             <div class="flex flex-col items-center opacity-30">
                                 <i class="fas fa-box-open text-6xl mb-6"></i>
                                 <p class="text-lg font-bold uppercase tracking-[0.2em] text-slate-500 font-heading">Empty Catalog</p>
@@ -473,4 +484,20 @@ $products = $pdo->query("
     
     // Initialize default (Lifetime)
     setDuration(0, durBtns[4]);
+
+    // Copy Slug helper
+    function copySlugToClipboard(btn, slug) {
+        navigator.clipboard.writeText(slug).then(() => {
+            const icon = btn.querySelector('i');
+            icon.className = 'fas fa-check text-emerald-400';
+            const originalClass = btn.className;
+            btn.className = btn.className.replace('text-slate-400', 'text-emerald-400 border-emerald-500/30 bg-emerald-500/10');
+            setTimeout(() => {
+                icon.className = 'fas fa-copy';
+                btn.className = originalClass;
+            }, 2000);
+        }).catch(err => {
+            console.error('Failed to copy text: ', err);
+        });
+    }
 </script>

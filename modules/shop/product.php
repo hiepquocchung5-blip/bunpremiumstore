@@ -60,7 +60,7 @@ $stmt = $pdo->prepare("
     FROM products p
     JOIN categories c ON p.category_id = c.id
     WHERE p.category_id = ? AND p.id != ?
-    ORDER BY RAND() LIMIT 3
+    ORDER BY RAND() LIMIT 4
 ");
 $stmt->execute([$product['category_id'], $product_id]);
 $related_items = $stmt->fetchAll();
@@ -203,7 +203,7 @@ if ($avg_rating > 0) {
                 
                 <!-- Image -->
                 <div class="shrink-0">
-                    <div class="w-full md:w-64 aspect-square rounded-3xl overflow-hidden bg-slate-900 border border-white/10 shadow-2xl relative group">
+                    <div class="w-full max-w-[280px] mx-auto md:mx-0 md:w-64 aspect-[4/3] md:aspect-square rounded-3xl overflow-hidden bg-slate-900 border border-white/10 shadow-2xl relative group">
                         <?php if($has_image): ?>
                             <img src="<?php echo $display_image; ?>" class="w-full h-full object-cover transition-transform duration-700 group-hover:scale-110" loading="eager" fetchpriority="high">
                         <?php elseif($has_cat_image): ?>
