@@ -7,6 +7,7 @@ $id = isset($_GET['id']) ? (int)$_GET['id'] : 0;
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['update_product'])) {
     try {
         $name = trim($_POST['name']);
+        $slug = strtolower(trim(preg_replace('/[^A-Za-z0-9]+/', '-', $name), '-'));
         $description = trim($_POST['description']);
         $price = (float) $_POST['price'];
         $sale_price = !empty($_POST['sale_price']) ? (float) $_POST['sale_price'] : NULL;
@@ -36,7 +37,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['update_product'])) {
 
         // Handle Image Update
         $image_sql_part = "";
-        $params = [$cat_id, $region_id, $name, $description, $price, $sale_price, $delivery_type, $universal_content, $form_fields, $instruction, $duration_days];
+        $params = [$cat_id, $region_id, $name, $slug, $description, $price, $sale_price, $delivery_type, $universal_content, $form_fields, $instruction, $duration_days];
 
         if (!empty($_FILES['image']['name'])) {
             // 1. Get old image path to delete later
@@ -67,9 +68,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['update_product'])) {
 
         // Update Product Table
         $stmt = $pdo->prepare("
-            UPDATE products SET 
-            category_id = ?, region_id = ?, name = ?, description = ?, 
-            price = ?, sale_price = ?, delivery_type = ?, 
+            UPDATE products SET
+            category_id = ?, region_id = ?, name = ?, slug = ?, description = ?,
+            price = ?, sale_price = ?, delivery_type = ?,
             universal_content = ?, form_fields = ?, user_instruction = ?,
             duration_days = ?
             $image_sql_part

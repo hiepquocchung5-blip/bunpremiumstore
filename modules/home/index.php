@@ -1,8 +1,7 @@
 <?php
 // modules/home/index.php
-// PRODUCTION READY v5.0 - Human-Friendly UI, Simple English & Reorganized Hub
 
-// 1. Fetch Banners (Active Slides)
+// 1. Fetch Banners
 $banners = matrix_cache_get('home_banners_v2');
 if ($banners === false) {
     $stmt = $pdo->query("SELECT * FROM banners ORDER BY display_order ASC, id DESC LIMIT 5");
@@ -18,13 +17,13 @@ if ($categories === false) {
     matrix_cache_set('home_categories_v2', $categories, 600);
 }
 
-// 3. Fetch "Hot Deals" (Sale Items)
+// 3. Fetch Flash Sales
 $flash_sales = matrix_cache_get('home_flash_sales_v2');
 if ($flash_sales === false) {
     $stmt = $pdo->query("
         SELECT p.*, c.name as cat_name, c.image_url as cat_image
-        FROM products p 
-        JOIN categories c ON p.category_id = c.id 
+        FROM products p
+        JOIN categories c ON p.category_id = c.id
         WHERE p.sale_price IS NOT NULL AND p.sale_price < p.price
         ORDER BY RAND() LIMIT 4
     ");
@@ -32,13 +31,13 @@ if ($flash_sales === false) {
     matrix_cache_set('home_flash_sales_v2', $flash_sales, 120);
 }
 
-// 4. Fetch "Best Sellers"
+// 4. Fetch Best Sellers
 $best_sellers = matrix_cache_get('home_best_sellers_v2');
 if ($best_sellers === false) {
     $stmt = $pdo->query("
         SELECT p.*, c.name as cat_name, c.image_url as cat_image, COUNT(o.id) as sales_count
-        FROM products p 
-        JOIN categories c ON p.category_id = c.id 
+        FROM products p
+        JOIN categories c ON p.category_id = c.id
         LEFT JOIN orders o ON p.id = o.product_id AND o.status = 'active'
         GROUP BY p.id
         ORDER BY sales_count DESC LIMIT 6
@@ -47,27 +46,27 @@ if ($best_sellers === false) {
     matrix_cache_set('home_best_sellers_v2', $best_sellers, 180);
 }
 
-// 5. Fetch "Recent Arrivals"
+// 5. Fetch Recent Arrivals
 $recent_products = matrix_cache_get('home_recent_products_v2');
 if ($recent_products === false) {
     $stmt = $pdo->query("
         SELECT p.*, c.name as cat_name, c.image_url as cat_image
-        FROM products p 
-        JOIN categories c ON p.category_id = c.id 
+        FROM products p
+        JOIN categories c ON p.category_id = c.id
         ORDER BY p.id DESC LIMIT 18
     ");
     $recent_products = $stmt->fetchAll();
     matrix_cache_set('home_recent_products_v2', $recent_products, 120);
 }
 
-// 6. Fetch Recent User Activity (For "Recent Sales" at bottom)
+// 6. Fetch Recent Activity
 $recent_activity = matrix_cache_get('home_recent_activity_v2');
 if ($recent_activity === false) {
     $stmt = $pdo->query("
         SELECT o.id, u.username, COALESCE(p.name, ps.name) as item_name, o.created_at
-        FROM orders o 
+        FROM orders o
         JOIN users u ON o.user_id = u.id
-        LEFT JOIN products p ON o.product_id = p.id 
+        LEFT JOIN products p ON o.product_id = p.id
         LEFT JOIN passes ps ON o.pass_id = ps.id
         WHERE o.status = 'active'
         ORDER BY o.id DESC LIMIT 10
@@ -76,542 +75,568 @@ if ($recent_activity === false) {
     matrix_cache_set('home_recent_activity_v2', $recent_activity, 60);
 }
 
-// 7. Get Current User Discount & Stats
+// 7. User Info
 $user_id = $_SESSION['user_id'] ?? 0;
 $discount = is_logged_in() ? get_user_discount($user_id) : 0;
 $first_name = is_logged_in() ? explode(' ', $_SESSION['user_name'])[0] : 'Customer';
 
 $user_stats = ['active_orders' => 0];
-if(is_logged_in()) {
-    $user_stats['active_orders'] = $pdo->prepare("SELECT COUNT(*) FROM orders WHERE user_id = ? AND status = 'pending'");
-    $user_stats['active_orders']->execute([$user_id]);
-    $user_stats['active_orders'] = $user_stats['active_orders']->fetchColumn() ?: 0;
+if (is_logged_in()) {
+    $s = $pdo->prepare("SELECT COUNT(*) FROM orders WHERE user_id = ? AND status = 'pending'");
+    $s->execute([$user_id]);
+    $user_stats['active_orders'] = $s->fetchColumn() ?: 0;
 }
 
-// 8. Check Push Status
+// 8. Push subscription check
 $is_subscribed = false;
 if (is_logged_in()) {
     try {
-        $sub_check = $pdo->prepare("SELECT id FROM push_subscriptions WHERE user_id = ?");
-        $sub_check->execute([$user_id]);
-        $is_subscribed = $sub_check->rowCount() > 0;
+        $sub = $pdo->prepare("SELECT id FROM push_subscriptions WHERE user_id = ?");
+        $sub->execute([$user_id]);
+        $is_subscribed = $sub->rowCount() > 0;
     } catch (Exception $e) {}
 }
 ?>
 
 <style>
-    .no-scrollbar::-webkit-scrollbar { display: none; }
-    .no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
+/* ─── Page Shell ─────────────────────────────────────── */
+.home-page-shell { overflow-x: clip; position: relative; }
 
-    .home-page-shell {
-        overflow-x: clip;
-        position: relative;
-    }
+/* ─── Ticker ─────────────────────────────────────────── */
+.animate-marquee { animation: marquee 38s linear infinite; }
+@keyframes marquee { 0% { transform: translateX(100vw); } 100% { transform: translateX(-100%); } }
 
-    .home-slider-track {
-        overscroll-behavior-x: contain;
-        -webkit-overflow-scrolling: touch;
-        touch-action: pan-x;
-        scrollbar-width: none;
-    }
+/* ─── Hero Grid ──────────────────────────────────────── */
+.hero-grid {
+    display: grid;
+    grid-template-columns: 1fr;
+    gap: 1.25rem;
+    margin-bottom: 3.5rem;
+}
+@media (min-width: 1024px) {
+    .hero-grid { grid-template-columns: minmax(0,1.9fr) minmax(0,1fr); }
+}
 
-    .home-slider-track::-webkit-scrollbar {
-        display: none;
-    }
-    
-    .glass-card {
-        background: rgba(15, 23, 42, 0.6);
-        backdrop-filter: blur(16px);
-        -webkit-backdrop-filter: blur(16px);
-        border: 1px solid rgba(255, 255, 255, 0.05);
-        transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-    }
-    .glass-card:hover {
-        background: rgba(15, 23, 42, 0.8);
-        border-color: rgba(59, 130, 246, 0.3);
-        transform: translateY(-4px);
-    }
-    
-    .animate-marquee { animation: marquee 35s linear infinite; }
-    @keyframes marquee { 0% { transform: translateX(100%); } 100% { transform: translateX(-100%); } }
+/* ─── Banner Slider ──────────────────────────────────── */
+.banner-wrap {
+    position: relative;
+    border-radius: 1.75rem;
+    overflow: hidden;
+    box-shadow: 0 24px 60px rgba(0,0,0,.35);
+    background: #0b0f1a;
+}
+.banner-track { position: relative; height: 380px; }
+@media (max-width: 640px) { .banner-track { height: 230px; } }
 
-    @keyframes loadProgress { 0% { width: 0%; } 100% { width: 100%; } }
-    
-    @keyframes panImage {
-        0% { transform: scale(1.05); }
-        50% { transform: scale(1.1); }
-        100% { transform: scale(1.05); }
+.banner-slide {
+    position: absolute; inset: 0;
+    opacity: 0;
+    transition: opacity .9s cubic-bezier(.4,0,.2,1);
+    z-index: 0;
+}
+.banner-slide.active { opacity: 1; z-index: 2; }
+.banner-slide img { width: 100%; height: 100%; object-fit: cover; display: block; }
+
+.banner-overlay {
+    position: absolute; inset: 0;
+    background: linear-gradient(160deg, rgba(11,15,26,.15) 0%, rgba(11,15,26,.65) 100%);
+    display: flex; flex-direction: column; justify-content: flex-end;
+    padding: 2rem 2rem 2.5rem;
+    z-index: 3;
+}
+.banner-title {
+    font-size: clamp(1.25rem, 3vw, 2.25rem);
+    font-weight: 900;
+    color: #fff;
+    line-height: 1.2;
+    text-shadow: 0 3px 10px rgba(0,0,0,.5);
+    margin-bottom: .85rem;
+}
+.banner-slide.active .banner-title { animation: slideInUp .55s ease-out .15s both; }
+
+.banner-cta {
+    display: inline-flex; align-items: center; gap: .5rem;
+    padding: .6rem 1.25rem;
+    background: linear-gradient(135deg, #3b82f6, #2563eb);
+    color: #fff; font-weight: 700; font-size: .8rem;
+    border-radius: 10px; text-decoration: none;
+    transition: transform .25s, box-shadow .25s;
+    box-shadow: 0 4px 14px rgba(59,130,246,.4);
+}
+.banner-slide.active .banner-cta { animation: slideInUp .55s ease-out .3s both; }
+.banner-cta:hover { transform: translateY(-2px); box-shadow: 0 6px 20px rgba(59,130,246,.55); }
+
+.banner-arrow {
+    position: absolute; top: 50%; transform: translateY(-50%);
+    width: 38px; height: 38px;
+    background: rgba(255,255,255,.13);
+    border: 1px solid rgba(255,255,255,.28);
+    border-radius: 50%;
+    display: flex; align-items: center; justify-content: center;
+    color: #fff; cursor: pointer; z-index: 10;
+    transition: background .25s, border-color .25s;
+}
+.banner-arrow:hover { background: rgba(255,255,255,.24); border-color: rgba(255,255,255,.5); }
+.banner-prev { left: 1rem; }
+.banner-next { right: 1rem; }
+
+.banner-dots {
+    position: absolute; bottom: 1.1rem; left: 50%; transform: translateX(-50%);
+    display: flex; gap: .5rem; z-index: 10;
+}
+.banner-dot {
+    width: 8px; height: 8px; border-radius: 4px;
+    background: rgba(255,255,255,.35); border: 1.5px solid rgba(255,255,255,.5);
+    cursor: pointer; transition: all .3s ease;
+}
+.banner-dot.active { width: 26px; background: #fff; border-color: #fff; }
+
+@keyframes slideInUp {
+    from { opacity: 0; transform: translateY(18px); }
+    to   { opacity: 1; transform: translateY(0); }
+}
+
+/* ─── Category Panel ─────────────────────────────────── */
+.cat-panel {
+    display: flex; flex-direction: column;
+    background: rgba(15,23,42,.55);
+    backdrop-filter: blur(20px);
+    -webkit-backdrop-filter: blur(20px);
+    border: 1px solid rgba(255,255,255,.06);
+    border-radius: 1.75rem;
+    overflow: hidden;
+    height: 380px;
+}
+@media (max-width: 1023px) {
+    .cat-panel { height: auto; }
+    .cat-grid-scroll { max-height: none; }
+}
+@media (max-width: 640px) {
+    .cat-panel { background: transparent; border: none; border-radius: 0; }
+}
+
+.cat-panel-header {
+    padding: 1.1rem 1.4rem .75rem;
+    font-size: .65rem; font-weight: 800;
+    text-transform: uppercase; letter-spacing: .18em;
+    color: #64748b;
+    border-bottom: 1px solid rgba(255,255,255,.05);
+    display: flex; align-items: center; justify-content: space-between;
+    flex-shrink: 0;
+}
+
+/* Desktop: vertical scrollable grid */
+.cat-grid-scroll {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: .6rem;
+    padding: .75rem;
+    overflow-y: auto;
+    flex: 1;
+    scrollbar-width: none;
+}
+.cat-grid-scroll::-webkit-scrollbar { display: none; }
+
+/* Mobile: horizontal scroll row */
+@media (max-width: 1023px) {
+    .cat-grid-scroll {
+        display: flex;
+        flex-direction: row;
+        flex-wrap: nowrap;
+        overflow-x: auto;
+        overflow-y: visible;
+        flex: unset;
+        padding: .75rem .5rem;
+        scroll-snap-type: x mandatory;
+        gap: .6rem;
     }
-    .animate-pan-image { animation: panImage 20s ease-in-out infinite; }
+}
+
+.cat-card {
+    position: relative;
+    display: flex; flex-direction: column; align-items: center; justify-content: center;
+    gap: .5rem;
+    padding: .85rem .5rem;
+    border-radius: 1.1rem;
+    border: 1px solid rgba(255,255,255,.05);
+    background: rgba(15,23,42,.5);
+    text-decoration: none;
+    transition: transform .25s cubic-bezier(.4,0,.2,1), border-color .25s, background .25s, box-shadow .25s;
+    text-align: center;
+    overflow: hidden;
+    cursor: pointer;
+    flex-shrink: 0;
+}
+@media (max-width: 1023px) {
+    .cat-card {
+        min-width: 90px;
+        scroll-snap-align: start;
+        flex-direction: column;
+    }
+}
+.cat-card::before {
+    content: '';
+    position: absolute; inset: 0;
+    background: linear-gradient(135deg, rgba(59,130,246,.06), transparent);
+    opacity: 0; transition: opacity .3s;
+    border-radius: inherit;
+}
+.cat-card:hover { transform: translateY(-3px); border-color: rgba(59,130,246,.3); box-shadow: 0 8px 24px rgba(0,0,0,.3); }
+.cat-card:hover::before { opacity: 1; }
+
+.cat-img-ring {
+    width: 48px; height: 48px;
+    border-radius: 50%;
+    border: 2px solid rgba(59,130,246,.2);
+    overflow: hidden;
+    background: rgba(15,23,42,.8);
+    flex-shrink: 0;
+    transition: border-color .25s, box-shadow .25s;
+}
+.cat-card:hover .cat-img-ring {
+    border-color: rgba(59,130,246,.5);
+    box-shadow: 0 0 0 4px rgba(59,130,246,.08);
+}
+.cat-img-ring img { width: 100%; height: 100%; object-fit: cover; }
+.cat-img-ring .cat-icon { width: 100%; height: 100%; display: flex; align-items: center; justify-content: center; font-size: 1.3rem; color: #475569; }
+
+.cat-name {
+    font-size: .67rem; font-weight: 700;
+    color: #94a3b8; text-transform: uppercase;
+    letter-spacing: .08em; line-height: 1.2;
+    max-width: 80px; text-align: center;
+    transition: color .2s;
+}
+.cat-card:hover .cat-name { color: #fff; }
+
+/* ─── Section Headings ───────────────────────────────── */
+.section-heading {
+    display: flex; align-items: flex-end; justify-content: space-between;
+    margin-bottom: 1.5rem;
+}
+.section-title { font-size: 1.5rem; font-weight: 900; color: #fff; letter-spacing: -.02em; }
+.section-badge {
+    font-size: .65rem; font-weight: 800; text-transform: uppercase;
+    letter-spacing: .15em; padding: .4rem .9rem;
+    border-radius: .75rem;
+}
+
+/* ─── Product Card Image (size fix) ─────────────────── */
+.prod-img-wrap {
+    position: relative;
+    width: 100%;
+    aspect-ratio: 3/2;
+    overflow: hidden;
+    background: rgba(15,23,42,.9);
+}
+@media (max-width: 480px) {
+    .prod-img-wrap { aspect-ratio: 4/3; }
+}
+
+/* ─── Feature Cards ──────────────────────────────────── */
+.feature-card {
+    background: rgba(15,23,42,.55);
+    border: 1px solid rgba(255,255,255,.05);
+    border-radius: 1.5rem;
+    padding: 1.75rem;
+    display: flex; flex-direction: column; align-items: center; text-align: center; gap: 1rem;
+    transition: border-color .25s, transform .25s;
+}
+.feature-card:hover { border-color: rgba(59,130,246,.2); transform: translateY(-2px); }
+
+/* ─── Activity Feed ──────────────────────────────────── */
+@keyframes fadeSlideIn {
+    from { opacity: 0; transform: translateY(-8px); }
+    to   { opacity: 1; transform: translateY(0); }
+}
+.activity-new { animation: fadeSlideIn .4s ease-out; }
 </style>
 
 <!-- Top News Ticker -->
-<div class="w-full bg-slate-900 border-b border-white/5 py-2.5 mb-6 relative overflow-hidden">
-    <div class="whitespace-nowrap animate-marquee text-[10px] text-blue-400 font-bold tracking-widest uppercase px-4 flex items-center gap-2">
-        <svg
-            xmlns="http://www.w3.org/2000/svg"
-            class="w-4 h-4 text-blue-400"
-            fill="currentColor"
-            viewBox="0 0 24 24"
-        >
-            <path d="M12 2L14.9 8.6L22 9.3L16.8 13.9L18.4 21L12 17.2L5.6 21L7.2 13.9L2 9.3L9.1 8.6L12 2Z"/>
-        </svg>
-
-        Welcome to DigitalMM • Instant Delivery • 24/7 Support • New Items Added Daily • Secure Payments Active
+<div class="w-full bg-slate-900/80 border-b border-white/5 py-2.5 mb-8 overflow-hidden relative">
+    <div class="whitespace-nowrap animate-marquee text-[10px] text-blue-400 font-bold tracking-widest uppercase flex items-center gap-3 px-4">
+        <i class="fas fa-star text-blue-400 text-[8px]"></i>
+        Welcome to DigitalMM &nbsp;•&nbsp; Instant Delivery &nbsp;•&nbsp; 24/7 Support &nbsp;•&nbsp; New Items Added Daily &nbsp;•&nbsp; Secure Payments Active &nbsp;•&nbsp; <i class="fas fa-star text-blue-400 text-[8px]"></i>
     </div>
 </div>
 
-<div class="home-page-shell max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pb-16">
-    
-    <!-- User Greeting -->
-    <div class="mb-12">
-        <div class="flex flex-col md:flex-row md:items-end justify-between gap-6">
-            <div class="flex-1">
-                <div class="flex items-center gap-3 mb-4">
-                    <span class="text-[10px] font-bold text-slate-500 uppercase tracking-widest bg-slate-800/50 px-3 py-1 rounded-full border border-white/5">Personal Hub</span>
+<div class="home-page-shell max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pb-20">
+
+    <!-- Greeting -->
+    <div class="mb-10 flex flex-col sm:flex-row sm:items-end justify-between gap-5">
+        <div>
+            <p class="text-[10px] font-bold text-slate-500 uppercase tracking-widest mb-2">Personal Hub</p>
+            <h2 class="text-3xl md:text-4xl font-black text-white tracking-tight leading-tight">
+                Hello, <span class="text-blue-400"><?php echo htmlspecialchars($first_name); ?></span>
+            </h2>
+            <p class="text-slate-400 text-sm mt-2 max-w-lg leading-relaxed">Discover the best digital deals, handpicked just for you.</p>
+        </div>
+        <?php if (is_logged_in()): ?>
+        <div class="flex items-center gap-1 bg-slate-800/40 border border-white/5 rounded-2xl overflow-hidden shadow-lg shrink-0">
+            <div class="px-5 py-3 border-r border-white/5 text-center">
+                <p class="text-[9px] text-slate-500 font-bold uppercase tracking-widest">Orders</p>
+                <p class="text-xl font-black text-white mt-0.5"><?php echo $user_stats['active_orders']; ?></p>
+            </div>
+            <div class="px-5 py-3 text-center">
+                <p class="text-[9px] text-slate-500 font-bold uppercase tracking-widest">Discount</p>
+                <p class="text-xl font-black text-emerald-400 mt-0.5"><?php echo $discount; ?>%</p>
+            </div>
+        </div>
+        <?php endif; ?>
+    </div>
+
+    <!-- ══ HERO LANDING: Banner + Categories ══ -->
+    <div class="hero-grid">
+
+        <!-- Banner Slider -->
+        <div class="banner-wrap">
+            <?php if (!empty($banners)): ?>
+            <div class="banner-track" id="bannerTrack">
+                <?php foreach ($banners as $i => $banner): ?>
+                <div class="banner-slide <?php echo $i === 0 ? 'active' : ''; ?>" data-slide="<?php echo $i; ?>">
+                    <img src="<?php echo BASE_URL . $banner['image_path']; ?>"
+                         alt="<?php echo htmlspecialchars($banner['title']); ?>"
+                         loading="<?php echo $i === 0 ? 'eager' : 'lazy'; ?>">
+                    <div class="banner-overlay">
+                        <div style="max-width:520px">
+                            <h2 class="banner-title"><?php echo htmlspecialchars($banner['title']); ?></h2>
+                            <?php if (!empty($banner['target_url'])): ?>
+                            <a href="<?php echo $banner['target_url']; ?>" class="banner-cta">
+                                Explore Now <i class="fas fa-arrow-right text-xs"></i>
+                            </a>
+                            <?php endif; ?>
+                        </div>
+                    </div>
                 </div>
-                <h2 class="text-3xl md:text-5xl font-bold text-white tracking-tight leading-tight">
-                    Hello, <span class="text-blue-500"><?php echo htmlspecialchars($first_name); ?></span>
-                </h2>
-                <p class="text-slate-400 text-sm mt-4 font-medium max-w-2xl leading-relaxed">Discover the best digital deals, handpicked just for you. Your next favorite game or tool is just a click away.</p>
+                <?php endforeach; ?>
             </div>
 
-            <?php if(is_logged_in()): ?>
-            <div class="flex items-center gap-4 bg-slate-800/30 border border-white/5 p-2 rounded-2xl shadow-xl">
-                <div class="px-5 py-2 border-r border-white/5">
-                    <p class="text-[9px] text-slate-500 font-bold uppercase tracking-widest mb-1">Orders</p>
-                    <p class="text-lg font-bold text-white"><?php echo $user_stats['active_orders']; ?></p>
-                </div>
-                <div class="px-5 py-2">
-                    <p class="text-[9px] text-slate-500 font-bold uppercase tracking-widest mb-1">Discount</p>
-                    <p class="text-lg font-bold text-emerald-400"><?php echo $discount; ?>%</p>
+            <!-- Arrows -->
+            <button class="banner-prev banner-arrow" onclick="bannerSlide(-1)" aria-label="Previous">
+                <i class="fas fa-chevron-left text-sm"></i>
+            </button>
+            <button class="banner-next banner-arrow" onclick="bannerSlide(1)" aria-label="Next">
+                <i class="fas fa-chevron-right text-sm"></i>
+            </button>
+
+            <!-- Dots -->
+            <div class="banner-dots">
+                <?php foreach ($banners as $i => $banner): ?>
+                <div class="banner-dot <?php echo $i === 0 ? 'active' : ''; ?>" onclick="bannerGoTo(<?php echo $i; ?>)"></div>
+                <?php endforeach; ?>
+            </div>
+
+            <?php else: ?>
+            <!-- Fallback when no banners -->
+            <div class="banner-track flex items-center justify-center bg-gradient-to-br from-slate-900 to-slate-800">
+                <div class="text-center px-8">
+                    <div class="w-16 h-16 rounded-2xl bg-blue-600/20 flex items-center justify-center mx-auto mb-4">
+                        <i class="fas fa-store text-2xl text-blue-400"></i>
+                    </div>
+                    <h2 class="text-2xl font-black text-white mb-2">DigitalMM Store</h2>
+                    <p class="text-slate-400 text-sm">Premium digital products, instant delivery.</p>
                 </div>
             </div>
             <?php endif; ?>
         </div>
-    </div>
 
-    <!-- SECTION 0: BANNER SLIDER -->
-    <?php if(!empty($banners)): ?>
-    <style>
-        .banner-slider-container {
-            position: relative;
-            width: 100%;
-            max-width: 1440px;
-            margin: 0 auto 4rem auto;
-            border-radius: 24px;
-            overflow: hidden;
-            background: transparent;
-        }
+        <!-- Categories Panel -->
+        <div class="cat-panel">
+            <div class="cat-panel-header">
+                <span><i class="fas fa-th-large mr-2 text-blue-500/70"></i>Shop by Category</span>
+                <a href="index.php?module=shop&page=search" class="text-blue-500 hover:text-blue-400 text-[9px] font-bold tracking-widest transition">View All →</a>
+            </div>
 
-        .banner-slider-track {
-            display: flex;
-            height: 420px;
-            width: 100%;
-            position: relative;
-            border-radius: 24px;
-            overflow: hidden;
-            box-shadow: 0 20px 50px rgba(0, 0, 0, 0.3);
-        }
-
-        .banner-slide {
-            position: absolute;
-            width: 100%;
-            height: 100%;
-            border-radius: 24px;
-            opacity: 0;
-            transition: opacity 0.8s ease-in-out;
-            top: 0;
-            left: 0;
-        }
-
-        .banner-slide.active {
-            opacity: 1;
-            z-index: 10;
-        }
-
-        .banner-slide img {
-            width: 100%;
-            height: 100%;
-            object-fit: cover;
-        }
-
-        .banner-overlay {
-            position: absolute;
-            inset: 0;
-            background: linear-gradient(135deg, rgba(11, 15, 26, 0.4) 0%, rgba(11, 15, 26, 0.2) 50%, transparent 100%);
-            display: flex;
-            flex-direction: column;
-            justify-content: flex-end;
-            padding: 2rem 2rem 3rem 2rem;
-            z-index: 2;
-        }
-
-        .banner-content {
-            max-width: 600px;
-        }
-
-        .banner-title {
-            font-size: 2.5rem;
-            font-weight: 900;
-            color: white;
-            margin-bottom: 1rem;
-            text-shadow: 0 4px 12px rgba(0, 0, 0, 0.5);
-            line-height: 1.2;
-        }
-
-        .banner-slide.active .banner-title {
-            animation: slideInUp 0.6s ease-out 0.2s both;
-        }
-
-        .banner-cta {
-            display: inline-flex;
-            align-items: center;
-            gap: 0.5rem;
-            padding: 0.75rem 1.5rem;
-            background: linear-gradient(135deg, #3b82f6 0%, #2563eb 100%);
-            color: white;
-            font-weight: 700;
-            font-size: 0.875rem;
-            border-radius: 12px;
-            text-decoration: none;
-            transition: all 0.3s ease;
-            box-shadow: 0 4px 15px rgba(59, 130, 246, 0.4);
-        }
-
-        .banner-slide.active .banner-cta {
-            animation: slideInUp 0.6s ease-out 0.4s both;
-        }
-
-        .banner-cta:hover {
-            background: linear-gradient(135deg, #2563eb 0%, #1d4ed8 100%);
-            transform: translateY(-2px);
-            box-shadow: 0 6px 20px rgba(59, 130, 246, 0.6);
-        }
-
-        .banner-nav {
-            position: absolute;
-            bottom: 1.5rem;
-            right: 1.5rem;
-            display: flex;
-            gap: 0.75rem;
-            z-index: 20;
-        }
-
-        .banner-dot {
-            width: 10px;
-            height: 10px;
-            border-radius: 50%;
-            background: rgba(255, 255, 255, 0.4);
-            border: 2px solid rgba(255, 255, 255, 0.6);
-            cursor: pointer;
-            transition: all 0.3s ease;
-        }
-
-        .banner-dot.active {
-            background: white;
-            width: 28px;
-            border-radius: 5px;
-            border-color: white;
-        }
-
-        .banner-arrow {
-            position: absolute;
-            top: 50%;
-            transform: translateY(-50%);
-            width: 44px;
-            height: 44px;
-            background: rgba(255, 255, 255, 0.15);
-            border: 1px solid rgba(255, 255, 255, 0.3);
-            border-radius: 50%;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            color: white;
-            cursor: pointer;
-            z-index: 15;
-            transition: all 0.3s ease;
-            font-size: 1.25rem;
-        }
-
-        .banner-arrow:hover {
-            background: rgba(255, 255, 255, 0.25);
-            border-color: rgba(255, 255, 255, 0.5);
-        }
-
-        .banner-prev {
-            left: 1.5rem;
-        }
-
-        .banner-next {
-            right: 1.5rem;
-        }
-
-        @keyframes slideInUp {
-            from {
-                opacity: 0;
-                transform: translateY(20px);
-            }
-            to {
-                opacity: 1;
-                transform: translateY(0);
-            }
-        }
-
-        @media (max-width: 768px) {
-            .banner-slider-track {
-                height: 280px;
-            }
-
-            .banner-title {
-                font-size: 1.5rem;
-                margin-bottom: 0.75rem;
-            }
-
-            .banner-overlay {
-                padding: 1.5rem 1rem 2rem 1rem;
-            }
-
-            .banner-arrow {
-                width: 36px;
-                height: 36px;
-                font-size: 1rem;
-            }
-
-            .banner-prev {
-                left: 1rem;
-            }
-
-            .banner-next {
-                right: 1rem;
-            }
-
-            .banner-nav {
-                bottom: 1rem;
-                right: 1rem;
-            }
-        }
-    </style>
-
-    <div class="banner-slider-container">
-        <div class="banner-slider-track" id="bannerSlider">
-            <?php foreach($banners as $index => $banner): ?>
-            <div class="banner-slide <?php echo $index === 0 ? 'active' : ''; ?>" data-slide="<?php echo $index; ?>">
-                <img src="<?php echo BASE_URL . $banner['image_path']; ?>" alt="<?php echo htmlspecialchars($banner['title']); ?>" loading="lazy">
-                <div class="banner-overlay">
-                    <div class="banner-content">
-                        <h2 class="banner-title"><?php echo htmlspecialchars($banner['title']); ?></h2>
-                        <?php if(!empty($banner['target_url'])): ?>
-                        <a href="<?php echo $banner['target_url']; ?>" class="banner-cta">
-                            Explore Now <i class="fas fa-arrow-right"></i>
-                        </a>
+            <div class="cat-grid-scroll" id="categorySlider">
+                <?php foreach ($categories as $cat):
+                    $cat_url = 'index.php?module=shop&page=category&id=' . $cat['id'];
+                ?>
+                <a href="<?php echo $cat_url; ?>" class="cat-card">
+                    <div class="cat-img-ring">
+                        <?php if (!empty($cat['image_url'])): ?>
+                            <img src="<?php echo BASE_URL . $cat['image_url']; ?>"
+                                 alt="<?php echo htmlspecialchars($cat['name']); ?>"
+                                 loading="lazy">
+                        <?php else: ?>
+                            <div class="cat-icon"><i class="fas fa-cube"></i></div>
                         <?php endif; ?>
                     </div>
-                </div>
-            </div>
-            <?php endforeach; ?>
-        </div>
-
-        <!-- Navigation Arrows -->
-        <div class="banner-prev banner-arrow" onclick="bannerSlide(-1);">
-            <i class="fas fa-chevron-left"></i>
-        </div>
-        <div class="banner-next banner-arrow" onclick="bannerSlide(1);">
-            <i class="fas fa-chevron-right"></i>
-        </div>
-
-        <!-- Navigation Dots -->
-        <div class="banner-nav">
-            <?php foreach($banners as $index => $banner): ?>
-            <div class="banner-dot <?php echo $index === 0 ? 'active' : ''; ?>" onclick="bannerGoTo(<?php echo $index; ?>);"></div>
-            <?php endforeach; ?>
-        </div>
-    </div>
-
-    <script>
-        let currentBannerSlide = 0;
-        const bannerTotalSlides = document.querySelectorAll('.banner-slide').length;
-        let bannerAutoPlayInterval;
-
-        function showBannerSlide(n) {
-            const slides = document.querySelectorAll('.banner-slide');
-            const dots = document.querySelectorAll('.banner-dot');
-
-            if(n >= bannerTotalSlides) { currentBannerSlide = 0; }
-            if(n < 0) { currentBannerSlide = bannerTotalSlides - 1; }
-
-            slides.forEach(slide => slide.classList.remove('active'));
-            dots.forEach(dot => dot.classList.remove('active'));
-
-            slides[currentBannerSlide].classList.add('active');
-            dots[currentBannerSlide].classList.add('active');
-
-            clearInterval(bannerAutoPlayInterval);
-            bannerAutoPlayInterval = setInterval(() => bannerSlide(1), 6000);
-        }
-
-        function bannerSlide(n) {
-            currentBannerSlide += n;
-            showBannerSlide(currentBannerSlide);
-        }
-
-        function bannerGoTo(n) {
-            currentBannerSlide = n;
-            showBannerSlide(currentBannerSlide);
-        }
-
-        // Auto-play banners
-        showBannerSlide(currentBannerSlide);
-    </script>
-    <?php endif; ?>
-
-            <div class="lg:w-1/3 flex flex-col gap-6">
-                <?php for($i=1; $i<min(3, count($best_sellers)); $i++): 
-                    $p = $best_sellers[$i];
-                ?>
-                <a href="<?php echo product_public_url($p); ?>" class="flex-1 bg-slate-800/30 border border-white/5 rounded-[2rem] p-6 group hover:border-blue-500/30 transition-all flex items-center gap-6">
-                    <div class="w-20 h-20 rounded-2xl bg-slate-900 border border-white/5 overflow-hidden shrink-0 shadow-lg">
-                        <img src="<?php echo BASE_URL . ($p['image_path'] ?: $p['cat_image']); ?>" class="w-full h-full object-cover opacity-80 group-hover:opacity-100 transition-opacity" loading="lazy">
-                    </div>
-                    <div class="min-w-0">
-                        <h4 class="text-white font-bold mb-1 truncate group-hover:text-blue-400 transition-colors"><?php echo htmlspecialchars($p['name']); ?></h4>
-                        <p class="text-slate-500 text-xs font-medium">Customer Favorite</p>
-                    </div>
+                    <span class="cat-name"><?php echo htmlspecialchars($cat['name']); ?></span>
                 </a>
-                <?php endfor; ?>
+                <?php endforeach; ?>
             </div>
         </div>
-    </div>
 
-    <!-- SECTION 3: Flash Sales -->
-    <?php if(!empty($flash_sales)): ?>
+    </div><!-- /hero-grid -->
+
+    <!-- ══ FLASH SALES ══ -->
+    <?php if (!empty($flash_sales)): ?>
     <div class="mb-16">
-        <div class="flex flex-col sm:flex-row sm:items-center justify-between mb-6 gap-3">
-            <h2 class="text-2xl md:text-3xl font-black text-white tracking-tight">Flash Sales</h2>
-            <div class="text-[10px] md:text-xs font-mono text-red-400 font-bold bg-red-900/10 px-4 py-2 rounded-xl border border-red-900/30 uppercase tracking-widest flex items-center gap-2">
-                <i class="fas fa-stopwatch"></i> Limited Offers
+        <div class="section-heading">
+            <div>
+                <h2 class="section-title">Flash Sales</h2>
+                <p class="text-slate-500 text-xs mt-1">Limited-time offers — grab them fast</p>
             </div>
+            <span class="section-badge text-red-400 bg-red-500/10 border border-red-500/20">
+                <i class="fas fa-stopwatch mr-1"></i>Limited
+            </span>
         </div>
-        <div class="grid grid-cols-2 lg:grid-cols-4 gap-4 sm:gap-6">
-            <?php foreach($flash_sales as $product): 
-                include __DIR__ . '/product_card.php'; 
+        <div class="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-5">
+            <?php foreach ($flash_sales as $product):
+                include __DIR__ . '/product_card.php';
             endforeach; ?>
         </div>
     </div>
     <?php endif; ?>
 
-    <!-- SECTION 4: Features -->
-    <div class="grid grid-cols-1 md:grid-cols-3 gap-4 sm:gap-6 mb-16 mt-8 sm:mt-10">
-        <div class="bg-slate-900/60 border border-slate-700/50 p-6 sm:p-8 rounded-3xl flex flex-col items-center text-center gap-4">
-            <div class="w-16 h-16 rounded-2xl bg-green-500/10 flex items-center justify-center text-green-500 text-3xl">
+    <!-- ══ FEATURES ══ -->
+    <div class="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-16">
+        <div class="feature-card">
+            <div class="w-14 h-14 rounded-2xl bg-emerald-500/10 flex items-center justify-center text-emerald-400 text-2xl">
                 <i class="fas fa-bolt"></i>
             </div>
-            <div class="text-sm font-black text-white uppercase tracking-widest">Instant Delivery</div>
-            <p class="text-xs text-slate-400">Products are sent to you right after payment.</p>
-        </div>
-        <div class="bg-slate-900/60 border border-slate-700/50 p-6 sm:p-8 rounded-3xl flex flex-col items-center text-center gap-4">
-            <div class="w-16 h-16 rounded-2xl bg-blue-500/10 flex items-center justify-center text-blue-500 text-3xl">
-                <i class="fas fa-check-circle"></i>
+            <div>
+                <p class="text-sm font-black text-white uppercase tracking-widest mb-1">Instant Delivery</p>
+                <p class="text-xs text-slate-500 leading-relaxed">Products sent right after payment confirmation.</p>
             </div>
-            <div class="text-sm font-black text-white uppercase tracking-widest">100% Warranty</div>
-            <p class="text-xs text-slate-400">We provide a full warranty for all purchases.</p>
         </div>
-        <div class="bg-slate-900/60 border border-slate-700/50 p-6 sm:p-8 rounded-3xl flex flex-col items-center text-center gap-4">
-            <div class="w-16 h-16 rounded-2xl bg-yellow-500/10 flex items-center justify-center text-yellow-500 text-3xl">
+        <div class="feature-card">
+            <div class="w-14 h-14 rounded-2xl bg-blue-500/10 flex items-center justify-center text-blue-400 text-2xl">
+                <i class="fas fa-shield-halved"></i>
+            </div>
+            <div>
+                <p class="text-sm font-black text-white uppercase tracking-widest mb-1">100% Warranty</p>
+                <p class="text-xs text-slate-500 leading-relaxed">Full warranty guaranteed on every purchase.</p>
+            </div>
+        </div>
+        <div class="feature-card">
+            <div class="w-14 h-14 rounded-2xl bg-amber-500/10 flex items-center justify-center text-amber-400 text-2xl">
                 <i class="fas fa-wallet"></i>
             </div>
-            <div class="text-sm font-black text-white uppercase tracking-widest">Easy Payments</div>
-            <p class="text-xs text-slate-400">We accept KBZPay and WavePay instantly.</p>
+            <div>
+                <p class="text-sm font-black text-white uppercase tracking-widest mb-1">Easy Payments</p>
+                <p class="text-xs text-slate-500 leading-relaxed">KBZPay & WavePay accepted instantly.</p>
+            </div>
         </div>
     </div>
 
-    <!-- SECTION 5: Recent Arrivals -->
+    <!-- ══ NEW ARRIVALS ══ -->
     <div class="mb-20">
-        <div class="flex items-end justify-between mb-10">
+        <div class="section-heading mb-10">
             <div>
-                <h2 class="text-2xl font-bold text-white tracking-tight">New Arrivals</h2>
-                <p class="text-slate-500 text-sm mt-2">Explore the latest additions to our store</p>
+                <h2 class="section-title">New Arrivals</h2>
+                <p class="text-slate-500 text-xs mt-1">Latest additions to our catalog</p>
             </div>
-            <a href="index.php?module=shop&page=search" class="text-blue-400 hover:text-white text-sm font-bold transition flex items-center gap-2">
+            <a href="index.php?module=shop&page=search" class="text-blue-400 hover:text-white text-xs font-bold transition flex items-center gap-1.5">
                 Browse All <i class="fas fa-arrow-right text-[10px]"></i>
             </a>
         </div>
-        <div class="grid grid-cols-2 lg:grid-cols-4 gap-4 sm:gap-6">
-            <?php foreach($recent_products as $product): 
-                include __DIR__ . '/product_card.php'; 
+        <div class="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-5">
+            <?php foreach ($recent_products as $product):
+                include __DIR__ . '/product_card.php';
             endforeach; ?>
         </div>
     </div>
 
-    <!-- SECTION 6: Recent Activity -->
-    <div class="bg-slate-800/30 border border-white/5 rounded-[2.5rem] p-10">
-        <div class="flex items-center justify-between mb-10">
-            <h3 class="text-xl font-bold text-white flex items-center gap-4">
+    <!-- ══ RECENT PURCHASES ══ -->
+    <div class="bg-slate-800/25 border border-white/5 rounded-[2rem] p-6 sm:p-10">
+        <div class="flex items-center justify-between mb-8">
+            <h3 class="text-lg font-black text-white flex items-center gap-3">
                 <i class="fas fa-shopping-bag text-blue-500"></i> Recent Purchases
             </h3>
-            <span class="flex items-center gap-2 text-emerald-400 text-[10px] font-bold uppercase tracking-widest bg-emerald-500/10 px-3 py-1 rounded-full border border-emerald-500/20">
+            <span class="flex items-center gap-2 text-emerald-400 text-[9px] font-bold uppercase tracking-widest bg-emerald-500/10 px-3 py-1.5 rounded-full border border-emerald-500/20">
                 <span class="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse"></span> Live
             </span>
         </div>
-        <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6" id="activityFeed">
-            <?php foreach($recent_activity as $act): 
+        <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4" id="activityFeed">
+            <?php foreach ($recent_activity as $act):
                 $u_safe = substr($act['username'], 0, 1) . '***' . substr($act['username'], -1);
             ?>
-            <div class="flex items-center gap-5 p-5 bg-slate-900/40 rounded-2xl border border-white/5">
-                <div class="w-10 h-10 rounded-full bg-slate-800 flex items-center justify-center text-slate-500 text-sm shrink-0">
+            <div class="flex items-center gap-4 p-4 bg-slate-900/40 rounded-2xl border border-white/5">
+                <div class="w-9 h-9 rounded-full bg-slate-800 flex items-center justify-center text-slate-500 text-xs shrink-0">
                     <i class="fas fa-user"></i>
                 </div>
                 <div class="min-w-0">
-                    <p class="text-sm font-bold text-slate-200 truncate">Customer <span class="text-blue-400">@<?php echo $u_safe; ?></span></p>
-                    <p class="text-[11px] text-slate-500 mt-0.5 truncate">Purchased <b><?php echo htmlspecialchars($act['item_name']); ?></b></p>
+                    <p class="text-sm font-bold text-slate-200 truncate">
+                        Customer <span class="text-blue-400">@<?php echo $u_safe; ?></span>
+                    </p>
+                    <p class="text-[11px] text-slate-500 mt-0.5 truncate">
+                        Purchased <b><?php echo htmlspecialchars($act['item_name']); ?></b>
+                    </p>
                 </div>
             </div>
             <?php endforeach; ?>
         </div>
     </div>
-</div>
+
+</div><!-- /home-page-shell -->
 
 <script>
+/* ── Banner Slider ─────────────────────────────── */
+(function() {
+    let current = 0;
+    const slides = document.querySelectorAll('.banner-slide');
+    const dots   = document.querySelectorAll('.banner-dot');
+    let timer;
+
+    if (!slides.length) return;
+
+    function show(n) {
+        if (n >= slides.length) n = 0;
+        if (n < 0) n = slides.length - 1;
+        current = n;
+        slides.forEach((s, i) => s.classList.toggle('active', i === current));
+        dots.forEach((d, i)   => d.classList.toggle('active', i === current));
+        clearInterval(timer);
+        timer = setInterval(() => show(current + 1), 6000);
+    }
+
+    window.bannerSlide  = (n) => show(current + n);
+    window.bannerGoTo   = (n) => show(n);
+
+    // Swipe support
+    const track = document.getElementById('bannerTrack');
+    if (track) {
+        let sx = 0;
+        track.addEventListener('touchstart', e => { sx = e.touches[0].clientX; }, { passive: true });
+        track.addEventListener('touchend',   e => {
+            const dx = e.changedTouches[0].clientX - sx;
+            if (Math.abs(dx) > 40) show(current + (dx < 0 ? 1 : -1));
+        }, { passive: true });
+    }
+
+    show(0);
+})();
+
+/* ── Activity Feed Live Ticker ─────────────────── */
 document.addEventListener('DOMContentLoaded', () => {
+    const feed  = document.getElementById('activityFeed');
+    const items = [
+        {u:'k***n', i:'Steam Wallet Card'},
+        {u:'m***a', i:'ChatGPT Plus'},
+        {u:'o***7', i:'Netflix Premium'},
+        {u:'z***1', i:'Spotify Premium'},
+        {u:'t***y', i:'YouTube Premium'},
+    ];
 
-    // 2. CATEGORY SLIDER
-    const cSlider = document.getElementById('categorySlider');
-    const cProgress = document.getElementById('catScrollProgress');
-    if(cSlider && cProgress) {
-        const updateCategoryProgress = () => {
-            const max = cSlider.scrollWidth - cSlider.clientWidth;
-            cProgress.style.width = max > 0 ? ((cSlider.scrollLeft / max) * 100) + '%' : '0%';
-        };
-        cSlider.addEventListener('scroll', updateCategoryProgress, { passive: true });
-        updateCategoryProgress();
-
-        const catNext = document.getElementById('catNext');
-        const catPrev = document.getElementById('catPrev');
-        if(catNext) catNext.onclick = () => cSlider.scrollBy({ left: Math.max(260, cSlider.clientWidth * 0.8), behavior: 'smooth' });
-        if(catPrev) catPrev.onclick = () => cSlider.scrollBy({ left: -Math.max(260, cSlider.clientWidth * 0.8), behavior: 'smooth' });
-    }
-
-    // 3. ACTIVITY SIMULATOR
-    const feed = document.getElementById('activityFeed');
-    if(feed) {
-        const items = [{u:'k***n', i:'Steam Card'}, {u:'m***a', i:'ChatGPT'}, {u:'o***7', i:'Netflix'}, {u:'z***1', i:'Spotify'}];
-        setInterval(() => {
-            if(Math.random() > 0.8) {
-                const item = items[Math.floor(Math.random() * items.length)];
-                const html = `<div class="flex items-center justify-between gap-4 p-4 bg-slate-800/40 rounded-2xl border border-blue-500/10 animate-fade-in-up">
-                    <div class="flex items-center gap-3 min-w-0">
-                        <div class="w-8 h-8 rounded-full bg-slate-900 flex items-center justify-center border border-slate-700 text-blue-400 shrink-0"><i class="fas fa-shopping-cart text-[10px]"></i></div>
-                        <div class="min-w-0">
-                            <p class="text-xs font-bold text-white truncate">Customer <span class="text-blue-400">@${item.u}</span></p>
-                            <p class="text-[10px] text-slate-500 truncate">Bought <b>${item.i}</b></p>
-                        </div>
-                    </div>
-                    <div class="text-right shrink-0"><span class="text-[9px] text-blue-500 font-mono">JUST NOW</span></div>
-                </div>`;
-                feed.insertAdjacentHTML('afterbegin', html);
-                if(feed.children.length > 9) feed.lastElementChild.remove();
-            }
-        }, 15000);
-    }
+    if (!feed) return;
+    setInterval(() => {
+        if (Math.random() > 0.75) {
+            const it = items[Math.floor(Math.random() * items.length)];
+            const el = document.createElement('div');
+            el.className = 'activity-new flex items-center gap-4 p-4 bg-slate-900/40 rounded-2xl border border-blue-500/10';
+            el.innerHTML = `
+                <div class="w-9 h-9 rounded-full bg-slate-800 flex items-center justify-center text-blue-400 text-xs shrink-0">
+                    <i class="fas fa-shopping-cart"></i>
+                </div>
+                <div class="min-w-0">
+                    <p class="text-sm font-bold text-slate-200 truncate">Customer <span class="text-blue-400">@${it.u}</span></p>
+                    <p class="text-[11px] text-slate-500 mt-0.5 truncate">Purchased <b>${it.i}</b></p>
+                </div>
+                <div class="ml-auto shrink-0"><span class="text-[9px] text-blue-500 font-mono tracking-widest">JUST NOW</span></div>`;
+            feed.prepend(el);
+            if (feed.children.length > 9) feed.lastElementChild.remove();
+        }
+    }, 14000);
 });
 </script>

@@ -11,6 +11,11 @@ $message = 'Invalid request.';
 $user_email = '';
 $username = '';
 
+$redirect_login_url = 'index.php?module=auth&page=login';
+if (!empty($_SESSION['resume_url'])) {
+    $redirect_login_url .= '&redirect=' . urlencode($_SESSION['resume_url']);
+}
+
 if (!empty($token)) {
     // 1. Check Token against DB
     $stmt = $pdo->prepare("SELECT id, username, email FROM users WHERE verify_token = ?");
@@ -169,7 +174,7 @@ if (!empty($token)) {
             <p class="text-slate-400 mb-8 leading-relaxed text-sm"><?php echo $message; ?></p>
             
             <div class="space-y-5">
-                <a href="index.php?module=auth&page=login" class="block w-full bg-gradient-to-r from-blue-600 to-[#00f0ff] hover:from-blue-500 hover:to-[#00f0ff] text-slate-900 font-black py-4 rounded-xl shadow-[0_0_20px_rgba(0,240,255,0.3)] transform transition active:scale-[0.98] text-sm uppercase tracking-widest flex items-center justify-center gap-2 group">
+                <a href="<?php echo htmlspecialchars($redirect_login_url); ?>" class="block w-full bg-gradient-to-r from-blue-600 to-[#00f0ff] hover:from-blue-500 hover:to-[#00f0ff] text-slate-900 font-black py-4 rounded-xl shadow-[0_0_20px_rgba(0,240,255,0.3)] transform transition active:scale-[0.98] text-sm uppercase tracking-widest flex items-center justify-center gap-2 group">
                     <span>Initialize Login</span>
                     <i class="fas fa-sign-in-alt group-hover:translate-x-1 transition-transform"></i>
                 </a>
@@ -188,7 +193,7 @@ if (!empty($token)) {
                     if(countdownEl) countdownEl.innerText = timeLeft;
                     if (timeLeft <= 0) {
                         clearInterval(timer);
-                        window.location.href = 'index.php?module=auth&page=login';
+                        window.location.href = '<?php echo addslashes($redirect_login_url); ?>';
                     }
                 }, 1000);
             </script>
@@ -214,7 +219,7 @@ if (!empty($token)) {
                 <a href="index.php?module=auth&page=verify_resend" class="block w-full bg-blue-600 hover:bg-blue-500 text-white font-bold py-3.5 rounded-xl transition shadow-lg shadow-blue-900/20 text-sm uppercase tracking-wider flex justify-center items-center gap-2">
                     <i class="fas fa-redo"></i> Request New Link
                 </a>
-                <a href="index.php?module=auth&page=login" class="block w-full bg-slate-800 hover:bg-slate-700 border border-slate-600 text-slate-300 hover:text-white font-bold py-3.5 rounded-xl transition text-sm uppercase tracking-wider">
+                <a href="<?php echo htmlspecialchars($redirect_login_url); ?>" class="block w-full bg-slate-800 hover:bg-slate-700 border border-slate-600 text-slate-300 hover:text-white font-bold py-3.5 rounded-xl transition text-sm uppercase tracking-wider">
                     Proceed to Login
                 </a>
             </div>

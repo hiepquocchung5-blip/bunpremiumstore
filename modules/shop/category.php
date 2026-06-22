@@ -122,6 +122,45 @@ function get_page_url($page_num) {
 <style>
     .hide-scrollbar::-webkit-scrollbar { display: none; }
     .hide-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
+
+    /* Layout transition swap styles */
+    #productsGridContainer.list-view {
+        grid-template-columns: repeat(1, minmax(0, 1fr)) !important;
+    }
+    
+    @keyframes cardSwapAnim {
+        from {
+            opacity: 0;
+            transform: scale(0.97) translateY(8px);
+        }
+        to {
+            opacity: 1;
+            transform: scale(1) translateY(0);
+        }
+    }
+    
+    .swap-active .dm-card {
+        animation: cardSwapAnim 0.35s cubic-bezier(0.16, 1, 0.3, 1) both;
+    }
+    
+    @media (min-width: 640px) {
+        #productsGridContainer.list-view .dm-card {
+            flex-direction: row !important;
+            align-items: stretch;
+            height: auto;
+        }
+        #productsGridContainer.list-view .dm-card > div:first-child {
+            width: 220px !important;
+            height: auto !important;
+            aspect-ratio: auto !important;
+            flex-shrink: 0;
+        }
+        #productsGridContainer.list-view .dm-card > div:nth-child(2) {
+            flex-grow: 1;
+            display: flex;
+            flex-direction: column;
+        }
+    }
 </style>
 
 <!-- Background -->
@@ -229,9 +268,21 @@ function get_page_url($page_num) {
 
             <!-- Toolbar (Sorting, Filters & Meta) -->
             <div class="bg-slate-800/20 border border-white/5 rounded-2xl p-4 flex flex-col md:flex-row justify-between items-center gap-4 z-10 relative">
-                <p class="text-xs text-slate-400 font-medium">
-                    Showing <span class="text-white font-bold"><?php echo min($total_items, $offset + 1); ?> - <?php echo min($total_items, $offset + $items_per_page); ?></span> of <span class="text-blue-400 font-bold"><?php echo $total_items; ?></span>
-                </p>
+                <div class="flex items-center gap-4 w-full md:w-auto justify-between md:justify-start">
+                    <p class="text-xs text-slate-400 font-medium">
+                        Showing <span class="text-white font-bold"><?php echo min($total_items, $offset + 1); ?> - <?php echo min($total_items, $offset + $items_per_page); ?></span> of <span class="text-blue-400 font-bold"><?php echo $total_items; ?></span>
+                    </p>
+                    
+                    <!-- Layout Toggle Buttons -->
+                    <div class="flex items-center gap-1 bg-slate-900/60 p-1 rounded-xl border border-white/5">
+                        <button id="gridLayoutBtn" type="button" class="w-8 h-8 rounded-lg flex items-center justify-center text-xs transition-all" title="Grid View">
+                            <i class="fas fa-th-large"></i>
+                        </button>
+                        <button id="listLayoutBtn" type="button" class="w-8 h-8 rounded-lg flex items-center justify-center text-xs transition-all" title="List View">
+                            <i class="fas fa-list"></i>
+                        </button>
+                    </div>
+                </div>
                 
                 <form id="filterForm" method="GET" class="flex flex-wrap items-center justify-center gap-3 w-full md:w-auto">
                     <input type="hidden" name="module" value="shop">
@@ -264,7 +315,7 @@ function get_page_url($page_num) {
                     <p class="text-slate-500 max-w-sm mx-auto mb-8 text-sm leading-relaxed">There are currently no items available in this category with the selected filters.</p>
                 </div>
             <?php else: ?>
-                <div class="grid grid-cols-2 lg:grid-cols-4 gap-4 sm:gap-6 relative z-10">
+                <div id="productsGridContainer" class="grid grid-cols-2 lg:grid-cols-4 gap-4 sm:gap-6 relative z-10 transition-all duration-300">
                     <?php foreach($products as $product): ?>
                         <?php include __DIR__ . '/../home/product_card.php'; ?>
                     <?php endforeach; ?>
@@ -319,5 +370,39 @@ function get_page_url($page_num) {
             sidebar.classList.add('hidden');
             document.body.style.overflow = '';
         });
+    }
+
+    // Layout Switcher Logic
+    const gridLayoutBtn = document.getElementById('gridLayoutBtn');
+    const listLayoutBtn = document.getElementById('listLayoutBtn');
+    const productsGridContainer = document.getElementById('productsGridContainer');
+
+    if (gridLayoutBtn && listLayoutBtn && productsGridContainer) {
+        const setLayout = (layout) => {
+            productsGridContainer.classList.add('swap-active');
+            
+            if (layout === 'list') {
+                productsGridContainer.classList.add('list-view');
+                listLayoutBtn.className = "w-8 h-8 rounded-lg flex items-center justify-center text-xs transition-all text-blue-400 bg-slate-800/80 border border-white/10";
+                gridLayoutBtn.className = "w-8 h-8 rounded-lg flex items-center justify-center text-xs transition-all text-slate-400 hover:text-white";
+            } else {
+                productsGridContainer.classList.remove('list-view');
+                gridLayoutBtn.className = "w-8 h-8 rounded-lg flex items-center justify-center text-xs transition-all text-blue-400 bg-slate-800/80 border border-white/10";
+                listLayoutBtn.className = "w-8 h-8 rounded-lg flex items-center justify-center text-xs transition-all text-slate-400 hover:text-white";
+            }
+            
+            localStorage.setItem('category_layout', layout);
+            
+            setTimeout(() => {
+                productsGridContainer.classList.remove('swap-active');
+            }, 350);
+        };
+
+        // Initialize from localStorage
+        const currentLayout = localStorage.getItem('category_layout') || 'grid';
+        setLayout(currentLayout);
+
+        gridLayoutBtn.addEventListener('click', () => setLayout('grid'));
+        listLayoutBtn.addEventListener('click', () => setLayout('list'));
     }
 </script>

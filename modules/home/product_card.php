@@ -23,27 +23,26 @@ $product_url = product_public_url($product);
 
 <!-- Entire Card is a Unified Anchor Tag -->
 <a href="<?php echo $product_url; ?>" class="dm-card block rounded-[1.75rem] overflow-hidden group transition-all duration-500 flex flex-col h-full hover:-translate-y-1.5 relative shadow-[0_12px_40px_rgba(0,0,0,0.18)]">
-    
+
     <!-- Image / Icon Header -->
-    <div class="relative aspect-square overflow-hidden bg-slate-900/90">
+    <div class="prod-img-wrap">
         <?php if($has_product_image): ?>
-            <img src="<?php echo BASE_URL . $product['image_path']; ?>" alt="<?php echo htmlspecialchars($product['name']); ?>" class="w-full h-full object-cover transition-transform duration-700 group-hover:scale-110" loading="lazy">
+            <img src="<?php echo BASE_URL . $product['image_path']; ?>" alt="<?php echo htmlspecialchars($product['name']); ?>" class="w-full h-full object-cover transition-transform duration-700 group-hover:scale-105" loading="lazy">
         <?php elseif($has_cat_image): ?>
-            <img src="<?php echo BASE_URL . $product['cat_image']; ?>" alt="Category" class="w-full h-full object-cover transition-transform duration-700 group-hover:scale-110" loading="lazy">
+            <img src="<?php echo BASE_URL . $product['cat_image']; ?>" alt="Category" class="w-full h-full object-cover opacity-70 transition-transform duration-700 group-hover:scale-105" loading="lazy">
         <?php else: ?>
             <div class="w-full h-full flex items-center justify-center text-4xl text-slate-700">
                 <i class="fas <?php echo htmlspecialchars($fallback_icon); ?>"></i>
             </div>
         <?php endif; ?>
-        
+
         <!-- Badges -->
-        <div class="absolute top-3 right-3 flex flex-col gap-2 items-end">
+        <div class="absolute top-2.5 right-2.5 flex flex-col gap-1.5 items-end">
             <?php if($product['sale_price']): ?>
-                <span class="bg-rose-500 text-white text-[10px] font-bold px-3 py-1 rounded-full shadow-lg uppercase tracking-widest">Sale</span>
+                <span class="bg-rose-500 text-white text-[9px] font-bold px-2.5 py-0.5 rounded-full shadow-md uppercase tracking-widest">Sale</span>
             <?php endif; ?>
-            
             <?php if($discount > 0): ?>
-                <span class="bg-amber-500 text-black text-[10px] font-bold px-3 py-1 rounded-full shadow-lg uppercase tracking-widest">-<?php echo $discount; ?>%</span>
+                <span class="bg-amber-500 text-black text-[9px] font-bold px-2.5 py-0.5 rounded-full shadow-md uppercase tracking-widest">-<?php echo $discount; ?>%</span>
             <?php endif; ?>
         </div>
     </div>

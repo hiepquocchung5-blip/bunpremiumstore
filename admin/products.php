@@ -7,6 +7,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['add_product'])) {
         $pdo->beginTransaction();
 
         $name = trim($_POST['name']);
+        $slug = strtolower(trim(preg_replace('/[^A-Za-z0-9]+/', '-', $name), '-'));
         $description = trim($_POST['description']);
         $price = (float) $_POST['price'];
         $sale_price = !empty($_POST['sale_price']) ? (float) $_POST['sale_price'] : NULL;
@@ -46,9 +47,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['add_product'])) {
             }
         }
 
-        // Insert Product (Now includes duration_days)
-        $stmt = $pdo->prepare("INSERT INTO products (category_id, region_id, name, description, price, sale_price, delivery_type, universal_content, form_fields, user_instruction, duration_days, image_path) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)");
-        $stmt->execute([$cat_id, $region_id, $name, $description, $price, $sale_price, $delivery_type, $universal_content, $form_fields, $instruction, $duration_days, $db_image_path]);
+        // Insert Product (Now includes duration_days and slug)
+        $stmt = $pdo->prepare("INSERT INTO products (category_id, region_id, name, slug, description, price, sale_price, delivery_type, universal_content, form_fields, user_instruction, duration_days, image_path) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)");
+        $stmt->execute([$cat_id, $region_id, $name, $slug, $description, $price, $sale_price, $delivery_type, $universal_content, $form_fields, $instruction, $duration_days, $db_image_path]);
         $product_id = $pdo->lastInsertId();
 
         // Handle Keys
