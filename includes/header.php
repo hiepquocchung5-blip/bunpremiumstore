@@ -94,6 +94,21 @@ if (isset($_SESSION['user_id'])) {
             // Fail silently if table doesn't exist yet
         }
     }
+    
+    // Get Wishlist Count for Header Badges
+    $wishlist_count = 0;
+    $cache_key_wishlist = "user_wishlist_count_{$_SESSION['user_id']}";
+    $wishlist_count = matrix_cache_get($cache_key_wishlist);
+    if ($wishlist_count === false) {
+        try {
+            $stmt_wishlist = $pdo->prepare("SELECT COUNT(*) FROM wishlist WHERE user_id = ?");
+            $stmt_wishlist->execute([$_SESSION['user_id']]);
+            $wishlist_count = (int)$stmt_wishlist->fetchColumn();
+            matrix_cache_set($cache_key_wishlist, $wishlist_count, 120); // 2 minute cache
+        } catch (Exception $e) {
+            $wishlist_count = 0;
+        }
+    }
 }
 ?>
 <!DOCTYPE html>
@@ -366,9 +381,14 @@ if (isset($_SESSION['user_id'])) {
                                     <a href="index.php?module=user&page=orders" class="flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm text-slate-300 hover:bg-slate-800 hover:text-white transition">
                                         <i class="fas fa-box w-5 text-slate-500"></i> My Orders
                                     </a>
-                                    <a href="index.php?module=user&page=wishlist" class="flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm text-slate-300 hover:bg-slate-800 hover:text-white transition">
-                                        <i class="fas fa-heart w-5 text-slate-500"></i> Wishlist
-                                    </a>
+                                     <a href="index.php?module=user&page=wishlist" class="flex items-center justify-between px-3 py-2.5 rounded-xl text-sm text-slate-300 hover:bg-slate-800 hover:text-white transition w-full">
+                                         <span class="flex items-center gap-3">
+                                             <i class="fas fa-heart w-5 text-slate-500"></i> Wishlist
+                                         </span>
+                                         <?php if($wishlist_count > 0): ?>
+                                             <span class="bg-rose-500 text-white text-[10px] font-bold px-2 py-0.5 rounded-full min-w-[18px] text-center shadow-md animate-pulse"><?php echo $wishlist_count; ?></span>
+                                         <?php endif; ?>
+                                     </a>
                                     <div class="h-px bg-white/5 my-1"></div>
                                     <a href="index.php?module=auth&page=logout" class="flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm text-rose-400 hover:bg-rose-500/10 transition font-bold">
                                         <i class="fas fa-power-off w-5"></i> Logout
@@ -461,9 +481,14 @@ if (isset($_SESSION['user_id'])) {
                         <i class="fas fa-box text-emerald-400"></i>
                         <span class="text-sm font-semibold">My Orders</span>
                     </a>
-                    <a href="index.php?module=user&page=wishlist" class="flex items-center gap-4 p-4 bg-slate-800/30 rounded-2xl border border-white/5 text-slate-300">
-                        <i class="fas fa-heart text-rose-400"></i>
-                        <span class="text-sm font-semibold">Wishlist</span>
+                    <a href="index.php?module=user&page=wishlist" class="flex items-center justify-between p-4 bg-slate-800/30 rounded-2xl border border-white/5 text-slate-300 w-full">
+                        <span class="flex items-center gap-4">
+                            <i class="fas fa-heart text-rose-400"></i>
+                            <span class="text-sm font-semibold">Wishlist</span>
+                        </span>
+                        <?php if($wishlist_count > 0): ?>
+                            <span class="bg-rose-500 text-white text-[10px] font-bold px-2.5 py-0.5 rounded-full shadow-md animate-pulse"><?php echo $wishlist_count; ?></span>
+                        <?php endif; ?>
                     </a>
                     <a href="index.php?module=auth&page=logout" class="flex items-center justify-center gap-2 p-4 bg-rose-500/10 text-rose-400 font-bold rounded-2xl border border-rose-500/20 mt-4">
                         <i class="fas fa-power-off"></i> Logout

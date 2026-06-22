@@ -33,9 +33,11 @@ if (isset($_GET['wishlist'])) {
     if ($_GET['wishlist'] == 'add') {
         try {
             $pdo->prepare("INSERT INTO wishlist (user_id, product_id) VALUES (?, ?)")->execute([$_SESSION['user_id'], $product_id]);
+            matrix_cache_delete("user_wishlist_count_{$_SESSION['user_id']}");
         } catch (Exception $e) {} // Ignore duplicates
     } else {
         $pdo->prepare("DELETE FROM wishlist WHERE user_id = ? AND product_id = ?")->execute([$_SESSION['user_id'], $product_id]);
+        matrix_cache_delete("user_wishlist_count_{$_SESSION['user_id']}");
     }
     redirect("index.php?module=shop&page=product&id=$product_id");
 }

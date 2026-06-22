@@ -7,11 +7,11 @@
 
 ## 💳 Checkout & Payment
 
-### 1. Wishlist Item Count Badges in Header & Mobile Nav `S`
+### 1. Wishlist Item Count Badges in Header & Mobile Nav [COMPLETED]
 **File:** `includes/header.php` + `includes/footer.php`
-- Retrieve wishlist count from `wishlist` table or session cache
-- Render a vibrant notification badge (e.g. red indicator dot/number) next to the "Wishlist" link in desktop navigation and mobile bottom bar
-- Keeps user engaged and reminds them of products they intended to purchase
+- Retrieve wishlist count from `wishlist` table or session cache [DONE]
+- Render a vibrant notification badge (e.g. red indicator dot/number) next to the "Wishlist" link in desktop navigation and mobile bottom bar [DONE]
+- Keeps user engaged and reminds them of products they intended to purchase [DONE]
 
 ### 2. Order Cooldown Countdown Timer `S`
 **File:** `modules/shop/checkout.php`
@@ -19,11 +19,11 @@
 - Add a JS countdown that ticks down from `<?php echo $time_remaining; ?>` seconds
 - Show minutes:seconds remaining instead of just blocking the button silently
 
-### 3. Checkout — Show Product Stock Warning `S`
+### 3. Checkout — Show Product Stock Warning [COMPLETED]
 **File:** `modules/shop/checkout.php`
-- For `unique` delivery products, query remaining keys before showing the buy button
-- If stock = 0: show "Out of Stock — notify me" instead of the payment form
-- If stock ≤ 3: show a yellow "Only X left!" badge near the product title
+- For `unique` delivery products, query remaining keys before showing the buy button [DONE]
+- If stock = 0: show "Out of Stock — notify me" instead of the payment form [DONE]
+- If stock ≤ 3: show a yellow "Only X left!" badge near the product title [DONE]
 
 ### 4. One-Click Reorder `S`
 **File:** `modules/user/orders.php`

@@ -19,6 +19,15 @@ $product = $stmt->fetch();
 
 if (!$product) die("<div class='p-10 text-center text-red-500'>Product not found</div>");
 
+// Stock Check for Unique Delivery
+$stock_count = 0;
+if (isset($product['delivery_type']) && $product['delivery_type'] === 'unique') {
+    $stmt_stock = $pdo->prepare("SELECT COUNT(*) FROM product_keys WHERE product_id = ? AND is_sold = 0");
+    $stmt_stock->execute([$product_id]);
+    $stock_count = (int)$stmt_stock->fetchColumn();
+}
+$is_out_of_stock = (isset($product['delivery_type']) && $product['delivery_type'] === 'unique' && $stock_count === 0);
+
 // 2. Fetch Requirements
 $stmt = $pdo->prepare("SELECT * FROM product_instructions WHERE product_id = ? ORDER BY id ASC");
 $stmt->execute([$product_id]);
@@ -269,6 +278,24 @@ $display_image = !empty($product['image_path']) ? BASE_URL . $product['image_pat
                         </a>
                     </div>
                 </div>
+            <?php elseif($is_out_of_stock): ?>
+                <!-- OUT OF STOCK UI -->
+                <div class="bg-slate-800/20 border border-white/5 p-12 rounded-[2.5rem] shadow-2xl text-center relative overflow-hidden">
+                    <div class="w-24 h-24 bg-rose-500/10 rounded-full flex items-center justify-center mx-auto mb-8 border border-rose-500/20 shadow-lg relative z-10">
+                        <i class="fas fa-exclamation-circle text-4xl text-rose-500 animate-pulse"></i>
+                    </div>
+                    
+                    <h2 class="text-3xl font-bold text-white tracking-tight mb-4 relative z-10">Temporarily Out of Stock</h2>
+                    <p class="text-slate-400 text-sm mb-10 leading-relaxed max-w-md mx-auto relative z-10">
+                        We have temporarily run out of unique serial keys for this product. Our administrators are working on adding more keys. Please check back later.
+                    </p>
+                    
+                    <div class="relative z-10">
+                        <a href="<?php echo BASE_URL; ?>index.php" class="inline-flex items-center gap-3 bg-white hover:bg-slate-100 text-black px-6 py-3 rounded-xl font-bold transition-all active:scale-95 shadow-lg">
+                            <i class="fas fa-arrow-left"></i> Return to Store
+                        </a>
+                    </div>
+                </div>
             <?php else: ?>
 
                 <!-- NORMAL CHECKOUT FORM -->
@@ -446,6 +473,11 @@ $display_image = !empty($product['image_path']) ? BASE_URL . $product['image_pat
                         <span class="bg-black/60 backdrop-blur-md border border-white/10 text-white px-2.5 py-1 rounded text-[9px] font-black uppercase tracking-widest shadow-lg">
                             <?php echo htmlspecialchars($product['cat_name']); ?>
                         </span>
+                        <?php if($product['delivery_type'] === 'unique' && $stock_count <= 3): ?>
+                            <span class="bg-yellow-500/90 text-slate-950 text-[9px] font-black px-2.5 py-1 rounded shadow-lg uppercase tracking-wider animate-pulse flex items-center gap-1.5">
+                                <i class="fas fa-fire text-[8px]"></i> Only <?php echo $stock_count; ?> Left!
+                            </span>
+                        <?php endif; ?>
                     </div>
                     
                     <div class="absolute bottom-4 left-4 right-4">
@@ -457,6 +489,13 @@ $display_image = !empty($product['image_path']) ? BASE_URL . $product['image_pat
                 <?php else: ?>
                 <div class="aspect-video w-full relative overflow-hidden border-b border-slate-700 shrink-0 bg-gradient-to-br from-blue-900 to-slate-900 flex items-center justify-center">
                     <i class="fas fa-cube text-6xl text-[#00f0ff] opacity-50 drop-shadow-[0_0_20px_rgba(0,240,255,0.5)]"></i>
+                    <?php if($product['delivery_type'] === 'unique' && $stock_count <= 3): ?>
+                        <div class="absolute top-4 right-4">
+                            <span class="bg-yellow-500/90 text-slate-950 text-[9px] font-black px-2.5 py-1 rounded shadow-lg uppercase tracking-wider animate-pulse flex items-center gap-1.5">
+                                <i class="fas fa-fire text-[8px]"></i> Only <?php echo $stock_count; ?> Left!
+                            </span>
+                        </div>
+                    <?php endif; ?>
                     <h3 class="absolute bottom-4 left-4 right-4 text-xl font-black text-white leading-tight drop-shadow-[0_2px_4px_rgba(0,0,0,0.8)] line-clamp-2">
                         <?php echo htmlspecialchars($product['name']); ?>
                     </h3>

@@ -13,6 +13,7 @@ if (isset($_GET['remove'])) {
     $pid = (int)$_GET['remove'];
     try {
         $pdo->prepare("DELETE FROM wishlist WHERE user_id = ? AND product_id = ?")->execute([$user_id, $pid]);
+        matrix_cache_delete("user_wishlist_count_{$user_id}");
         redirect('index.php?module=user&page=wishlist');
     } catch (Exception $e) {
         // Fail silently
