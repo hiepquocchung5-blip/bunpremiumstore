@@ -8,7 +8,7 @@
  * $discount (int - User's agent discount percentage)
  */
 
-if (!is_array($product)) {
+if (!isset($product) || !is_array($product)) {
     return;
 }
 
