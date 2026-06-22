@@ -25,11 +25,11 @@
 - If stock = 0: show "Out of Stock — notify me" instead of the payment form [DONE]
 - If stock ≤ 3: show a yellow "Only X left!" badge near the product title [DONE]
 
-### 4. One-Click Reorder `S`
+### 4. One-Click Reorder [COMPLETED]
 **File:** `modules/user/orders.php`
-- On each completed order in the history, add a "Reorder" button
-- Redirects to `checkout.php?id=PRODUCT_ID` pre-filled with the same product
-- Saves users from navigating back through the catalog
+- On each completed order in the history, add a "Reorder" button [DONE]
+- Redirects to `checkout.php?id=PRODUCT_ID` pre-filled with the same product [DONE]
+- Saves users from navigating back through the catalog [DONE]
 
 ---
 
@@ -53,11 +53,11 @@
 - Add a "Forgot Password?" link on login page → sends reset token via email
 - Reset page validates token (15-minute expiry) and sets new password
 
-### 8. User Dashboard — Spending Summary Card `S`
+### 8. User Dashboard — Spending Summary Card [COMPLETED]
 **File:** `modules/user/dashboard.php`
-- Add a card showing: Total Spent (all time), This Month, Saved via Discounts
-- Query: `SELECT SUM(total_price_paid) FROM orders WHERE user_id = ? AND status = 'active'`
-- Show "You saved Xks this month with your agent discount" for motivation
+- Add a card showing: Total Spent (all time), This Month, Saved via Discounts [DONE]
+- Query: `SELECT SUM(total_price_paid) FROM orders WHERE user_id = ? AND status = 'active'` [DONE]
+- Show "You saved Xks this month with your agent discount" for motivation [DONE]
 
 ### 9. Profile — Preferred Payment Method `S`
 **File:** `modules/user/profile.php`

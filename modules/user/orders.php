@@ -527,6 +527,9 @@ if ($active_chat_id) {
                                         <a href="index.php?module=shop&page=product&id=<?php echo $active_order['product_id']; ?>" class="bg-white/10 hover:bg-white/20 text-white text-xs font-bold px-4 py-3 rounded-xl border border-white/10 transition flex items-center gap-2">
                                             <i class="fas fa-external-link-alt"></i> View Product
                                         </a>
+                                        <a href="index.php?module=shop&page=checkout&id=<?php echo $active_order['product_id']; ?>" class="bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-bold px-4 py-3 rounded-xl border border-emerald-500/30 transition flex items-center gap-2">
+                                            <i class="fas fa-redo"></i> Reorder
+                                        </a>
                                     <?php endif; ?>
                                     <button onclick="window.print()" class="bg-blue-600/20 hover:bg-blue-600/30 text-blue-400 text-xs font-bold px-4 py-3 rounded-xl border border-blue-500/30 transition flex items-center gap-2">
                                         <i class="fas fa-file-invoice"></i> Get PDF

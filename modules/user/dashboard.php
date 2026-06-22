@@ -32,6 +32,39 @@ try {
     $referral_count = $stmt->fetchColumn();
 } catch (PDOException $e) {}
 
+// Spending summary metrics (status = 'active')
+// Total Spent (All Time)
+$stmt = $pdo->prepare("SELECT SUM(total_price_paid) FROM orders WHERE user_id = ? AND status = 'active'");
+$stmt->execute([$user_id]);
+$total_spent = (float)($stmt->fetchColumn() ?? 0.0);
+
+// Spent This Month
+$stmt = $pdo->prepare("SELECT SUM(total_price_paid) FROM orders WHERE user_id = ? AND status = 'active' AND created_at >= DATE_FORMAT(NOW(), '%Y-%m-01 00:00:00')");
+$stmt->execute([$user_id]);
+$spent_this_month = (float)($stmt->fetchColumn() ?? 0.0);
+
+// Total Saved via Discounts
+$stmt = $pdo->prepare("
+    SELECT SUM(p.price - o.total_price_paid) 
+    FROM orders o
+    JOIN products p ON o.product_id = p.id
+    WHERE o.user_id = ? AND o.status = 'active'
+");
+$stmt->execute([$user_id]);
+$saved_all_time = (float)($stmt->fetchColumn() ?? 0.0);
+if ($saved_all_time < 0) $saved_all_time = 0.0;
+
+// Saved via Discounts (This Month)
+$stmt = $pdo->prepare("
+    SELECT SUM(p.price - o.total_price_paid) 
+    FROM orders o
+    JOIN products p ON o.product_id = p.id
+    WHERE o.user_id = ? AND o.status = 'active' AND o.created_at >= DATE_FORMAT(NOW(), '%Y-%m-01 00:00:00')
+");
+$stmt->execute([$user_id]);
+$saved_this_month = (float)($stmt->fetchColumn() ?? 0.0);
+if ($saved_this_month < 0) $saved_this_month = 0.0;
+
 // 4. Fetch Recent Orders (Limit 5)
 // FIXED: Changed 'o.total_amount' to 'o.total_price_paid'
 // FIXED: Changed 'p.title' to 'p.name'
@@ -62,7 +95,7 @@ $recent_orders = $stmt->fetchAll();
     </div>
 
     <!-- Stats -->
-    <div class="grid grid-cols-1 md:grid-cols-2 gap-8 mb-12">
+    <div class="grid grid-cols-1 md:grid-cols-3 gap-8 mb-12">
         <div class="bg-slate-800/20 border border-white/5 p-8 rounded-[2.5rem] flex items-center justify-between group hover:border-blue-500/30 transition-all">
             <div>
                 <p class="text-[10px] font-bold text-slate-500 uppercase tracking-widest mb-2">Total Orders</p>
@@ -81,6 +114,37 @@ $recent_orders = $stmt->fetchAll();
             <div class="w-16 h-16 rounded-2xl bg-rose-500/10 flex items-center justify-center text-rose-400 text-2xl group-hover:scale-110 transition-transform">
                 <i class="fas fa-heart"></i>
             </div>
+        </div>
+
+        <div class="bg-slate-800/20 border border-white/5 p-8 rounded-[2.5rem] flex flex-col justify-between group hover:border-emerald-500/30 transition-all">
+            <div>
+                <p class="text-[10px] font-bold text-slate-500 uppercase tracking-widest mb-4">Spending Summary</p>
+                <div class="space-y-2.5">
+                    <div class="flex justify-between items-center text-xs">
+                        <span class="text-slate-400">Total Spent</span>
+                        <span class="font-bold text-white font-mono"><?php echo number_format($total_spent); ?> Ks</span>
+                    </div>
+                    <div class="flex justify-between items-center text-xs">
+                        <span class="text-slate-400">This Month</span>
+                        <span class="font-bold text-white font-mono"><?php echo number_format($spent_this_month); ?> Ks</span>
+                    </div>
+                    <div class="flex justify-between items-center text-xs">
+                        <span class="text-slate-400">Saved via Discounts</span>
+                        <span class="font-bold text-emerald-400 font-mono"><?php echo number_format($saved_all_time); ?> Ks</span>
+                    </div>
+                </div>
+            </div>
+            <?php if ($saved_this_month > 0): ?>
+                <div class="mt-4 pt-3 border-t border-white/5 text-[10px] text-emerald-400 font-bold flex items-center gap-1.5 leading-tight">
+                    <i class="fas fa-gift text-emerald-400 animate-bounce"></i> 
+                    <span>You saved <?php echo number_format($saved_this_month); ?> Ks this month with your agent discount!</span>
+                </div>
+            <?php else: ?>
+                <div class="mt-4 pt-3 border-t border-white/5 text-[10px] text-slate-400 font-medium flex items-center gap-1.5 leading-tight">
+                    <i class="fas fa-crown text-yellow-500"></i> 
+                    <span>Unlock extra savings! <a href="index.php?module=user&page=agent" class="text-blue-500 hover:text-blue-400 font-bold underline">Get Agent Pass</a></span>
+                </div>
+            <?php endif; ?>
         </div>
     </div>
 
