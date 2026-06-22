@@ -124,7 +124,8 @@ function get_page_url($page_num) {
     .hide-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
 
     /* Layout transition swap styles */
-    #productsGridContainer.list-view {
+    #productsGridContainer.list-view,
+    #skeletonGridContainer.list-view {
         grid-template-columns: repeat(1, minmax(0, 1fr)) !important;
     }
     
@@ -144,22 +145,41 @@ function get_page_url($page_num) {
     }
     
     @media (min-width: 640px) {
-        #productsGridContainer.list-view .dm-card {
+        #productsGridContainer.list-view .dm-card,
+        #skeletonGridContainer.list-view .dm-card {
             flex-direction: row !important;
             align-items: stretch;
             height: auto;
         }
-        #productsGridContainer.list-view .dm-card > div:first-child {
+        #productsGridContainer.list-view .dm-card > div:first-child,
+        #skeletonGridContainer.list-view .dm-card > div:first-child {
             width: 220px !important;
             height: auto !important;
             aspect-ratio: auto !important;
             flex-shrink: 0;
         }
-        #productsGridContainer.list-view .dm-card > div:nth-child(2) {
+        #productsGridContainer.list-view .dm-card > div:nth-child(2),
+        #skeletonGridContainer.list-view .dm-card > div:nth-child(2) {
             flex-grow: 1;
             display: flex;
             flex-direction: column;
         }
+    }
+
+    /* Pulse and Fade animations */
+    @keyframes pulse-fast {
+        0%, 100% { opacity: 1; }
+        50% { opacity: .4; }
+    }
+    .animate-pulse-fast {
+        animation: pulse-fast 1.5s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+    }
+    .fade-in {
+        animation: fadeIn 0.4s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+    }
+    @keyframes fadeIn {
+        from { opacity: 0; transform: translateY(10px); }
+        to { opacity: 1; transform: translateY(0); }
     }
 </style>
 
@@ -313,7 +333,29 @@ function get_page_url($page_num) {
                     <p class="text-slate-500 max-w-sm mx-auto mb-8 text-sm leading-relaxed">There are currently no items available in this category with the selected filters.</p>
                 </div>
             <?php else: ?>
-                <div id="productsGridContainer" class="grid grid-cols-2 lg:grid-cols-4 gap-4 sm:gap-6 relative z-10 transition-all duration-300">
+                <!-- Skeleton Grid Loader -->
+                <div id="skeletonGridContainer" class="grid grid-cols-2 lg:grid-cols-4 gap-4 sm:gap-6 relative z-10">
+                    <?php for ($i = 0; $i < 8; $i++): ?>
+                        <div class="dm-card rounded-[1.75rem] overflow-hidden flex flex-col h-full relative shadow-[0_12px_40px_rgba(0,0,0,0.18)] bg-slate-900/30 border border-white/5 p-4 sm:p-5 space-y-4">
+                            <div class="prod-img-wrap bg-slate-800/50 animate-pulse-fast"></div>
+                            <div class="p-4 sm:p-5 flex-grow flex flex-col space-y-3">
+                                <div class="w-1/3 h-3 bg-slate-800/50 rounded-full animate-pulse-fast"></div>
+                                <div class="w-3/4 h-5 bg-slate-800/50 rounded-full animate-pulse-fast"></div>
+                                <div class="w-5/6 h-3 bg-slate-800/50 rounded-full animate-pulse-fast"></div>
+                                <div class="w-2/3 h-3 bg-slate-800/50 rounded-full animate-pulse-fast mb-2"></div>
+                                <div class="pt-4 border-t border-white/5 flex items-center justify-between mt-auto">
+                                    <div class="space-y-2">
+                                        <div class="w-20 h-6 bg-slate-800/50 rounded-full animate-pulse-fast"></div>
+                                        <div class="w-12 h-3.5 bg-slate-800/50 rounded-full animate-pulse-fast"></div>
+                                    </div>
+                                    <div class="w-9 h-9 rounded-full bg-slate-800/50 animate-pulse-fast"></div>
+                                </div>
+                            </div>
+                        </div>
+                    <?php endfor; ?>
+                </div>
+
+                <div id="productsGridContainer" class="grid grid-cols-2 lg:grid-cols-4 gap-4 sm:gap-6 relative z-10 transition-all duration-300" style="display: none;">
                     <?php foreach($products as $product): ?>
                         <?php include __DIR__ . '/../home/product_card.php'; ?>
                     <?php endforeach; ?>
@@ -374,17 +416,27 @@ function get_page_url($page_num) {
     const gridLayoutBtn = document.getElementById('gridLayoutBtn');
     const listLayoutBtn = document.getElementById('listLayoutBtn');
     const productsGridContainer = document.getElementById('productsGridContainer');
+    const skeletonGridContainer = document.getElementById('skeletonGridContainer');
 
     if (gridLayoutBtn && listLayoutBtn && productsGridContainer) {
         const setLayout = (layout) => {
             productsGridContainer.classList.add('swap-active');
+            if (skeletonGridContainer) {
+                skeletonGridContainer.classList.add('swap-active');
+            }
             
             if (layout === 'list') {
                 productsGridContainer.classList.add('list-view');
+                if (skeletonGridContainer) {
+                    skeletonGridContainer.classList.add('list-view');
+                }
                 listLayoutBtn.className = "w-8 h-8 rounded-lg flex items-center justify-center text-xs transition-all text-blue-400 bg-slate-800/80 border border-white/10";
                 gridLayoutBtn.className = "w-8 h-8 rounded-lg flex items-center justify-center text-xs transition-all text-slate-400 hover:text-white";
             } else {
                 productsGridContainer.classList.remove('list-view');
+                if (skeletonGridContainer) {
+                    skeletonGridContainer.classList.remove('list-view');
+                }
                 gridLayoutBtn.className = "w-8 h-8 rounded-lg flex items-center justify-center text-xs transition-all text-blue-400 bg-slate-800/80 border border-white/10";
                 listLayoutBtn.className = "w-8 h-8 rounded-lg flex items-center justify-center text-xs transition-all text-slate-400 hover:text-white";
             }
@@ -393,6 +445,9 @@ function get_page_url($page_num) {
             
             setTimeout(() => {
                 productsGridContainer.classList.remove('swap-active');
+                if (skeletonGridContainer) {
+                    skeletonGridContainer.classList.remove('swap-active');
+                }
             }, 350);
         };
 
@@ -402,5 +457,23 @@ function get_page_url($page_num) {
 
         gridLayoutBtn.addEventListener('click', () => setLayout('grid'));
         listLayoutBtn.addEventListener('click', () => setLayout('list'));
+    }
+
+    // Hide skeleton and reveal products with fade-in on load
+    const showProducts = () => {
+        const skeleton = document.getElementById('skeletonGridContainer');
+        const products = document.getElementById('productsGridContainer');
+        if (skeleton) {
+            skeleton.style.display = 'none';
+        }
+        if (products) {
+            products.style.display = 'grid';
+            products.classList.add('fade-in');
+        }
+    };
+    if (document.readyState === 'complete') {
+        showProducts();
+    } else {
+        window.addEventListener('load', showProducts);
     }
 </script>

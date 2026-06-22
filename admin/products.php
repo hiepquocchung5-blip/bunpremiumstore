@@ -8,6 +8,21 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['add_product'])) {
 
         $name = trim($_POST['name']);
         $slug = strtolower(trim(preg_replace('/[^A-Za-z0-9]+/', '-', $name), '-'));
+        
+        // Ensure slug uniqueness
+        $temp_slug = $slug;
+        $counter = 1;
+        while (true) {
+            $stmt_check = $pdo->prepare("SELECT COUNT(*) FROM products WHERE slug = ?");
+            $stmt_check->execute([$temp_slug]);
+            if ($stmt_check->fetchColumn() == 0) {
+                $slug = $temp_slug;
+                break;
+            }
+            $counter++;
+            $temp_slug = $slug . '-' . $counter;
+        }
+
         $description = trim($_POST['description']);
         $price = (float) $_POST['price'];
         $sale_price = !empty($_POST['sale_price']) ? (float) $_POST['sale_price'] : NULL;
@@ -43,6 +58,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['add_product'])) {
             $target_file = $target_dir . $filename;
             
             if (move_uploaded_file($_FILES['image']['tmp_name'], $target_file)) {
+                optimize_image_in_place($target_file, 80);
                 $db_image_path = "uploads/products/" . $filename;
             }
         }

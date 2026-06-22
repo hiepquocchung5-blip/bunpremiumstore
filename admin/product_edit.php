@@ -8,6 +8,21 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['update_product'])) {
     try {
         $name = trim($_POST['name']);
         $slug = strtolower(trim(preg_replace('/[^A-Za-z0-9]+/', '-', $name), '-'));
+        
+        // Ensure slug uniqueness (excluding current product)
+        $temp_slug = $slug;
+        $counter = 1;
+        while (true) {
+            $stmt_check = $pdo->prepare("SELECT COUNT(*) FROM products WHERE slug = ? AND id != ?");
+            $stmt_check->execute([$temp_slug, $id]);
+            if ($stmt_check->fetchColumn() == 0) {
+                $slug = $temp_slug;
+                break;
+            }
+            $counter++;
+            $temp_slug = $slug . '-' . $counter;
+        }
+
         $description = trim($_POST['description']);
         $price = (float) $_POST['price'];
         $sale_price = !empty($_POST['sale_price']) ? (float) $_POST['sale_price'] : NULL;
@@ -51,8 +66,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['update_product'])) {
             
             $ext = strtolower(pathinfo($_FILES['image']['name'], PATHINFO_EXTENSION));
             $filename = uniqid('prod_') . '.' . $ext;
+            $target_file = $target_dir . $filename;
             
-            if (move_uploaded_file($_FILES['image']['tmp_name'], $target_dir . $filename)) {
+            if (move_uploaded_file($_FILES['image']['tmp_name'], $target_file)) {
+                optimize_image_in_place($target_file, 80);
                 $image_sql_part = ", image_path = ?";
                 $params[] = "uploads/products/" . $filename;
 

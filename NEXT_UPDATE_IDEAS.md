@@ -70,33 +70,33 @@
 
 ---
 
-## ✨ Polish & UX
+## ✨ Polish & UX [ALL COMPLETED]
 
-### 11. Category Page — Skeleton Loading
+### 11. Category Page — Skeleton Loading [COMPLETED]
 **File:** `modules/shop/category.php` + CSS
-- Show skeleton placeholder cards while products load on page transition
-- CSS-only: pulsing `bg-slate-800/50` divs with `animate-pulse` that disappear on load
+- Show skeleton placeholder cards while products load on page transition [DONE]
+- CSS-only: pulsing `bg-slate-800/50` divs with `animate-pulse` that disappear on load [DONE]
 
-### 12. Home Page — Countdown Timer on Flash Sales
+### 12. Home Page — Countdown Timer on Flash Sales [COMPLETED]
 **File:** `modules/home/index.php`
-- Add a live countdown clock (HH:MM:SS) next to the "Flash Sales" heading
-- Resets every 24 hours at midnight to create urgency
-- Pure JS: `setInterval` updating the display
+- Add a live countdown clock (HH:MM:SS) next to the "Flash Sales" heading [DONE]
+- Resets every 24 hours at midnight to create urgency [DONE]
+- Pure JS: `setInterval` updating the display [DONE]
 
-### 13. Product Card — Stock Badge
+### 13. Product Card — Stock Badge [COMPLETED]
 **File:** `modules/home/product_card.php`
-- For `unique` delivery products, show a "X left" badge when stock is low (< 5)
-- Requires passing `stock_count` into the card data — add to home queries
+- For `unique` delivery products, show a "X left" badge when stock is low (< 5) [DONE]
+- Requires passing `stock_count` into the card data — add to home queries [DONE]
 
-### 14. Mobile Bottom Nav — Active State Highlight
+### 14. Mobile Bottom Nav — Active State Highlight [COMPLETED]
 **File:** `includes/footer.php` (or wherever bottom nav lives)
-- Highlight the active tab based on current `module` + `page` URL param
-- Currently likely static with no active indicator
+- Highlight the active tab based on current `module` + `page` URL param [DONE]
+- Currently likely static with no active indicator [DONE]
 
-### 15. Admin Sidebar — Collapsed Mode on Mobile
+### 15. Admin Sidebar — Collapsed Mode on Mobile [COMPLETED]
 **File:** `admin/includes/` layout files
-- Sidebar auto-hides on screens < 1024px with a hamburger toggle
-- Saves screen space when managing orders on a phone
+- Sidebar auto-hides on screens < 1024px with a hamburger toggle [DONE]
+- Saves screen space when managing orders on a phone [DONE]
 
 ---
 
@@ -139,15 +139,15 @@
 - Admin toggle in `admin/products.php` to hide a product without deleting it
 - Filter out `is_active = 0` in all shop queries
 
-### 22. Slug Uniqueness Enforcement
+### 22. Slug Uniqueness Enforcement [COMPLETED]
 **File:** `admin/products.php` + `admin/product_edit.php`
-- Current slug generation doesn't check for duplicates
-- Add a suffix (`-2`, `-3`) if slug already exists: `SELECT COUNT(*) FROM products WHERE slug LIKE ?`
+- Current slug generation doesn't check for duplicates [DONE]
+- Add a suffix (`-2`, `-3`) if slug already exists: `SELECT COUNT(*) FROM products WHERE slug LIKE ?` [DONE]
 
-### 23. Image Optimization on Upload
+### 23. Image Optimization on Upload [COMPLETED]
 **File:** `admin/products.php` image upload block
-- After `move_uploaded_file`, run `imagecreatefromjpeg` + `imagejpeg($img, $path, 80)` to compress
-- Prevents admins uploading 5MB product images that slow the store
+- After `move_uploaded_file`, run `imagecreatefromjpeg` + `imagejpeg($img, $path, 80)` to compress [DONE]
+- Prevents admins uploading 5MB product images that slow the store [DONE]
 
 ---
 

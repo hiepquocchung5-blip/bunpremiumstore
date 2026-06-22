@@ -179,4 +179,45 @@ function format_status_badge($status) {
             return '<span class="'.$base_classes.' bg-indigo-500/10 text-indigo-400 border-indigo-500/20">'.htmlspecialchars($status).'</span>';
     }
 }
+
+/**
+ * Optimizes an image file in-place (supports JPEG, PNG, WebP)
+ * to save disk space and improve loading times.
+ */
+function optimize_image_in_place($file_path, $quality = 80) {
+    if (!extension_loaded('gd')) return false;
+    $info = @getimagesize($file_path);
+    if ($info === false) return false;
+    
+    $mime = $info['mime'];
+    switch ($mime) {
+        case 'image/jpeg':
+            $image = @imagecreatefromjpeg($file_path);
+            if ($image) {
+                @imagejpeg($image, $file_path, $quality);
+                imagedestroy($image);
+                return true;
+            }
+            break;
+        case 'image/png':
+            $image = @imagecreatefrompng($file_path);
+            if ($image) {
+                // png compression is 0 (no compression) to 9
+                $png_quality = 9 - round(($quality / 100) * 9);
+                @imagepng($image, $file_path, $png_quality);
+                imagedestroy($image);
+                return true;
+            }
+            break;
+        case 'image/webp':
+            $image = @imagecreatefromwebp($file_path);
+            if ($image) {
+                @imagewebp($image, $file_path, $quality);
+                imagedestroy($image);
+                return true;
+            }
+            break;
+    }
+    return false;
+}
 ?>

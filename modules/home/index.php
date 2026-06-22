@@ -21,7 +21,8 @@ if ($categories === false) {
 $flash_sales = matrix_cache_get('home_flash_sales_v2');
 if ($flash_sales === false) {
     $stmt = $pdo->query("
-        SELECT p.*, c.name as cat_name, c.image_url as cat_image
+        SELECT p.*, c.name as cat_name, c.image_url as cat_image,
+               (SELECT COUNT(*) FROM product_keys WHERE product_id = p.id AND is_sold = 0) as stock_count
         FROM products p
         JOIN categories c ON p.category_id = c.id
         WHERE p.sale_price IS NOT NULL AND p.sale_price < p.price
@@ -35,7 +36,8 @@ if ($flash_sales === false) {
 $best_sellers = matrix_cache_get('home_best_sellers_v2');
 if ($best_sellers === false) {
     $stmt = $pdo->query("
-        SELECT p.*, c.name as cat_name, c.image_url as cat_image, COUNT(o.id) as sales_count
+        SELECT p.*, c.name as cat_name, c.image_url as cat_image, COUNT(o.id) as sales_count,
+               (SELECT COUNT(*) FROM product_keys WHERE product_id = p.id AND is_sold = 0) as stock_count
         FROM products p
         JOIN categories c ON p.category_id = c.id
         LEFT JOIN orders o ON p.id = o.product_id AND o.status = 'active'
@@ -50,7 +52,8 @@ if ($best_sellers === false) {
 $recent_products = matrix_cache_get('home_recent_products_v2');
 if ($recent_products === false) {
     $stmt = $pdo->query("
-        SELECT p.*, c.name as cat_name, c.image_url as cat_image
+        SELECT p.*, c.name as cat_name, c.image_url as cat_image,
+               (SELECT COUNT(*) FROM product_keys WHERE product_id = p.id AND is_sold = 0) as stock_count
         FROM products p
         JOIN categories c ON p.category_id = c.id
         ORDER BY p.id DESC LIMIT 18
@@ -473,11 +476,17 @@ if (is_logged_in()) {
     <?php if (!empty($flash_sales)): ?>
     <div class="mb-16">
         <div class="section-heading">
-            <div>
-                <h2 class="section-title">Flash Sales</h2>
+            <div class="flex flex-col sm:flex-row sm:items-baseline gap-2 sm:gap-4">
+                <div class="flex items-center gap-3">
+                    <h2 class="section-title">Flash Sales</h2>
+                    <span id="flash-sales-countdown" class="text-[11px] bg-red-500/10 border border-red-500/20 text-red-400 font-mono font-bold px-2.5 py-1 rounded-lg flex items-center gap-1.5 shadow-[0_0_15px_rgba(239,68,68,0.1)]">
+                        <i class="fas fa-stopwatch text-[9px] animate-pulse"></i>
+                        <span id="countdown-timer-val">00:00:00</span>
+                    </span>
+                </div>
                 <p class="text-slate-500 text-xs mt-1">Limited-time offers — grab them fast</p>
             </div>
-            <span class="section-badge text-red-400 bg-red-500/10 border border-red-500/20">
+            <span class="section-badge text-red-400 bg-red-500/10 border border-red-500/20 hidden sm:inline-flex">
                 <i class="fas fa-stopwatch mr-1"></i>Limited
             </span>
         </div>
@@ -644,10 +653,42 @@ const initActivityFeed = () => {
     }, 14000);
 };
 
+/* ── Flash Sales Live Countdown ───────────────── */
+const initFlashSalesCountdown = () => {
+    const timerElem = document.getElementById('countdown-timer-val');
+    if (!timerElem) return;
+
+    const updateTimer = () => {
+        const now = new Date();
+        const midnight = new Date();
+        midnight.setHours(24, 0, 0, 0); // Next midnight
+        
+        const diff = midnight.getTime() - now.getTime();
+        if (diff <= 0) {
+            timerElem.textContent = '00:00:00';
+            return;
+        }
+        
+        const hours = Math.floor(diff / (1000 * 60 * 60));
+        const minutes = Math.floor((diff % (1000 * 60 * 60)) / (1000 * 60));
+        const seconds = Math.floor((diff % (1000 * 60)) / 1000);
+        
+        const hStr = String(hours).padStart(2, '0');
+        const mStr = String(minutes).padStart(2, '0');
+        const sStr = String(seconds).padStart(2, '0');
+        
+        timerElem.textContent = `${hStr}:${mStr}:${sStr}`;
+    };
+
+    updateTimer();
+    setInterval(updateTimer, 1000);
+};
+
 // Orchestrate initialization
 const runInitializers = () => {
     initBannerSlider();
     initActivityFeed();
+    initFlashSalesCountdown();
 };
 
 if (document.readyState === 'loading') {

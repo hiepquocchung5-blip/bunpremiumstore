@@ -19,6 +19,13 @@ $fallback_icon = $product['icon_class'] ?? 'fa-cube';
 
 // Generate Public Route
 $product_url = product_public_url($product);
+
+// Calculate Stock Count for Unique Delivery if not already set
+if (isset($product['delivery_type']) && $product['delivery_type'] === 'unique' && !isset($product['stock_count']) && isset($pdo)) {
+    $stmt = $pdo->prepare("SELECT COUNT(*) FROM product_keys WHERE product_id = ? AND is_sold = 0");
+    $stmt->execute([$product['id']]);
+    $product['stock_count'] = (int)$stmt->fetchColumn();
+}
 ?>
 
 <!-- Entire Card is a Unified Anchor Tag -->
@@ -43,6 +50,17 @@ $product_url = product_public_url($product);
             <?php endif; ?>
             <?php if($discount > 0): ?>
                 <span class="bg-amber-500 text-black text-[9px] font-bold px-2.5 py-0.5 rounded-full shadow-md uppercase tracking-widest">-<?php echo $discount; ?>%</span>
+            <?php endif; ?>
+            <?php if(isset($product['delivery_type']) && $product['delivery_type'] === 'unique' && isset($product['stock_count'])): ?>
+                <?php if($product['stock_count'] == 0): ?>
+                    <span class="bg-red-600 text-white text-[9px] font-bold px-2.5 py-0.5 rounded-full shadow-md uppercase tracking-widest">
+                        <i class="fas fa-times-circle mr-1"></i>Sold Out
+                    </span>
+                <?php elseif($product['stock_count'] < 5): ?>
+                    <span class="bg-orange-500 text-white text-[9px] font-bold px-2.5 py-0.5 rounded-full shadow-md uppercase tracking-widest animate-pulse">
+                        <i class="fas fa-fire mr-1"></i>Only <?php echo $product['stock_count']; ?> Left
+                    </span>
+                <?php endif; ?>
             <?php endif; ?>
         </div>
     </div>

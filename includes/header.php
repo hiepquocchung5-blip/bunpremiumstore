@@ -390,26 +390,43 @@ if (isset($_SESSION['user_id'])) {
     </nav>
 
     <!-- Bottom Nav (Mobile Only) -->
+    <?php
+    $c_mod = $_GET['module'] ?? 'home';
+    $c_page = $_GET['page'] ?? 'index';
+
+    $is_home = ($c_mod === 'home' || ($c_mod === '' && $c_page === ''));
+    $is_search = ($c_mod === 'shop' && $c_page === 'search');
+    $is_category = ($c_mod === 'shop' && $c_page === 'category');
+    $is_orders = ($c_mod === 'user' && $c_page === 'orders');
+
+    $is_menu_active = !$is_home && !$is_search && !$is_category && !$is_orders;
+
+    $home_class = $is_home ? 'text-blue-400 font-bold' : 'text-slate-400 hover:text-white transition-colors';
+    $search_class = $is_search ? 'text-blue-400 font-bold' : 'text-slate-400 hover:text-white transition-colors';
+    $cat_btn_class = $is_category ? 'bg-[#00f0ff] text-slate-950 shadow-[0_0_20px_rgba(0,240,255,0.4)]' : 'bg-blue-600 text-white';
+    $orders_class = $is_orders ? 'text-blue-400 font-bold' : 'text-slate-400 hover:text-white transition-colors';
+    $menu_class = $is_menu_active ? 'text-blue-400 font-bold' : 'text-slate-400 hover:text-white transition-colors';
+    ?>
     <div id="mobile-bottom-nav" class="fixed bottom-6 left-6 right-6 z-[90] lg:hidden">
         <div class="glass-pill rounded-3xl px-8 py-3.5 flex justify-between items-center shadow-2xl relative">
-            <a href="index.php" class="flex flex-col items-center gap-1 <?php echo isActive('home'); ?>">
+            <a href="index.php" class="flex flex-col items-center gap-1 <?php echo $home_class; ?>">
                 <i class="fas fa-home text-lg"></i>
                 <span class="text-[9px] font-bold uppercase tracking-wider">Home</span>
             </a>
-            <button onclick="openSearchModal()" class="flex flex-col items-center gap-1 text-slate-400">
+            <button onclick="openSearchModal()" class="flex flex-col items-center gap-1 <?php echo $search_class; ?>">
                 <i class="fas fa-search text-lg"></i>
                 <span class="text-[9px] font-bold uppercase tracking-wider">Search</span>
             </button>
             <div class="relative -top-7">
-                <a href="index.php?module=shop&page=category" class="w-14 h-14 bg-blue-600 text-white rounded-full flex items-center justify-center shadow-xl border-4 border-[#0b0f1a] transform active:scale-95 transition">
+                <a href="index.php?module=shop&page=category" class="w-14 h-14 <?php echo $cat_btn_class; ?> rounded-full flex items-center justify-center shadow-xl border-4 border-[#0b0f1a] transform active:scale-95 transition">
                     <i class="fas fa-layer-group text-xl"></i>
                 </a>
             </div>
-            <a href="index.php?module=user&page=orders" class="flex flex-col items-center gap-1 <?php echo isActive('user', 'orders'); ?>">
+            <a href="index.php?module=user&page=orders" class="flex flex-col items-center gap-1 <?php echo $orders_class; ?>">
                 <i class="fas fa-box text-lg"></i>
                 <span class="text-[9px] font-bold uppercase tracking-wider">Orders</span>
             </a>
-            <button onclick="document.getElementById('mobile-menu').classList.toggle('translate-y-full'); document.getElementById('mobile-menu').classList.toggle('opacity-0');" class="flex flex-col items-center gap-1 text-slate-400">
+            <button onclick="document.getElementById('mobile-menu').classList.toggle('translate-y-full'); document.getElementById('mobile-menu').classList.toggle('opacity-0');" class="flex flex-col items-center gap-1 <?php echo $menu_class; ?>">
                 <i class="fas fa-bars text-lg"></i>
                 <span class="text-[9px] font-bold uppercase tracking-wider">Menu</span>
             </button>
