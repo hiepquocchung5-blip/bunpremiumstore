@@ -327,8 +327,12 @@ if (is_logged_in()) {
 </div><!-- /home-page-shell -->
 
 <script>
+// Define global hooks immediately so arrow clicks/dots do not ReferenceError
+window.bannerSlide = window.bannerSlide || (() => {});
+window.bannerGoTo = window.bannerGoTo || (() => {});
+
 /* ── Banner Slider ─────────────────────────────── */
-(function() {
+const initBannerSlider = () => {
     let current = 0;
     const slides = document.querySelectorAll('.banner-slide');
     const dots   = document.querySelectorAll('.banner-dot');
@@ -361,10 +365,10 @@ if (is_logged_in()) {
     }
 
     show(0);
-})();
+};
 
 /* ── Category Slider Progress ──────────────────── */
-document.addEventListener('DOMContentLoaded', () => {
+const initCategoryProgress = () => {
     const cSlider = document.getElementById('categorySlider');
     const cProgress = document.getElementById('catScrollProgress');
     if (cSlider && cProgress) {
@@ -373,17 +377,15 @@ document.addEventListener('DOMContentLoaded', () => {
             cProgress.style.width = max > 0 ? ((cSlider.scrollLeft / max) * 100) + '%' : '0%';
         };
         cSlider.addEventListener('scroll', updateCategoryProgress, { passive: true });
-        // Initial call
         updateCategoryProgress();
-        // Resize observer to recalculate if screen size changes
         if (window.ResizeObserver) {
             new ResizeObserver(updateCategoryProgress).observe(cSlider);
         }
     }
-});
+};
 
 /* ── Activity Feed Live Ticker ─────────────────── */
-document.addEventListener('DOMContentLoaded', () => {
+const initActivityFeed = () => {
     const feed  = document.getElementById('activityFeed');
     const items = [
         {u:'k***n', i:'Steam Wallet Card'},
@@ -412,5 +414,18 @@ document.addEventListener('DOMContentLoaded', () => {
             if (feed.children.length > 9) feed.lastElementChild.remove();
         }
     }, 14000);
-});
+};
+
+// Orchestrate initialization
+const runInitializers = () => {
+    initBannerSlider();
+    initCategoryProgress();
+    initActivityFeed();
+};
+
+if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', runInitializers);
+} else {
+    runInitializers();
+}
 </script>
