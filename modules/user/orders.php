@@ -136,6 +136,13 @@ if (isset($_GET['ajax']) && $_GET['ajax'] == 1 && $active_chat_id > 0) {
     $stmt_seen->execute([$active_chat_id]);
     $latest_admin_id = $stmt_seen->fetchColumn() ?: 0;
 
+    // Fetch user details for avatar and name
+    $stmt_user = $pdo->prepare("SELECT u.avatar_path, u.username FROM users u JOIN orders o ON o.user_id = u.id WHERE o.id = ?");
+    $stmt_user->execute([$active_chat_id]);
+    $chat_user = $stmt_user->fetch();
+    $user_avatar_path = !empty($chat_user['avatar_path']) ? $chat_user['avatar_path'] : null;
+    $user_username_val = !empty($chat_user['username']) ? $chat_user['username'] : 'User';
+
     // Fetch and render messages
     $stmt = $pdo->prepare("SELECT * FROM order_messages WHERE order_id = ? ORDER BY created_at ASC");
     $stmt->execute([$active_chat_id]);
@@ -162,8 +169,15 @@ if (isset($_GET['ajax']) && $_GET['ajax'] == 1 && $active_chat_id > 0) {
         echo "<div class='flex w-full {$align} mb-6 animate-fade-in group' data-msg-id='{$msg['id']}'>";
         echo "<div class='max-w-[85%] md:max-w-[70%] flex gap-3 " . ($is_user ? "flex-row-reverse" : "flex-row") . "'>";
         
-        // Agent Avatar (Enhanced Style)
-        if ($is_admin) {
+        // User/Agent Avatar (Enhanced Style)
+        if ($is_user) {
+            if ($user_avatar_path && file_exists($user_avatar_path)) {
+                echo "<img src='{$user_avatar_path}' alt='User Avatar' class='w-8 h-8 rounded-full object-cover shrink-0 shadow-lg border border-white/10 mt-1' title='You'>";
+            } else {
+                $user_initial = strtoupper(substr($user_username_val, 0, 1));
+                echo "<div class='w-8 h-8 rounded-full bg-gradient-to-br from-blue-600 to-indigo-800 flex items-center justify-center text-white text-[10px] font-bold shrink-0 shadow-lg border border-white/10 mt-1' title='You'>{$user_initial}</div>";
+            }
+        } elseif ($is_admin) {
             $avatar_bg = $is_ai ? "from-purple-600 to-indigo-800" : "from-green-600 to-green-800";
             $avatar_icon = $is_ai ? "fa-robot" : "fa-user-tie";
             $pulse = $is_ai ? "animate-pulse" : "";

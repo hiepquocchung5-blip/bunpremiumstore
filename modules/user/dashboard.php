@@ -9,7 +9,7 @@ if (!is_logged_in()) {
 $user_id = $_SESSION['user_id'];
 
 // 2. Fetch User Data
-$stmt = $pdo->prepare("SELECT full_name, email, created_at FROM users WHERE id = ?");
+$stmt = $pdo->prepare("SELECT full_name, email, avatar_path, created_at FROM users WHERE id = ?");
 $stmt->execute([$user_id]);
 $user = $stmt->fetch();
 
@@ -82,12 +82,24 @@ $recent_orders = $stmt->fetchAll();
 <div class="max-w-7xl mx-auto px-6 py-12">
 
     <!-- Header -->
-    <div class="flex flex-col md:flex-row md:items-end justify-between mb-12 gap-8">
-        <div>
-            <h1 class="text-3xl md:text-5xl font-bold text-white tracking-tight">Account Overview</h1>
-            <p class="text-slate-500 mt-4 text-lg">Welcome back, <span class="text-blue-500 font-bold"><?php echo htmlspecialchars($user['full_name']); ?></span></p>
+    <div class="flex flex-col md:flex-row md:items-center justify-between mb-12 gap-8">
+        <div class="flex items-center gap-6">
+            <?php if (!empty($user['avatar_path']) && file_exists($user['avatar_path'])): ?>
+                <img src="<?php echo htmlspecialchars($user['avatar_path']); ?>" alt="Avatar" class="w-16 h-16 md:w-20 md:h-20 rounded-full object-cover border border-blue-500/30 shadow-lg">
+            <?php else: ?>
+                <div class="w-16 h-16 md:w-20 md:h-20 bg-gradient-to-br from-blue-600 to-indigo-800 rounded-full flex items-center justify-center text-2xl md:text-3xl font-bold text-white shadow-lg border border-blue-400/30">
+                    <?php 
+                        $initial = !empty($user['full_name']) ? substr($user['full_name'], 0, 1) : (!empty($user['username']) ? substr($user['username'], 0, 1) : 'U');
+                        echo strtoupper($initial); 
+                    ?>
+                </div>
+            <?php endif; ?>
+            <div>
+                <h1 class="text-3xl md:text-5xl font-bold text-white tracking-tight">Account Overview</h1>
+                <p class="text-slate-500 mt-2 text-lg">Welcome back, <span class="text-blue-500 font-bold"><?php echo htmlspecialchars($user['full_name']); ?></span></p>
+            </div>
         </div>
-        <div class="flex gap-4">
+        <div class="flex gap-4 shrink-0">
             <a href="index.php?module=shop&page=search" class="bg-blue-600 hover:bg-blue-500 text-white px-8 py-3.5 rounded-2xl font-bold transition-all active:scale-95 shadow-lg shadow-blue-500/20">
                 Browse Store
             </a>

@@ -109,6 +109,29 @@ if (isset($_SESSION['user_id'])) {
             $wishlist_count = 0;
         }
     }
+
+    // Get Unread Notifications Count for Header Bell Badge
+    $unread_notifications_count = 0;
+    $cache_key_notif = "user_unread_notif_count_{$_SESSION['user_id']}";
+    $unread_notifications_count = matrix_cache_get($cache_key_notif);
+    if ($unread_notifications_count === false) {
+        try {
+            $stmt_notif = $pdo->prepare("SELECT COUNT(*) FROM user_notifications WHERE user_id = ? AND is_read = 0");
+            $stmt_notif->execute([$_SESSION['user_id']]);
+            $unread_notifications_count = (int)$stmt_notif->fetchColumn();
+            matrix_cache_set($cache_key_notif, $unread_notifications_count, 60); // 1 minute cache
+        } catch (Exception $e) {
+            $unread_notifications_count = 0;
+        }
+    }
+
+    // Get Logged In User Avatar
+    $user_avatar = null;
+    try {
+        $stmt_avatar = $pdo->prepare("SELECT avatar_path FROM users WHERE id = ?");
+        $stmt_avatar->execute([$_SESSION['user_id']]);
+        $user_avatar = $stmt_avatar->fetchColumn() ?: null;
+    } catch (Exception $e) {}
 }
 ?>
 <!DOCTYPE html>
@@ -361,11 +384,27 @@ if (isset($_SESSION['user_id'])) {
 
                     <?php if(isset($_SESSION['user_id'])): ?>
                         
+                        <!-- Notification Bell -->
+                        <div class="relative mr-3 flex items-center">
+                            <a href="index.php?module=user&page=notifications" class="w-9 h-9 lg:w-10 lg:h-10 bg-slate-800 border border-white/5 hover:border-blue-500/50 hover:bg-slate-700/50 rounded-full flex items-center justify-center text-slate-400 hover:text-white transition relative shadow-md" title="Notifications">
+                                <i class="fas fa-bell"></i>
+                                <?php if($unread_notifications_count > 0): ?>
+                                    <span class="absolute -top-1 -right-1 bg-blue-500 text-white text-[8px] font-black px-1.5 py-0.5 rounded-full min-w-[16px] text-center shadow-lg animate-pulse">
+                                        <?php echo $unread_notifications_count; ?>
+                                    </span>
+                                <?php endif; ?>
+                            </a>
+                        </div>
+
                         <!-- Profile -->
                         <div class="relative group">
                             <button class="flex items-center gap-2 focus:outline-none">
-                                <div class="w-9 h-9 lg:w-10 lg:h-10 rounded-full bg-slate-800 border-2 border-white/5 group-hover:border-blue-500/50 transition-all flex items-center justify-center text-sm font-bold text-white shadow-md">
-                                    <?php echo strtoupper(substr($_SESSION['user_name'] ?? 'U', 0, 1)); ?>
+                                <div class="w-9 h-9 lg:w-10 lg:h-10 rounded-full bg-slate-800 border-2 border-white/5 group-hover:border-blue-500/50 transition-all flex items-center justify-center text-sm font-bold text-white shadow-md overflow-hidden">
+                                    <?php if ($user_avatar && file_exists($user_avatar)): ?>
+                                        <img src="<?php echo htmlspecialchars($user_avatar); ?>" alt="Avatar" class="w-full h-full object-cover">
+                                    <?php else: ?>
+                                        <?php echo strtoupper(substr($_SESSION['user_name'] ?? 'U', 0, 1)); ?>
+                                    <?php endif; ?>
                                 </div>
                             </button>
                             
@@ -381,6 +420,14 @@ if (isset($_SESSION['user_id'])) {
                                     <a href="index.php?module=user&page=orders" class="flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm text-slate-300 hover:bg-slate-800 hover:text-white transition">
                                         <i class="fas fa-box w-5 text-slate-500"></i> My Orders
                                     </a>
+                                     <a href="index.php?module=user&page=notifications" class="flex items-center justify-between px-3 py-2.5 rounded-xl text-sm text-slate-300 hover:bg-slate-800 hover:text-white transition w-full animate-fade-in">
+                                         <span class="flex items-center gap-3">
+                                             <i class="fas fa-bell w-5 text-slate-500"></i> Notifications
+                                         </span>
+                                         <?php if($unread_notifications_count > 0): ?>
+                                             <span class="bg-blue-500 text-white text-[10px] font-bold px-2 py-0.5 rounded-full min-w-[18px] text-center shadow-md animate-pulse"><?php echo $unread_notifications_count; ?></span>
+                                         <?php endif; ?>
+                                     </a>
                                      <a href="index.php?module=user&page=wishlist" class="flex items-center justify-between px-3 py-2.5 rounded-xl text-sm text-slate-300 hover:bg-slate-800 hover:text-white transition w-full">
                                          <span class="flex items-center gap-3">
                                              <i class="fas fa-heart w-5 text-slate-500"></i> Wishlist
@@ -480,6 +527,15 @@ if (isset($_SESSION['user_id'])) {
                     <a href="index.php?module=user&page=orders" class="flex items-center gap-4 p-4 bg-slate-800/30 rounded-2xl border border-white/5 text-slate-300">
                         <i class="fas fa-box text-emerald-400"></i>
                         <span class="text-sm font-semibold">My Orders</span>
+                    </a>
+                    <a href="index.php?module=user&page=notifications" class="flex items-center justify-between p-4 bg-slate-800/30 rounded-2xl border border-white/5 text-slate-300 w-full">
+                        <span class="flex items-center gap-4">
+                            <i class="fas fa-bell text-blue-400"></i>
+                            <span class="text-sm font-semibold">Notifications</span>
+                        </span>
+                        <?php if($unread_notifications_count > 0): ?>
+                            <span class="bg-blue-500 text-white text-[10px] font-bold px-2.5 py-0.5 rounded-full shadow-md animate-pulse"><?php echo $unread_notifications_count; ?></span>
+                        <?php endif; ?>
                     </a>
                     <a href="index.php?module=user&page=wishlist" class="flex items-center justify-between p-4 bg-slate-800/30 rounded-2xl border border-white/5 text-slate-300 w-full">
                         <span class="flex items-center gap-4">

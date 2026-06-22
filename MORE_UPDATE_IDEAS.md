@@ -35,17 +35,17 @@
 
 ## 👤 User Account
 
-### 5. Avatar / Profile Picture Upload `M`
+### 5. Avatar / Profile Picture Upload [COMPLETED]
 **File:** `modules/user/profile.php`
-- Add an avatar upload field (stores to `uploads/avatars/`)
-- Display the avatar in the user dashboard header and order chat bubbles
-- Fallback: first letter of username as a colored circle (already using `fas fa-user` icon)
+- Add an avatar upload field (stores to `uploads/avatars/`) [DONE]
+- Display the avatar in the user dashboard header and order chat bubbles [DONE]
+- Fallback: first letter of username as a colored circle (already using `fas fa-user` icon) [DONE]
 
-### 6. User Notification Bell — In-App Feed `M`
+### 6. User Notification Bell — In-App Feed [COMPLETED]
 **File:** new `modules/user/notifications.php`
-- A page listing all notifications received (push notifications are sent but there's no read history)
-- Add a `user_notifications` table: `(id, user_id, title, body, url, is_read, created_at)`
-- Show an unread count badge on the bell icon in the header nav
+- A page listing all notifications received (push notifications are sent but there's no read history) [DONE]
+- Add a `user_notifications` table: `(id, user_id, title, body, url, is_read, created_at)` [DONE]
+- Show an unread count badge on the bell icon in the header nav [DONE]
 
 ### 7. Email — Password Reset Flow `M`
 **File:** `modules/auth/` + new `reset.php`

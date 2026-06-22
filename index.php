@@ -51,7 +51,6 @@ $allowed_routes = [
         'blindbox'
     ],
     
-    // User Account Management
     'user' => [
         'dashboard',
         'orders', 
@@ -59,7 +58,8 @@ $allowed_routes = [
         'agent', 
         'wishlist',
         'referrals',        // Added Referrals
-        'invoice'
+        'invoice',
+        'notifications'
     ],
     
     // Static Information
@@ -131,7 +131,7 @@ if ($module === 'home' && $page === 'index') {
  * --------------------------------------------------------------------------
  */
 $protected_pages = [
-    'user' => ['dashboard', 'orders', 'profile', 'agent', 'wishlist', 'referrals', 'invoice'],
+    'user' => ['dashboard', 'orders', 'profile', 'agent', 'wishlist', 'referrals', 'invoice', 'notifications'],
     'shop' => ['checkout']
 ];
 

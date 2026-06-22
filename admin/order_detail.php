@@ -244,6 +244,12 @@ if (isset($_GET['ajax']) && $_GET['ajax'] == 1) {
     echo "<!--CHAT_PAYLOAD_START-->";
 
     try {
+        $stmt_user = $pdo->prepare("SELECT u.avatar_path, u.username FROM users u JOIN orders o ON o.user_id = u.id WHERE o.id = ?");
+        $stmt_user->execute([$order_id]);
+        $chat_user = $stmt_user->fetch();
+        $user_avatar_path = !empty($chat_user['avatar_path']) ? $chat_user['avatar_path'] : null;
+        $user_username_val = !empty($chat_user['username']) ? $chat_user['username'] : 'User';
+
         $stmt = $pdo->prepare("SELECT * FROM order_messages WHERE order_id = ? ORDER BY created_at ASC");
         $stmt->execute([$order_id]);
         $messages = $stmt->fetchAll();
@@ -276,7 +282,19 @@ if (isset($_GET['ajax']) && $_GET['ajax'] == 1) {
                 $safe_msg = htmlspecialchars($msg['message']);
 
                 echo "<div class='flex w-full {$align} mb-4 animate-fade-in-up group'>";
-                echo "<div class='max-w-[85%] sm:max-w-[75%] flex flex-col {$item_align}'>";
+                echo "<div class='max-w-[85%] sm:max-w-[75%] flex gap-3 " . ($is_admin ? "flex-row-reverse" : "flex-row") . "'>";
+
+                if (!$is_admin) {
+                    if ($user_avatar_path && file_exists("../" . $user_avatar_path)) {
+                        $avatar_url = "../" . $user_avatar_path;
+                        echo "<img src='{$avatar_url}' alt='User Avatar' class='w-8 h-8 rounded-full object-cover shrink-0 shadow-lg border border-white/10 mt-1' title='User'>";
+                    } else {
+                        $user_initial = strtoupper(substr($user_username_val, 0, 1));
+                        echo "<div class='w-8 h-8 rounded-full bg-gradient-to-br from-slate-600 to-slate-800 flex items-center justify-center text-white text-[10px] font-bold shrink-0 shadow-lg border border-white/10 mt-1' title='User'>{$user_initial}</div>";
+                    }
+                }
+
+                echo "<div class='flex flex-col {$item_align}'>";
                 
                 if ($is_ai) {
                     echo "<div class='flex items-center gap-1.5 mb-1 px-1 opacity-70'><i class='fas fa-robot text-[10px] text-purple-400'></i> <span class='text-[9px] font-black uppercase tracking-widest text-purple-400'>Support AI</span></div>";
@@ -299,7 +317,7 @@ if (isset($_GET['ajax']) && $_GET['ajax'] == 1) {
                 }
                 echo "<span class='text-[9px] text-slate-400 font-medium tracking-wide'>{$time}</span>";
                 echo "</div>";
-                echo "</div></div>";
+                echo "</div></div></div>";
             }
         }
     } catch (Exception $e) {

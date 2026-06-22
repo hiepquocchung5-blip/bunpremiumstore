@@ -7,12 +7,62 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['update_profile'])) {
 
     $fullname = trim($_POST['full_name']);
     $phone = trim($_POST['phone']);
+    $user_id = $_SESSION['user_id'];
     
-    $stmt = $pdo->prepare("UPDATE users SET full_name = ?, phone = ? WHERE id = ?");
-    if ($stmt->execute([$fullname, $phone, $_SESSION['user_id']])) {
-        $success = "Profile updated successfully.";
-    } else {
-        $error = "Failed to update profile.";
+    $avatar_path = null;
+    
+    // Check if file is uploaded
+    if (isset($_FILES['avatar']) && $_FILES['avatar']['error'] === UPLOAD_ERR_OK) {
+        $file_tmp = $_FILES['avatar']['tmp_name'];
+        $file_name = $_FILES['avatar']['name'];
+        $file_ext = strtolower(pathinfo($file_name, PATHINFO_EXTENSION));
+        
+        $allowed_exts = ['jpg', 'jpeg', 'png', 'webp'];
+        if (in_array($file_ext, $allowed_exts)) {
+            // Check size (2MB)
+            if ($_FILES['avatar']['size'] <= 2 * 1024 * 1024) {
+                $target_dir = "uploads/avatars/";
+                if (!is_dir($target_dir)) mkdir($target_dir, 0755, true);
+                
+                $new_filename = "avatar_" . $user_id . "_" . time() . "." . $file_ext;
+                $target_file = $target_dir . $new_filename;
+                
+                // Let's delete the old avatar if it exists
+                $stmt_old = $pdo->prepare("SELECT avatar_path FROM users WHERE id = ?");
+                $stmt_old->execute([$user_id]);
+                $old_avatar = $stmt_old->fetchColumn();
+                
+                if (move_uploaded_file($file_tmp, $target_file)) {
+                    $avatar_path = $target_file;
+                    
+                    if ($old_avatar && file_exists($old_avatar)) {
+                        @unlink($old_avatar);
+                    }
+                } else {
+                    $error = "Failed to upload avatar.";
+                }
+            } else {
+                $error = "Avatar image must be under 2MB.";
+            }
+        } else {
+            $error = "Invalid file type. Only JPG, PNG, and WEBP are allowed.";
+        }
+    }
+    
+    if (!isset($error)) {
+        if ($avatar_path !== null) {
+            $stmt = $pdo->prepare("UPDATE users SET full_name = ?, phone = ?, avatar_path = ? WHERE id = ?");
+            $success_db = $stmt->execute([$fullname, $phone, $avatar_path, $user_id]);
+        } else {
+            $stmt = $pdo->prepare("UPDATE users SET full_name = ?, phone = ? WHERE id = ?");
+            $success_db = $stmt->execute([$fullname, $phone, $user_id]);
+        }
+        
+        if ($success_db) {
+            $success = "Profile updated successfully.";
+        } else {
+            $error = "Failed to update profile details.";
+        }
     }
 }
 
@@ -66,8 +116,14 @@ $order_count = $total_orders->fetchColumn();
         <!-- Sidebar / Stats -->
         <div class="md:col-span-1 space-y-6">
             <div class="glass p-6 rounded-xl border border-gray-700 text-center">
-                <div class="w-20 h-20 bg-blue-600 rounded-full flex items-center justify-center mx-auto mb-4 text-3xl font-bold text-white shadow-lg">
-                    <?php echo strtoupper(substr($user['username'], 0, 1)); ?>
+                <div class="w-20 h-20 mx-auto mb-4 group relative">
+                    <?php if (!empty($user['avatar_path']) && file_exists($user['avatar_path'])): ?>
+                        <img src="<?php echo htmlspecialchars($user['avatar_path']); ?>" alt="Avatar" class="w-20 h-20 rounded-full object-cover border border-gray-600 shadow-lg">
+                    <?php else: ?>
+                        <div class="w-20 h-20 bg-blue-600 rounded-full flex items-center justify-center text-3xl font-bold text-white shadow-lg">
+                            <?php echo strtoupper(substr($user['username'], 0, 1)); ?>
+                        </div>
+                    <?php endif; ?>
                 </div>
                 <h3 class="text-xl font-bold"><?php echo htmlspecialchars($user['username']); ?></h3>
                 <p class="text-sm text-gray-400 mb-4"><?php echo htmlspecialchars($user['email']); ?></p>
@@ -105,7 +161,7 @@ $order_count = $total_orders->fetchColumn();
                 <?php if(isset($success)) echo "<div class='bg-green-500/20 text-green-400 p-3 rounded mb-4 text-sm'>$success</div>"; ?>
                 <?php if(isset($error)) echo "<div class='bg-red-500/20 text-red-400 p-3 rounded mb-4 text-sm'>$error</div>"; ?>
 
-                <form method="POST" class="space-y-4">
+                <form method="POST" enctype="multipart/form-data" class="space-y-4">
                     <input type="hidden" name="csrf_token" value="<?php echo generate_csrf_token(); ?>">
                     
                     <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -117,6 +173,11 @@ $order_count = $total_orders->fetchColumn();
                             <label class="block text-sm text-gray-400 mb-1">Phone Number</label>
                             <input type="text" name="phone" value="<?php echo htmlspecialchars($user['phone']); ?>" placeholder="+959..." class="w-full bg-gray-900 border border-gray-600 rounded p-2.5 focus:border-blue-500 outline-none transition">
                         </div>
+                    </div>
+                    <div>
+                        <label class="block text-sm text-gray-400 mb-1">Profile Picture (Avatar)</label>
+                        <input type="file" name="avatar" accept="image/*" class="w-full bg-gray-900 border border-gray-600 rounded p-2 text-sm focus:border-blue-500 outline-none file:mr-4 file:py-1.5 file:px-3 file:rounded-lg file:border-0 file:text-xs file:font-bold file:bg-blue-600 file:text-white hover:file:bg-blue-500 file:cursor-pointer transition">
+                        <p class="text-xs text-gray-500 mt-1">Recommended: Square image, max 2MB. JPG, PNG or WEBP.</p>
                     </div>
                     <div>
                         <label class="block text-sm text-gray-400 mb-1">Email Address</label>
