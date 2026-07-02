@@ -23,9 +23,9 @@
                         Myanmar's premier digital marketplace. Instant access to global entertainment and software with local payments.
                     </p>
                     <div class="flex gap-4">
-                        <a href="https://t.me/bunpremiumstore" target="_blank" class="w-10 h-10 rounded-xl bg-slate-800 flex items-center justify-center text-slate-400 hover:bg-blue-500 hover:text-white transition shadow-sm"><i class="fab fa-telegram-plane"></i></a>
-                        <a href="#" target="_blank" class="w-10 h-10 rounded-xl bg-slate-800 flex items-center justify-center text-slate-400 hover:bg-blue-600 hover:text-white transition shadow-sm"><i class="fab fa-facebook-f"></i></a>
-                        <a href="#" class="w-10 h-10 rounded-xl bg-slate-800 flex items-center justify-center text-slate-400 hover:bg-white hover:text-black transition shadow-sm"><i class="fab fa-tiktok"></i></a>
+                        <a href="https://t.me/digitalmm_support" target="_blank" rel="noopener noreferrer" aria-label="Telegram support" class="w-10 h-10 rounded-xl bg-slate-800 flex items-center justify-center text-slate-400 hover:bg-blue-500 hover:text-white transition shadow-sm"><i class="fab fa-telegram-plane"></i></a>
+                        <a href="https://www.facebook.com/share/1EVfYN66Kp/?mibextid=wwXIfr" target="_blank" rel="noopener noreferrer" aria-label="Facebook page" class="w-10 h-10 rounded-xl bg-slate-800 flex items-center justify-center text-slate-400 hover:bg-blue-600 hover:text-white transition shadow-sm"><i class="fab fa-facebook-f"></i></a>
+                        <a href="https://www.tiktok.com/@digitalmarketplacemm?_r=1&_t=ZS-97TirtbK2rP" target="_blank" rel="noopener noreferrer" aria-label="TikTok profile" class="w-10 h-10 rounded-xl bg-slate-800 flex items-center justify-center text-slate-400 hover:bg-white hover:text-black transition shadow-sm"><i class="fab fa-tiktok"></i></a>
                     </div>
                 </div>
 

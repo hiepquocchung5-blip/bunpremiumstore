@@ -1,7 +1,8 @@
 -- update_3.sql
--- Database update for Avatar / Profile Picture Upload and User In-App Notifications Feed
+-- Database update for Avatar / Profile Picture Upload, User In-App Notifications Feed, and Preferred Payment Method
 
 ALTER TABLE `users` ADD COLUMN IF NOT EXISTS `avatar_path` VARCHAR(255) DEFAULT NULL AFTER `email`;
+ALTER TABLE `users` ADD COLUMN IF NOT EXISTS `preferred_payment_id` INT DEFAULT NULL AFTER `wallet_balance`;
 
 CREATE TABLE IF NOT EXISTS `user_notifications` (
     `id` INT AUTO_INCREMENT PRIMARY KEY,

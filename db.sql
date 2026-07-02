@@ -335,6 +335,7 @@ CREATE TABLE `users` (
   `password` varchar(255) NOT NULL,
   `phone` varchar(20) DEFAULT NULL,
   `wallet_balance` decimal(10,2) DEFAULT 0.00,
+  `preferred_payment_id` int(11) DEFAULT NULL,
   `is_verified` tinyint(4) DEFAULT 0,
   `is_banned` tinyint(4) DEFAULT 0,
   `ban_reason` varchar(255) DEFAULT NULL,

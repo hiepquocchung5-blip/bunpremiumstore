@@ -7,6 +7,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['update_profile'])) {
 
     $fullname = trim($_POST['full_name']);
     $phone = trim($_POST['phone']);
+    $pref_payment_id = isset($_POST['preferred_payment_id']) && $_POST['preferred_payment_id'] !== '' ? (int)$_POST['preferred_payment_id'] : null;
     $user_id = $_SESSION['user_id'];
     
     $avatar_path = null;
@@ -51,11 +52,11 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['update_profile'])) {
     
     if (!isset($error)) {
         if ($avatar_path !== null) {
-            $stmt = $pdo->prepare("UPDATE users SET full_name = ?, phone = ?, avatar_path = ? WHERE id = ?");
-            $success_db = $stmt->execute([$fullname, $phone, $avatar_path, $user_id]);
+            $stmt = $pdo->prepare("UPDATE users SET full_name = ?, phone = ?, avatar_path = ?, preferred_payment_id = ? WHERE id = ?");
+            $success_db = $stmt->execute([$fullname, $phone, $avatar_path, $pref_payment_id, $user_id]);
         } else {
-            $stmt = $pdo->prepare("UPDATE users SET full_name = ?, phone = ? WHERE id = ?");
-            $success_db = $stmt->execute([$fullname, $phone, $user_id]);
+            $stmt = $pdo->prepare("UPDATE users SET full_name = ?, phone = ?, preferred_payment_id = ? WHERE id = ?");
+            $success_db = $stmt->execute([$fullname, $phone, $pref_payment_id, $user_id]);
         }
         
         if ($success_db) {
@@ -105,6 +106,9 @@ $user = $stmt->fetch();
 $total_orders = $pdo->prepare("SELECT COUNT(*) FROM orders WHERE user_id = ?");
 $total_orders->execute([$_SESSION['user_id']]);
 $order_count = $total_orders->fetchColumn();
+
+// Fetch Active Payment Methods
+$payment_methods = $pdo->query("SELECT * FROM payment_methods WHERE is_active = 1")->fetchAll();
 ?>
 
 <div class="max-w-4xl mx-auto">
@@ -174,10 +178,24 @@ $order_count = $total_orders->fetchColumn();
                             <input type="text" name="phone" value="<?php echo htmlspecialchars($user['phone']); ?>" placeholder="+959..." class="w-full bg-gray-900 border border-gray-600 rounded p-2.5 focus:border-blue-500 outline-none transition">
                         </div>
                     </div>
-                    <div>
-                        <label class="block text-sm text-gray-400 mb-1">Profile Picture (Avatar)</label>
-                        <input type="file" name="avatar" accept="image/*" class="w-full bg-gray-900 border border-gray-600 rounded p-2 text-sm focus:border-blue-500 outline-none file:mr-4 file:py-1.5 file:px-3 file:rounded-lg file:border-0 file:text-xs file:font-bold file:bg-blue-600 file:text-white hover:file:bg-blue-500 file:cursor-pointer transition">
-                        <p class="text-xs text-gray-500 mt-1">Recommended: Square image, max 2MB. JPG, PNG or WEBP.</p>
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        <div>
+                            <label class="block text-sm text-gray-400 mb-1">Profile Picture (Avatar)</label>
+                            <input type="file" name="avatar" accept="image/*" class="w-full bg-gray-900 border border-gray-600 rounded p-2 text-sm focus:border-blue-500 outline-none file:mr-4 file:py-1.5 file:px-3 file:rounded-lg file:border-0 file:text-xs file:font-bold file:bg-blue-600 file:text-white hover:file:bg-blue-500 file:cursor-pointer transition">
+                            <p class="text-xs text-gray-500 mt-1">Recommended: Square image, max 2MB. JPG, PNG or WEBP.</p>
+                        </div>
+                        <div>
+                            <label class="block text-sm text-gray-400 mb-1">Preferred Payment Method</label>
+                            <select name="preferred_payment_id" class="w-full bg-gray-900 border border-gray-600 rounded p-2.5 focus:border-blue-500 outline-none transition text-slate-300">
+                                <option value="">-- None (Ask every time) --</option>
+                                <?php foreach($payment_methods as $pm): ?>
+                                    <option value="<?php echo $pm['id']; ?>" <?php echo ($user['preferred_payment_id'] == $pm['id']) ? 'selected' : ''; ?>>
+                                        <?php echo htmlspecialchars($pm['bank_name']); ?>
+                                    </option>
+                                <?php endforeach; ?>
+                            </select>
+                            <p class="text-xs text-gray-500 mt-1">Pre-selects this method at checkout automatically.</p>
+                        </div>
                     </div>
                     <div>
                         <label class="block text-sm text-gray-400 mb-1">Email Address</label>

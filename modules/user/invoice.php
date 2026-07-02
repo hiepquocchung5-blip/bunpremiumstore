@@ -136,7 +136,7 @@ $status_color = match($order['status']) {
         <!-- Footer Info -->
         <div class="mt-12 pt-6 border-t border-gray-200 text-center text-xs text-gray-400">
             <p class="mb-1">Payment Method: <?php echo $order['transaction_last_6'] ? 'Manual Transfer (Txn: '.$order['transaction_last_6'].')' : 'Direct Transfer / Promo'; ?></p>
-            <p>Thank you for your business. For support, contact us on Telegram @bunxmk.</p>
+            <p>Thank you for your business. For support, contact us on Telegram @digitalmm_support.</p>
         </div>
 
     </div>
