@@ -6,6 +6,8 @@
 $cat_id = isset($_GET['id']) ? (int)$_GET['id'] : 0;
 $sort = isset($_GET['sort']) ? $_GET['sort'] : 'newest';
 $region_filter = isset($_GET['region']) ? (int)$_GET['region'] : 0;
+$available_filter = isset($_GET['available']) ? (int)$_GET['available'] : 0;
+$layout = ($_GET['layout'] ?? '') === 'list' ? 'list' : 'grid';
 $current_page = isset($_GET['p']) ? max(1, (int)$_GET['p']) : 1;
 $items_per_page = 12;
 $offset = ($current_page - 1) * $items_per_page;
@@ -43,7 +45,7 @@ if ($cat_id > 0) {
 
 // 3. Fetch Sidebar Data (Categories & Regions)
 $all_categories = $pdo->query("
-    SELECT c.*, (SELECT COUNT(*) FROM products WHERE category_id = c.id) as count 
+    SELECT c.*, (SELECT COUNT(*) FROM products p WHERE p.category_id = c.id AND " . product_active_condition('p') . ") as count 
     FROM categories c ORDER BY c.name ASC
 ")->fetchAll();
 
@@ -52,6 +54,7 @@ $all_regions = $pdo->query("SELECT * FROM regions ORDER BY name ASC")->fetchAll(
 // 4. Dynamic Query Builder for Products
 $where_clauses = [];
 $params = [];
+$where_clauses[] = product_active_condition('p');
 
 if ($cat_id > 0) {
     $where_clauses[] = "p.category_id = ?";
@@ -61,8 +64,11 @@ if ($region_filter > 0) {
     $where_clauses[] = "p.region_id = ?";
     $params[] = $region_filter;
 }
+if ($available_filter === 1) {
+    $where_clauses[] = "(p.delivery_type != 'unique' OR EXISTS (SELECT 1 FROM product_keys pk WHERE pk.product_id = p.id AND pk.is_sold = 0 AND pk.order_id IS NULL))";
+}
 
-$where_sql = count($where_clauses) > 0 ? "WHERE " . implode(" AND ", $where_clauses) : "";
+$where_sql = "WHERE " . implode(" AND ", $where_clauses);
 
 // Sorting Logic
 $order_sql = "ORDER BY p.id DESC";
@@ -79,7 +85,9 @@ $total_items = $stmt_count->fetchColumn();
 $total_pages = ceil($total_items / $items_per_page);
 
 $stmt = $pdo->prepare("
-    SELECT p.*, c.name as cat_name, c.image_url as cat_image
+    SELECT p.*, c.name as cat_name, c.image_url as cat_image,
+           (SELECT COUNT(*) FROM product_keys pk WHERE pk.product_id = p.id AND pk.is_sold = 0 AND pk.order_id IS NULL) as stock_count,
+           (SELECT COUNT(*) FROM orders o WHERE o.product_id = p.id AND o.status = 'active') as sales_count
     FROM products p 
     JOIN categories c ON p.category_id = c.id 
     $where_sql 
@@ -92,18 +100,22 @@ $products = $stmt->fetchAll();
 // 6. Fetch "Extras" ONLY on Global Hub (Page 1, No Filters)
 if ($cat_id == 0 && $current_page == 1 && $region_filter == 0) {
     $trending_products = $pdo->query("
-        SELECT p.*, c.name as cat_name, c.image_url as cat_image, COUNT(o.id) as sales_count
+        SELECT p.*, c.name as cat_name, c.image_url as cat_image, COUNT(o.id) as sales_count,
+               (SELECT COUNT(*) FROM product_keys pk WHERE pk.product_id = p.id AND pk.is_sold = 0 AND pk.order_id IS NULL) as stock_count
         FROM products p 
         JOIN categories c ON p.category_id = c.id 
         LEFT JOIN orders o ON p.id = o.product_id AND o.status = 'active'
+        WHERE " . product_active_condition('p') . "
         GROUP BY p.id ORDER BY sales_count DESC LIMIT 3
     ")->fetchAll();
 
     $recommended_products = $pdo->query("
-        SELECT p.*, c.name as cat_name, c.image_url as cat_image
+        SELECT p.*, c.name as cat_name, c.image_url as cat_image,
+               (SELECT COUNT(*) FROM product_keys pk WHERE pk.product_id = p.id AND pk.is_sold = 0 AND pk.order_id IS NULL) as stock_count,
+               (SELECT COUNT(*) FROM orders o WHERE o.product_id = p.id AND o.status = 'active') as sales_count
         FROM products p 
         JOIN categories c ON p.category_id = c.id 
-        WHERE p.sale_price IS NOT NULL AND p.sale_price < p.price
+        WHERE p.sale_price IS NOT NULL AND p.sale_price < p.price AND " . product_active_condition('p') . "
         ORDER BY RAND() LIMIT 3
     ")->fetchAll();
 }
@@ -306,12 +318,18 @@ function get_page_url($page_num) {
                     <input type="hidden" name="module" value="shop">
                     <input type="hidden" name="page" value="category">
                     <?php if($cat_id): ?><input type="hidden" name="id" value="<?php echo $cat_id; ?>"><?php endif; ?>
+                    <input type="hidden" name="layout" id="layoutInput" value="<?php echo htmlspecialchars($layout); ?>">
                     
                     <select name="region" onchange="document.getElementById('filterForm').submit()" class="bg-slate-900 border border-white/10 rounded-xl px-4 py-2 text-xs text-white focus:border-blue-500 outline-none cursor-pointer appearance-none">
                         <option value="0">All Regions</option>
                         <?php foreach($all_regions as $r): ?>
                             <option value="<?php echo $r['id']; ?>" <?php echo $region_filter == $r['id'] ? 'selected' : ''; ?>><?php echo htmlspecialchars($r['name']); ?></option>
                         <?php endforeach; ?>
+                    </select>
+
+                    <select name="available" onchange="document.getElementById('filterForm').submit()" class="bg-slate-900 border border-white/10 rounded-xl px-4 py-2 text-xs text-white focus:border-blue-500 outline-none cursor-pointer appearance-none">
+                        <option value="0" <?php echo $available_filter === 0 ? 'selected' : ''; ?>>All Stock</option>
+                        <option value="1" <?php echo $available_filter === 1 ? 'selected' : ''; ?>>Available Now</option>
                     </select>
 
                     <select name="sort" onchange="document.getElementById('filterForm').submit()" class="bg-slate-900 border border-white/10 rounded-xl px-4 py-2 text-xs text-white focus:border-blue-500 outline-none cursor-pointer appearance-none">
@@ -420,6 +438,8 @@ function get_page_url($page_num) {
 
     if (gridLayoutBtn && listLayoutBtn && productsGridContainer) {
         const setLayout = (layout) => {
+            const layoutInput = document.getElementById('layoutInput');
+            if (layoutInput) layoutInput.value = layout;
             productsGridContainer.classList.add('swap-active');
             if (skeletonGridContainer) {
                 skeletonGridContainer.classList.add('swap-active');
@@ -442,6 +462,9 @@ function get_page_url($page_num) {
             }
             
             localStorage.setItem('category_layout', layout);
+            const url = new URL(window.location.href);
+            url.searchParams.set('layout', layout);
+            window.history.replaceState({}, '', url.toString());
             
             setTimeout(() => {
                 productsGridContainer.classList.remove('swap-active');
@@ -452,7 +475,8 @@ function get_page_url($page_num) {
         };
 
         // Initialize from localStorage
-        const currentLayout = localStorage.getItem('category_layout') || 'grid';
+        const urlLayout = new URLSearchParams(window.location.search).get('layout');
+        const currentLayout = urlLayout || localStorage.getItem('category_layout') || <?php echo json_encode($layout); ?>;
         setLayout(currentLayout);
 
         gridLayoutBtn.addEventListener('click', () => setLayout('grid'));

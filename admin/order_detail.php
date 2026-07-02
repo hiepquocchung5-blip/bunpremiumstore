@@ -369,8 +369,8 @@ $is_pass_order = !empty($order['pass_id']);
 // Fetch Available Keys
 $available_keys = [];
 if (!$is_pass_order && $order['delivery_type'] === 'unique' && !empty($order['product_id'])) {
-    $stmt = $pdo->prepare("SELECT id, key_content FROM product_keys WHERE product_id = ? AND is_sold = 0 LIMIT 10");
-    $stmt->execute([$order['product_id']]);
+    $stmt = $pdo->prepare("SELECT id, key_content FROM product_keys WHERE product_id = ? AND is_sold = 0 AND (order_id IS NULL OR order_id = ?) ORDER BY order_id DESC, id ASC LIMIT 10");
+    $stmt->execute([$order['product_id'], $order_id]);
     $available_keys = $stmt->fetchAll();
 }
 

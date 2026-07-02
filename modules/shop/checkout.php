@@ -12,7 +12,7 @@ $stmt = $pdo->prepare("
     SELECT p.*, c.name as cat_name, c.image_url as cat_image 
     FROM products p 
     LEFT JOIN categories c ON p.category_id = c.id 
-    WHERE p.id = ?
+    WHERE p.id = ? AND " . product_active_condition('p') . "
 ");
 $stmt->execute([$product_id]);
 $product = $stmt->fetch();
@@ -22,7 +22,7 @@ if (!$product) die("<div class='p-10 text-center text-red-500'>Product not found
 // Stock Check for Unique Delivery
 $stock_count = 0;
 if (isset($product['delivery_type']) && $product['delivery_type'] === 'unique') {
-    $stmt_stock = $pdo->prepare("SELECT COUNT(*) FROM product_keys WHERE product_id = ? AND is_sold = 0");
+    $stmt_stock = $pdo->prepare("SELECT COUNT(*) FROM product_keys WHERE product_id = ? AND is_sold = 0 AND order_id IS NULL");
     $stmt_stock->execute([$product_id]);
     $stock_count = (int)$stmt_stock->fetchColumn();
 }
@@ -47,6 +47,7 @@ $base_price = $product['sale_price'] ?: $product['price'];
 $price_after_agent = $base_price * ((100 - $discount) / 100);
 $final_price = $price_after_agent;
 $coupon_code = null;
+$coupon = null;
 
 // =====================================================================================
 // 5. ANTI-SPAM / RATE LIMITING ENGINE (10 Minute Cooldown)
@@ -71,7 +72,7 @@ if ($elapsed !== false && $elapsed !== null) {
 // HANDLE FORM SUBMISSION (Strictly Manual Transfers)
 // =====================================================================================
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
-    if (!hash_equals($_SESSION['csrf_token'], $_POST['csrf_token'])) die("Invalid Token");
+    if (empty($_POST['csrf_token']) || !hash_equals($_SESSION['csrf_token'] ?? '', $_POST['csrf_token'])) die("Invalid Token");
 
     if ($on_cooldown) {
         $mins = floor($time_remaining / 60);
@@ -95,13 +96,27 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         // Validation
         $agreed_count = isset($_POST['agreed']) ? count($_POST['agreed']) : 0;
         $selected_payment_id = isset($_POST['payment_method_id']) ? (int)$_POST['payment_method_id'] : 0;
+        $txn_id = trim($_POST['txn_id'] ?? '');
+        $selected_payment = null;
+        foreach ($payment_methods as $pm) {
+            if ((int)$pm['id'] === $selected_payment_id) {
+                $selected_payment = $pm;
+                break;
+            }
+        }
         
         if ($agreed_count < count($instructions)) {
             $error = "Please agree to all the required rules before checking out.";
-        } elseif ($selected_payment_id === 0) {
+        } elseif (!$selected_payment) {
             $error = "Please select a payment method.";
+        } elseif (!preg_match('/^\d{6}$/', $txn_id)) {
+            $error = "Please enter the last 6 digits of your transaction ID.";
         } elseif (empty($_FILES['proof']['name'])) {
             $error = "A screenshot of your payment transfer is required.";
+        } elseif ($_FILES['proof']['error'] !== UPLOAD_ERR_OK) {
+            $error = "Payment screenshot upload failed. Please choose a clear JPG, PNG, or WebP image.";
+        } elseif ($_FILES['proof']['size'] > 5 * 1024 * 1024) {
+            $error = "Payment screenshot is too large. Please upload an image under 5MB.";
         } else {
             
             // Upload Logic
@@ -110,22 +125,27 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             
             $ext = strtolower(pathinfo($_FILES["proof"]["name"], PATHINFO_EXTENSION));
             $allowed = ['jpg', 'jpeg', 'png', 'webp'];
+            $allowed_mimes = [
+                'jpg' => 'image/jpeg',
+                'jpeg' => 'image/jpeg',
+                'png' => 'image/png',
+                'webp' => 'image/webp'
+            ];
+            $detected_mime = '';
+            if (function_exists('finfo_open')) {
+                $finfo = finfo_open(FILEINFO_MIME_TYPE);
+                if ($finfo) {
+                    $detected_mime = finfo_file($finfo, $_FILES["proof"]["tmp_name"]) ?: '';
+                    finfo_close($finfo);
+                }
+            }
             
-            if (in_array($ext, $allowed)) {
-                $filename = "txn_" . uniqid() . '.' . $ext;
+            if (in_array($ext, $allowed, true) && (!$detected_mime || ($allowed_mimes[$ext] ?? '') === $detected_mime)) {
+                $filename = "txn_" . bin2hex(random_bytes(12)) . '.' . $ext;
                 $target_file = $target_dir . $filename;
 
                 if (move_uploaded_file($_FILES["proof"]["tmp_name"], $target_file)) {
-                    $txn_id = trim($_POST['txn_id']);
-                    
-                    // Find Payment Method Name from already loaded array to avoid redundant DB query
-                    $pm_name = 'Manual Transfer';
-                    foreach ($payment_methods as $pm) {
-                        if ($pm['id'] == $selected_payment_id) {
-                            $pm_name = $pm['bank_name'];
-                            break;
-                        }
-                    }
+                    $pm_name = $selected_payment['bank_name'];
 
                     // Form Data JSON setup
                     $form_data_array = ['Payment Node' => $pm_name];
@@ -139,19 +159,50 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                     $delivery = 'Secure Admin Delivery via Chat';
                     $order_status = 'pending';
 
-                    // Insert Order
-                    $sql = "INSERT INTO orders (user_id, product_id, email_delivery_type, delivery_email, form_data, transaction_last_6, proof_image_path, total_price_paid, coupon_code, status) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)";
-                    $stmt = $pdo->prepare($sql);
-                    $stmt->execute([$user_id, $product_id, $email_type, $delivery, $form_data, $txn_id, $target_file, $final_price, $coupon_code, $order_status]);
-                    $new_order_id = $pdo->lastInsertId();
+                    try {
+                        $pdo->beginTransaction();
+                        $reserved_key_id = null;
 
-                    // Increment Coupon Usage
-                    if ($coupon) {
-                        $pdo->prepare("UPDATE coupons SET used_count = used_count + 1 WHERE id = ?")->execute([$coupon['id']]);
+                        if ($product['delivery_type'] === 'unique') {
+                            $reserve = $pdo->prepare("SELECT id FROM product_keys WHERE product_id = ? AND is_sold = 0 AND order_id IS NULL ORDER BY id ASC LIMIT 1 FOR UPDATE");
+                            $reserve->execute([$product_id]);
+                            $reserved_key_id = $reserve->fetchColumn();
+                            if (!$reserved_key_id) {
+                                throw new RuntimeException("This product just went out of stock. Please try another product or check back later.");
+                            }
+                        }
+
+                        // Insert Order
+                        $sql = "INSERT INTO orders (user_id, product_id, email_delivery_type, delivery_email, form_data, transaction_last_6, proof_image_path, total_price_paid, coupon_code, status) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)";
+                        $stmt = $pdo->prepare($sql);
+                        $stmt->execute([$user_id, $product_id, $email_type, $delivery, $form_data, $txn_id, $target_file, $final_price, $coupon_code, $order_status]);
+                        $new_order_id = $pdo->lastInsertId();
+
+                        if ($reserved_key_id) {
+                            $pdo->prepare("UPDATE product_keys SET order_id = ? WHERE id = ? AND order_id IS NULL")->execute([$new_order_id, $reserved_key_id]);
+                        }
+
+                        // Increment Coupon Usage
+                        if ($coupon) {
+                            $coupon_update = $pdo->prepare("UPDATE coupons SET used_count = used_count + 1 WHERE id = ? AND used_count < max_usage");
+                            $coupon_update->execute([$coupon['id']]);
+                            if ($coupon_update->rowCount() === 0) {
+                                throw new RuntimeException("This coupon has just reached its usage limit. Please remove it and try again.");
+                            }
+                        }
+
+                        $pdo->commit();
+                    } catch (Exception $e) {
+                        if ($pdo->inTransaction()) {
+                            $pdo->rollBack();
+                        }
+                        if (is_file($target_file)) {
+                            unlink($target_file);
+                        }
+                        $error = $e->getMessage();
                     }
 
-                    // ⚡️ PERFORMANCE PROTOCOL: Offload heavy tasks to finish request if possible
-                    if (function_exists('fastcgi_finish_request')) {
+                    if (!isset($error) && function_exists('fastcgi_finish_request')) {
                         header('Location: ' . BASE_URL . 'index.php?module=user&page=orders&view_chat=' . $new_order_id);
                         session_write_close();
                         fastcgi_finish_request();
@@ -174,7 +225,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                             } catch (Exception $e) {}
                         }
                         exit;
-                    } else {
+                    } elseif (!isset($error)) {
                         // Fallback: Normal Synchronous Flow
                         if (function_exists('send_telegram_alert')) {
                             send_telegram_alert($new_order_id, $product['name'], $final_price, $_SESSION['user_name']);
@@ -199,7 +250,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                     $error = "Failed to upload the image. Please try a different screenshot.";
                 }
             } else {
-                $error = "Invalid image type. Only JPG or PNG are allowed.";
+                $error = "Invalid image type. Only JPG, PNG, or WebP screenshots are allowed.";
             }
         }
     }
@@ -373,21 +424,22 @@ $display_image = !empty($product['image_path']) ? BASE_URL . $product['image_pat
                                     <label class="text-[10px] font-bold text-slate-500 uppercase tracking-widest ml-2">Last 6 Digits of Transaction ID</label>
                                     <input type="text" name="txn_id" id="txn_id" placeholder="123456" maxlength="6" pattern="\d{6}"
                                         class="w-full bg-slate-900/50 border border-white/5 rounded-2xl px-6 py-5 text-white font-mono tracking-widest text-xl focus:border-blue-500 outline-none transition text-center shadow-inner">
+                                    <p class="text-[10px] text-slate-500 ml-2">Enter numbers only from the end of your payment transaction ID.</p>
                                 </div>
 
                                 <div class="space-y-2">
                                     <label class="text-[10px] font-bold text-slate-500 uppercase tracking-widest ml-2">Payment Slip (Screenshot)</label>
                                     <div id="uploadWrapper" class="relative border-2 border-dashed border-white/10 rounded-2xl h-full min-h-[72px] text-center hover:bg-slate-800/50 hover:border-blue-500/50 transition-all cursor-pointer group/upload flex flex-col justify-center bg-slate-900/50">
-                                        <input type="file" name="proof" id="proofInput" accept="image/*" class="absolute inset-0 w-full h-full opacity-0 cursor-pointer z-10" 
-                                            onchange="document.getElementById('fileNameDisplay').innerHTML = `<span class='text-emerald-400 font-bold flex items-center justify-center gap-2'><i class='fas fa-check-circle'></i> Uploaded: ` + this.files[0].name + `</span>`; this.parentElement.classList.add('border-emerald-500/50', 'bg-emerald-500/10');">
+                                        <input type="file" name="proof" id="proofInput" accept=".jpg,.jpeg,.png,.webp,image/jpeg,image/png,image/webp" class="absolute inset-0 w-full h-full opacity-0 cursor-pointer z-10">
                                         <div class="flex items-center justify-center gap-4 px-6">
                                             <i class="fas fa-cloud-upload-alt text-2xl text-slate-500 group-hover/upload:text-blue-400 transition"></i>
                                             <div class="text-left overflow-hidden">
                                                 <p class="text-sm font-bold text-slate-300 truncate" id="fileNameDisplay">Upload Slip</p>
-                                                <p class="text-[10px] text-slate-500 font-medium mt-1 uppercase">JPG or PNG</p>
+                                                <p class="text-[10px] text-slate-500 font-medium mt-1 uppercase">JPG, PNG, or WebP under 5MB</p>
                                             </div>
                                         </div>
                                     </div>
+                                    <img id="proofPreview" alt="Payment proof preview" class="hidden mt-3 w-full max-h-48 object-contain rounded-2xl border border-white/10 bg-slate-900/50">
                                 </div>
                             </div>
                         </div>
@@ -591,6 +643,34 @@ $display_image = !empty($product['image_path']) ? BASE_URL . $product['image_pat
     const timerDisplay = document.getElementById('sessionTimer');
     const txnInput = document.getElementById('txn_id');
     const proofInput = document.getElementById('proofInput');
+    const proofPreview = document.getElementById('proofPreview');
+    const fileNameDisplay = document.getElementById('fileNameDisplay');
+    const uploadWrapper = document.getElementById('uploadWrapper');
+
+    if (txnInput) {
+        txnInput.addEventListener('input', () => {
+            txnInput.value = txnInput.value.replace(/\D/g, '').slice(0, 6);
+        });
+    }
+
+    if (proofInput) {
+        proofInput.addEventListener('change', () => {
+            const file = proofInput.files && proofInput.files[0];
+            if (!file) return;
+
+            if (fileNameDisplay) {
+                fileNameDisplay.textContent = `Uploaded: ${file.name}`;
+                fileNameDisplay.classList.add('text-emerald-400');
+            }
+            if (uploadWrapper) {
+                uploadWrapper.classList.add('border-emerald-500/50', 'bg-emerald-500/10');
+            }
+            if (proofPreview && file.type.startsWith('image/')) {
+                proofPreview.src = URL.createObjectURL(file);
+                proofPreview.classList.remove('hidden');
+            }
+        });
+    }
 
     function selectPayment(data, element) {
         // Highlight selection safely
@@ -781,6 +861,16 @@ $display_image = !empty($product['image_path']) ? BASE_URL . $product['image_pat
 
     // Double-Submit Protection
     function handleSecureSubmit(e) {
+        if (txnInput && !/^\d{6}$/.test(txnInput.value)) {
+            e.preventDefault();
+            alert('Please enter the last 6 digits of your transaction ID.');
+            return false;
+        }
+        if (proofInput && proofInput.files && proofInput.files[0] && proofInput.files[0].size > 5 * 1024 * 1024) {
+            e.preventDefault();
+            alert('Payment screenshot must be under 5MB.');
+            return false;
+        }
         if(submitBtn) {
             submitBtn.disabled = true;
             submitBtn.classList.add('opacity-80', 'cursor-not-allowed');

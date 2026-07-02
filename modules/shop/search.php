@@ -8,12 +8,13 @@ $min_price = isset($_GET['min_p']) ? (float)$_GET['min_p'] : 0.0;
 $max_price = isset($_GET['max_p']) ? (float)$_GET['max_p'] : 0.0;
 $delivery_filter = isset($_GET['delivery']) ? trim($_GET['delivery']) : '';
 $sort = isset($_GET['sort']) ? trim($_GET['sort']) : 'newest';
+$available_filter = isset($_GET['available']) ? (int)$_GET['available'] : 0;
 
 // 1. Fetch categories for filters and suggestions
 $categories = $pdo->query("SELECT id, name FROM categories ORDER BY name ASC")->fetchAll();
 
 // 2. Perform Dynamic Search
-$where = ["(p.name LIKE ? OR c.name LIKE ? OR p.description LIKE ?)"];
+$where = [product_active_condition('p'), "(p.name LIKE ? OR c.name LIKE ? OR p.description LIKE ?)"];
 $params = ["%$query%", "%$query%", "%$query%"];
 
 if ($cat_filter > 0) {
@@ -32,6 +33,9 @@ if (in_array($delivery_filter, ['universal', 'unique', 'form'])) {
     $where[] = "p.delivery_type = ?";
     $params[] = $delivery_filter;
 }
+if ($available_filter === 1) {
+    $where[] = "(p.delivery_type != 'unique' OR EXISTS (SELECT 1 FROM product_keys pk WHERE pk.product_id = p.id AND pk.is_sold = 0 AND pk.order_id IS NULL))";
+}
 
 $where_sql = implode(" AND ", $where);
 
@@ -48,7 +52,9 @@ if ($sort === 'price_asc') {
 }
 
 $stmt = $pdo->prepare("
-    SELECT p.*, c.name as cat_name, c.image_url as cat_image 
+    SELECT p.*, c.name as cat_name, c.image_url as cat_image,
+           (SELECT COUNT(*) FROM product_keys pk WHERE pk.product_id = p.id AND pk.is_sold = 0 AND pk.order_id IS NULL) as stock_count,
+           (SELECT COUNT(*) FROM orders o WHERE o.product_id = p.id AND o.status = 'active') as sales_count
     FROM products p 
     JOIN categories c ON p.category_id = c.id 
     WHERE $where_sql
@@ -113,7 +119,7 @@ $discount = is_logged_in() ? get_user_discount($_SESSION['user_id']) : 0;
 
     <!-- Filter Bar -->
     <div class="bg-slate-800/20 border border-white/5 rounded-3xl p-6 mb-12 backdrop-blur-xl">
-        <form method="GET" action="index.php" class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-4 items-end">
+        <form method="GET" action="index.php" class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-6 gap-4 items-end">
             <input type="hidden" name="module" value="shop">
             <input type="hidden" name="page" value="search">
             <input type="hidden" name="q" value="<?php echo htmlspecialchars($query); ?>">
@@ -156,6 +162,15 @@ $discount = is_logged_in() ? get_user_discount($_SESSION['user_id']) : 0;
                        class="w-full bg-slate-900 border border-white/5 rounded-xl py-3 px-4 text-xs text-white outline-none focus:border-blue-500/50">
             </div>
 
+            <!-- Availability -->
+            <div class="space-y-2">
+                <label class="text-[10px] font-bold text-slate-500 uppercase tracking-widest">Stock</label>
+                <select name="available" class="w-full bg-slate-900 border border-white/5 rounded-xl py-3.5 px-4 text-xs text-white outline-none focus:border-blue-500/50">
+                    <option value="0" <?php echo $available_filter === 0 ? 'selected' : ''; ?>>All Stock</option>
+                    <option value="1" <?php echo $available_filter === 1 ? 'selected' : ''; ?>>Available Now</option>
+                </select>
+            </div>
+
             <!-- Sort By -->
             <div class="space-y-2">
                 <label class="text-[10px] font-bold text-slate-500 uppercase tracking-widest">Sort By</label>
@@ -173,6 +188,30 @@ $discount = is_logged_in() ? get_user_discount($_SESSION['user_id']) : 0;
                 </div>
             </div>
         </form>
+
+        <div class="flex flex-wrap gap-2 mt-5 pt-5 border-t border-white/5">
+            <?php
+                $chip_base = [
+                    'module' => 'shop',
+                    'page' => 'search',
+                    'q' => $query,
+                    'cat' => $cat_filter,
+                    'delivery' => $delivery_filter,
+                    'sort' => $sort
+                ];
+                $chips = [
+                    'Under 5,000 Ks' => array_merge($chip_base, ['min_p' => '', 'max_p' => 5000]),
+                    '5,000-20,000 Ks' => array_merge($chip_base, ['min_p' => 5000, 'max_p' => 20000]),
+                    'On Sale' => array_merge($chip_base, ['sort' => 'sale', 'min_p' => $min_price ?: '', 'max_p' => $max_price ?: '']),
+                    'Available Now' => array_merge($chip_base, ['available' => 1, 'min_p' => $min_price ?: '', 'max_p' => $max_price ?: ''])
+                ];
+            ?>
+            <?php foreach($chips as $label => $chip_params): ?>
+                <a href="index.php?<?php echo http_build_query($chip_params); ?>" class="px-4 py-2 bg-slate-900/70 hover:bg-blue-600 border border-white/5 hover:border-blue-500 rounded-xl text-[11px] text-slate-300 hover:text-white font-bold transition">
+                    <?php echo htmlspecialchars($label); ?>
+                </a>
+            <?php endforeach; ?>
+        </div>
     </div>
 
     <!-- Results Grid -->
@@ -214,6 +253,13 @@ document.addEventListener('DOMContentLoaded', () => {
     const dropdown = document.getElementById('suggestionsDropdown');
     const content = document.getElementById('suggestionsContent');
     let debounceTimer;
+    const escapeHtml = (value) => String(value ?? '').replace(/[&<>"']/g, (char) => ({
+        '&': '&amp;',
+        '<': '&lt;',
+        '>': '&gt;',
+        '"': '&quot;',
+        "'": '&#039;'
+    }[char]));
 
     input.addEventListener('input', () => {
         clearTimeout(debounceTimer);
@@ -245,8 +291,8 @@ document.addEventListener('DOMContentLoaded', () => {
                                     <img src="${imgUrl}" class="w-full h-full object-cover">
                                 </div>
                                 <div class="min-w-0 flex-1">
-                                    <h4 class="text-white font-bold text-sm truncate">${item.name}</h4>
-                                    <p class="text-[10px] text-slate-400 uppercase tracking-wider">${item.cat_name}</p>
+                                    <h4 class="text-white font-bold text-sm truncate">${escapeHtml(item.name)}</h4>
+                                    <p class="text-[10px] text-slate-400 uppercase tracking-wider">${escapeHtml(item.cat_name)}</p>
                                 </div>
                                 <div class="text-right text-xs shrink-0">${priceHtml}</div>
                             `;
@@ -268,4 +314,3 @@ document.addEventListener('DOMContentLoaded', () => {
     });
 });
 </script>
-

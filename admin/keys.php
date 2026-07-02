@@ -35,8 +35,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['edit_key'])) {
     $new_content = trim($_POST['key_content']);
     
     if ($key_id > 0 && !empty($new_content)) {
-        // Only allow editing if the key hasn't been sold yet
-        $stmt = $pdo->prepare("UPDATE product_keys SET key_content = ? WHERE id = ? AND is_sold = 0");
+        // Only allow editing if the key is not sold or reserved for a pending order.
+        $stmt = $pdo->prepare("UPDATE product_keys SET key_content = ? WHERE id = ? AND is_sold = 0 AND order_id IS NULL");
         if ($stmt->execute([$new_content, $key_id])) {
             redirect(admin_url('keys', ['updated' => 1]));
         } else {
@@ -48,8 +48,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['edit_key'])) {
 // 3. Handle Delete (Single Key)
 if (isset($_GET['delete'])) {
     $id = (int)$_GET['delete'];
-    // Only delete if unsold
-    $stmt = $pdo->prepare("DELETE FROM product_keys WHERE id = ? AND is_sold = 0");
+    // Only delete if unsold and not reserved for a pending order.
+    $stmt = $pdo->prepare("DELETE FROM product_keys WHERE id = ? AND is_sold = 0 AND order_id IS NULL");
     $stmt->execute([$id]);
     redirect(admin_url('keys', ['deleted' => 1]));
 }
@@ -58,7 +58,7 @@ if (isset($_GET['delete'])) {
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['clear_unsold'])) {
     $target_product = (int)$_POST['target_product_id'];
     if ($target_product > 0) {
-        $stmt = $pdo->prepare("DELETE FROM product_keys WHERE product_id = ? AND is_sold = 0");
+        $stmt = $pdo->prepare("DELETE FROM product_keys WHERE product_id = ? AND is_sold = 0 AND order_id IS NULL");
         $stmt->execute([$target_product]);
         $cleared = $stmt->rowCount();
         redirect(admin_url('keys', ['cleared' => $cleared]));

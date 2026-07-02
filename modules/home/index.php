@@ -18,48 +18,50 @@ if ($categories === false) {
 }
 
 // 3. Fetch Flash Sales
-$flash_sales = matrix_cache_get('home_flash_sales_v2');
+$flash_sales = matrix_cache_get('home_flash_sales_v3');
 if ($flash_sales === false) {
     $stmt = $pdo->query("
         SELECT p.*, c.name as cat_name, c.image_url as cat_image,
-               (SELECT COUNT(*) FROM product_keys WHERE product_id = p.id AND is_sold = 0) as stock_count
+               (SELECT COUNT(*) FROM product_keys WHERE product_id = p.id AND is_sold = 0 AND order_id IS NULL) as stock_count
         FROM products p
         JOIN categories c ON p.category_id = c.id
-        WHERE p.sale_price IS NOT NULL AND p.sale_price < p.price
+        WHERE p.sale_price IS NOT NULL AND p.sale_price < p.price AND " . product_active_condition('p') . "
         ORDER BY RAND() LIMIT 4
     ");
     $flash_sales = $stmt->fetchAll();
-    matrix_cache_set('home_flash_sales_v2', $flash_sales, 120);
+    matrix_cache_set('home_flash_sales_v3', $flash_sales, 120);
 }
 
 // 4. Fetch Best Sellers
-$best_sellers = matrix_cache_get('home_best_sellers_v2');
+$best_sellers = matrix_cache_get('home_best_sellers_v3');
 if ($best_sellers === false) {
     $stmt = $pdo->query("
         SELECT p.*, c.name as cat_name, c.image_url as cat_image, COUNT(o.id) as sales_count,
-               (SELECT COUNT(*) FROM product_keys WHERE product_id = p.id AND is_sold = 0) as stock_count
+               (SELECT COUNT(*) FROM product_keys WHERE product_id = p.id AND is_sold = 0 AND order_id IS NULL) as stock_count
         FROM products p
         JOIN categories c ON p.category_id = c.id
         LEFT JOIN orders o ON p.id = o.product_id AND o.status = 'active'
+        WHERE " . product_active_condition('p') . "
         GROUP BY p.id
         ORDER BY sales_count DESC LIMIT 6
     ");
     $best_sellers = $stmt->fetchAll();
-    matrix_cache_set('home_best_sellers_v2', $best_sellers, 180);
+    matrix_cache_set('home_best_sellers_v3', $best_sellers, 180);
 }
 
 // 5. Fetch Recent Arrivals
-$recent_products = matrix_cache_get('home_recent_products_v2');
+$recent_products = matrix_cache_get('home_recent_products_v3');
 if ($recent_products === false) {
     $stmt = $pdo->query("
         SELECT p.*, c.name as cat_name, c.image_url as cat_image,
-               (SELECT COUNT(*) FROM product_keys WHERE product_id = p.id AND is_sold = 0) as stock_count
+               (SELECT COUNT(*) FROM product_keys WHERE product_id = p.id AND is_sold = 0 AND order_id IS NULL) as stock_count
         FROM products p
         JOIN categories c ON p.category_id = c.id
+        WHERE " . product_active_condition('p') . "
         ORDER BY p.id DESC LIMIT 18
     ");
     $recent_products = $stmt->fetchAll();
-    matrix_cache_set('home_recent_products_v2', $recent_products, 120);
+    matrix_cache_set('home_recent_products_v3', $recent_products, 120);
 }
 
 // 6. Fetch Recent Activity

@@ -19,12 +19,17 @@ $stmt = $pdo->prepare("
     SELECT p.id, p.name, p.slug, p.price, p.sale_price, p.image_path, c.name as cat_name
     FROM products p
     JOIN categories c ON p.category_id = c.id
-    WHERE p.name LIKE ? OR c.name LIKE ?
+    WHERE (p.name LIKE ? OR c.name LIKE ?) AND " . product_active_condition('p') . "
     ORDER BY p.name ASC
     LIMIT 6
 ");
 $stmt->execute([$term, $term]);
 $products = $stmt->fetchAll();
+
+foreach ($products as &$product) {
+    $product['slug'] = product_slug($product);
+}
+unset($product);
 
 echo json_encode($products);
 exit;

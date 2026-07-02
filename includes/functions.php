@@ -90,6 +90,27 @@ function product_supports_slug_column() {
     return $supports;
 }
 
+function product_supports_status_column() {
+    static $supports = null;
+    if ($supports !== null) {
+        return $supports;
+    }
+
+    try {
+        global $pdo;
+        $stmt = $pdo->query("SHOW COLUMNS FROM products LIKE 'status'");
+        $supports = (bool) $stmt->fetchColumn();
+    } catch (Exception $e) {
+        $supports = false;
+    }
+
+    return $supports;
+}
+
+function product_active_condition($alias = 'p') {
+    return product_supports_status_column() ? "{$alias}.status = 1" : "1=1";
+}
+
 function resolve_product_route($id = 0, $slug = '') {
     global $pdo;
 
@@ -103,7 +124,7 @@ function resolve_product_route($id = 0, $slug = '') {
                 SELECT p.*, c.name as cat_name, c.image_url as cat_image
                 FROM products p
                 JOIN categories c ON p.category_id = c.id
-                WHERE p.id = ?
+                WHERE p.id = ? AND " . product_active_condition('p') . "
                 LIMIT 1
             ");
             $stmt->execute([$id]);
@@ -114,7 +135,7 @@ function resolve_product_route($id = 0, $slug = '') {
                     SELECT p.*, c.name as cat_name, c.image_url as cat_image
                     FROM products p
                     JOIN categories c ON p.category_id = c.id
-                    WHERE p.slug = ?
+                    WHERE p.slug = ? AND " . product_active_condition('p') . "
                     LIMIT 1
                 ");
                 $stmt->execute([$slug]);
@@ -126,6 +147,7 @@ function resolve_product_route($id = 0, $slug = '') {
                     SELECT p.*, c.name as cat_name, c.image_url as cat_image
                     FROM products p
                     JOIN categories c ON p.category_id = c.id
+                    WHERE " . product_active_condition('p') . "
                     ORDER BY p.id DESC
                 ");
                 $stmt->execute();

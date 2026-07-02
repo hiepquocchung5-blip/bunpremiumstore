@@ -27,7 +27,7 @@ $product_url = product_public_url($product);
 
 // Calculate Stock Count for Unique Delivery if not already set
 if (isset($product['delivery_type']) && $product['delivery_type'] === 'unique' && !isset($product['stock_count']) && isset($pdo) && isset($product['id'])) {
-    $stmt = $pdo->prepare("SELECT COUNT(*) FROM product_keys WHERE product_id = ? AND is_sold = 0");
+    $stmt = $pdo->prepare("SELECT COUNT(*) FROM product_keys WHERE product_id = ? AND is_sold = 0 AND order_id IS NULL");
     $stmt->execute([$product['id']]);
     $product['stock_count'] = (int)$stmt->fetchColumn();
 }
@@ -50,6 +50,11 @@ if (isset($product['delivery_type']) && $product['delivery_type'] === 'unique' &
 
         <!-- Badges -->
         <div class="absolute top-2.5 right-2.5 flex flex-col gap-1.5 items-end">
+            <?php if(!empty($product['sales_count']) && (int)$product['sales_count'] >= 3): ?>
+                <span class="bg-violet-500 text-white text-[9px] font-bold px-2.5 py-0.5 rounded-full shadow-md uppercase tracking-widest">
+                    <i class="fas fa-chart-line mr-1"></i>Best Seller
+                </span>
+            <?php endif; ?>
             <?php if(!empty($product['sale_price'])): ?>
                 <span class="bg-rose-500 text-white text-[9px] font-bold px-2.5 py-0.5 rounded-full shadow-md uppercase tracking-widest">Sale</span>
             <?php endif; ?>
@@ -66,6 +71,11 @@ if (isset($product['delivery_type']) && $product['delivery_type'] === 'unique' &
                         <i class="fas fa-fire mr-1"></i>Only <?php echo $product['stock_count']; ?> Left
                     </span>
                 <?php endif; ?>
+            <?php endif; ?>
+            <?php if(isset($product['delivery_type']) && $product['delivery_type'] !== 'unique'): ?>
+                <span class="bg-blue-500 text-white text-[9px] font-bold px-2.5 py-0.5 rounded-full shadow-md uppercase tracking-widest">
+                    <?php echo $product['delivery_type'] === 'form' ? 'Manual Setup' : 'Instant'; ?>
+                </span>
             <?php endif; ?>
         </div>
     </div>

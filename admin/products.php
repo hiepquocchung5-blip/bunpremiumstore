@@ -109,7 +109,7 @@ $categories = $pdo->query("SELECT * FROM categories ORDER BY name ASC")->fetchAl
 $regions = $pdo->query("SELECT * FROM regions ORDER BY name ASC")->fetchAll();
 $products = $pdo->query("
     SELECT p.*, c.name as cat_name, c.image_url as cat_image,
-    (SELECT COUNT(*) FROM product_keys WHERE product_id = p.id AND is_sold = 0) as stock_count
+    (SELECT COUNT(*) FROM product_keys WHERE product_id = p.id AND is_sold = 0 AND order_id IS NULL) as stock_count
     FROM products p 
     JOIN categories c ON p.category_id = c.id 
     ORDER BY p.id DESC

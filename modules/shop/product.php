@@ -5,22 +5,43 @@
 $product_id = isset($_GET['id']) ? (int)$_GET['id'] : 0;
 $product_slug = trim($_GET['slug'] ?? '');
 
-// 1. Handle Actions (Review & Wishlist)
+// 1. Resolve Product Data before any action so slug routes use the real product id.
+$product = resolve_product_route($product_id, $product_slug);
+
+if (!$product) {
+    echo "<div class='p-20 text-center text-slate-500'>Product not found. <a href='index.php' class='text-[#00f0ff] hover:underline'>Return to Hub</a></div>";
+    return;
+}
+
+$product_id = (int)$product['id'];
+$product_url = product_public_url($product);
+
+// 2. Handle Actions (Review & Wishlist)
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['submit_review'])) {
     if (!is_logged_in()) redirect('index.php?module=auth&page=login');
-    if (!hash_equals($_SESSION['csrf_token'], $_POST['csrf_token'])) die("Invalid Token");
+    if (empty($_POST['csrf_token']) || !hash_equals($_SESSION['csrf_token'] ?? '', $_POST['csrf_token'])) die("Invalid Token");
 
-    $rating = (int)$_POST['rating'];
-    $comment = trim($_POST['comment']);
+    $rating = max(1, min(5, (int)($_POST['rating'] ?? 0)));
+    $comment = trim($_POST['comment'] ?? '');
 
     // Check Purchase
     $hasBought = $pdo->prepare("SELECT id FROM orders WHERE user_id = ? AND product_id = ? AND status = 'active'");
     $hasBought->execute([$_SESSION['user_id'], $product_id]);
 
     if ($hasBought->rowCount() > 0) {
-        $stmt = $pdo->prepare("INSERT INTO reviews (user_id, product_id, rating, comment) VALUES (?, ?, ?, ?)");
-        $stmt->execute([$_SESSION['user_id'], $product_id, $rating, $comment]);
-        $success = "Review submitted successfully!";
+        $existingReview = $pdo->prepare("SELECT id FROM reviews WHERE user_id = ? AND product_id = ? LIMIT 1");
+        $existingReview->execute([$_SESSION['user_id'], $product_id]);
+        $review_id = $existingReview->fetchColumn();
+
+        if ($review_id) {
+            $stmt = $pdo->prepare("UPDATE reviews SET rating = ?, comment = ?, created_at = CURRENT_TIMESTAMP WHERE id = ?");
+            $stmt->execute([$rating, $comment, $review_id]);
+            $success = "Review updated successfully!";
+        } else {
+            $stmt = $pdo->prepare("INSERT INTO reviews (user_id, product_id, rating, comment) VALUES (?, ?, ?, ?)");
+            $stmt->execute([$_SESSION['user_id'], $product_id, $rating, $comment]);
+            $success = "Review submitted successfully!";
+        }
     } else {
         $error = "You must successfully purchase this product before reviewing it.";
     }
@@ -39,20 +60,10 @@ if (isset($_GET['wishlist'])) {
         $pdo->prepare("DELETE FROM wishlist WHERE user_id = ? AND product_id = ?")->execute([$_SESSION['user_id'], $product_id]);
         matrix_cache_delete("user_wishlist_count_{$_SESSION['user_id']}");
     }
-    redirect("index.php?module=shop&page=product&id=$product_id");
+    redirect($product_url);
 }
 
-// 2. Fetch Product Data
-$product = resolve_product_route($product_id, $product_slug);
-
-if (!$product) {
-    echo "<div class='p-20 text-center text-slate-500'>Product not found. <a href='index.php' class='text-[#00f0ff] hover:underline'>Return to Hub</a></div>";
-    return;
-}
-
-$product_url = product_public_url($product);
-
-if ($product_id > 0 && $product_slug === '') {
+if ($_SERVER['REQUEST_METHOD'] === 'GET' && isset($_GET['id']) && $product_slug === '') {
     redirect($product_url, 301);
 }
 
@@ -61,24 +72,48 @@ $stmt = $pdo->prepare("
     SELECT p.*, c.name as cat_name, c.image_url as cat_image
     FROM products p
     JOIN categories c ON p.category_id = c.id
-    WHERE p.category_id = ? AND p.id != ?
+    WHERE p.category_id = ? AND p.id != ? AND " . product_active_condition('p') . "
     ORDER BY RAND() LIMIT 4
 ");
 $stmt->execute([$product['category_id'], $product_id]);
 $related_items = $stmt->fetchAll();
 
 // 4. Fetch Reviews
-$stmt = $pdo->prepare("SELECT r.*, u.username FROM reviews r JOIN users u ON r.user_id = u.id WHERE r.product_id = ? ORDER BY r.created_at DESC");
+$stmt = $pdo->prepare("
+    SELECT r.*, u.username,
+           EXISTS (
+               SELECT 1 FROM orders o
+               WHERE o.user_id = r.user_id
+                 AND o.product_id = r.product_id
+                 AND o.status = 'active'
+           ) as verified_purchase
+    FROM reviews r
+    JOIN users u ON r.user_id = u.id
+    WHERE r.product_id = ?
+    ORDER BY r.created_at DESC
+");
 $stmt->execute([$product_id]);
 $reviews = $stmt->fetchAll();
 
 // Stats
 $avg_rating = count($reviews) > 0 ? round(array_sum(array_column($reviews, 'rating')) / count($reviews), 1) : 0;
+$rating_counts = array_fill(1, 5, 0);
+foreach ($reviews as $review_item) {
+    $review_rating = max(1, min(5, (int)$review_item['rating']));
+    $rating_counts[$review_rating]++;
+}
 $in_wishlist = false;
 if (is_logged_in()) {
     $check = $pdo->prepare("SELECT id FROM wishlist WHERE user_id = ? AND product_id = ?");
     $check->execute([$_SESSION['user_id'], $product_id]);
     $in_wishlist = $check->rowCount() > 0;
+}
+
+$user_has_bought = false;
+if (is_logged_in()) {
+    $purchaseCheck = $pdo->prepare("SELECT id FROM orders WHERE user_id = ? AND product_id = ? AND status = 'active' LIMIT 1");
+    $purchaseCheck->execute([$_SESSION['user_id'], $product_id]);
+    $user_has_bought = (bool)$purchaseCheck->fetchColumn();
 }
 
 // ==========================================
@@ -115,7 +150,7 @@ $can_buy = true;
 $stock_status_html = '';
 
 if ($product['delivery_type'] === 'unique') {
-    $stmt = $pdo->prepare("SELECT COUNT(*) FROM product_keys WHERE product_id = ? AND is_sold = 0");
+    $stmt = $pdo->prepare("SELECT COUNT(*) FROM product_keys WHERE product_id = ? AND is_sold = 0 AND order_id IS NULL");
     $stmt->execute([$product_id]);
     $stock_count = $stmt->fetchColumn();
     
@@ -184,6 +219,16 @@ if ($avg_rating > 0) {
 </style>
 
 <div class="max-w-7xl mx-auto px-4 py-12">
+    <?php if(isset($success)): ?>
+        <div class="mb-6 bg-emerald-500/10 border border-emerald-500/30 text-emerald-300 px-5 py-4 rounded-2xl text-sm font-bold flex items-center gap-3">
+            <i class="fas fa-check-circle"></i> <?php echo htmlspecialchars($success); ?>
+        </div>
+    <?php endif; ?>
+    <?php if(isset($error)): ?>
+        <div class="mb-6 bg-rose-500/10 border border-rose-500/30 text-rose-300 px-5 py-4 rounded-2xl text-sm font-bold flex items-center gap-3">
+            <i class="fas fa-exclamation-triangle"></i> <?php echo htmlspecialchars($error); ?>
+        </div>
+    <?php endif; ?>
     
     <!-- Breadcrumbs -->
     <div class="mb-8 flex items-center justify-between">
@@ -317,6 +362,32 @@ if ($avg_rating > 0) {
 
                     <!-- Reviews -->
                     <div id="tab-rev" class="tab-content space-y-10">
+                        <?php if(!empty($reviews)): ?>
+                            <div class="bg-slate-900/40 p-6 rounded-3xl border border-white/5">
+                                <div class="flex flex-col md:flex-row md:items-center gap-8">
+                                    <div class="text-center md:w-40 shrink-0">
+                                        <div class="text-5xl font-black text-white"><?php echo $avg_rating; ?></div>
+                                        <div class="flex justify-center text-amber-400 gap-1 mt-2">
+                                            <?php for($i=1; $i<=5; $i++) echo ($i <= $avg_rating) ? '<i class="fas fa-star text-xs"></i>' : '<i class="far fa-star text-xs text-slate-700"></i>'; ?>
+                                        </div>
+                                        <p class="text-[10px] text-slate-500 font-bold uppercase tracking-widest mt-2"><?php echo count($reviews); ?> Reviews</p>
+                                    </div>
+                                    <div class="flex-1 space-y-2">
+                                        <?php for($star = 5; $star >= 1; $star--): ?>
+                                            <?php $pct = count($reviews) > 0 ? ($rating_counts[$star] / count($reviews)) * 100 : 0; ?>
+                                            <div class="grid grid-cols-[48px_1fr_32px] items-center gap-3 text-xs">
+                                                <span class="text-slate-400 font-bold"><?php echo $star; ?> Star</span>
+                                                <div class="h-2 bg-slate-800 rounded-full overflow-hidden">
+                                                    <div class="h-full bg-amber-400 rounded-full" style="width: <?php echo $pct; ?>%"></div>
+                                                </div>
+                                                <span class="text-slate-500 text-right"><?php echo $rating_counts[$star]; ?></span>
+                                            </div>
+                                        <?php endfor; ?>
+                                    </div>
+                                </div>
+                            </div>
+                        <?php endif; ?>
+
                         <?php if(is_logged_in()): ?>
                             <form method="POST" class="bg-slate-900/40 p-8 rounded-3xl border border-white/5 space-y-6">
                                 <input type="hidden" name="csrf_token" value="<?php echo generate_csrf_token(); ?>">
@@ -351,6 +422,11 @@ if ($avg_rating > 0) {
                                                 </div>
                                                 <div>
                                                     <span class="text-sm font-bold text-white">@<?php echo htmlspecialchars($rev['username']); ?></span>
+                                                    <?php if(!empty($rev['verified_purchase'])): ?>
+                                                        <span class="inline-flex items-center gap-1 text-[9px] text-emerald-300 bg-emerald-500/10 border border-emerald-500/20 px-2 py-0.5 rounded-full font-bold uppercase tracking-widest mt-1">
+                                                            <i class="fas fa-check-circle"></i> Verified
+                                                        </span>
+                                                    <?php endif; ?>
                                                     <div class="flex text-amber-400 text-[10px] mt-1">
                                                         <?php for($i=1; $i<=5; $i++) echo ($i <= $rev['rating']) ? '<i class="fas fa-star"></i>' : '<i class="far fa-star text-slate-800"></i>'; ?>
                                                     </div>
@@ -406,7 +482,7 @@ if ($avg_rating > 0) {
                 <div class="grid grid-cols-2 gap-4">
                     <?php if($can_buy): ?>
                         <a href="<?php echo BASE_URL; ?>index.php?module=shop&page=checkout&id=<?php echo $product['id']; ?>" class="liquid-glass-btn liquid-glass-buy w-full py-4 text-center justify-center min-h-[60px] shadow-lg hover:shadow-orange-500/20">
-                            <i class="fas fa-bag-shopping"></i> Buy Now
+                            <i class="fas fa-bag-shopping"></i> <?php echo $user_has_bought ? 'Buy Again' : 'Buy Now'; ?>
                         </a>
                     <?php else: ?>
                         <button disabled class="liquid-glass-btn liquid-glass-buy w-full py-4 justify-center min-h-[60px] opacity-60 cursor-not-allowed">
@@ -442,6 +518,20 @@ if ($avg_rating > 0) {
 
     </div>
 </div>
+
+<?php if($can_buy): ?>
+<div class="lg:hidden fixed bottom-0 left-0 right-0 z-50 bg-slate-950/95 border-t border-white/10 backdrop-blur-xl px-4 py-3">
+    <div class="flex items-center justify-between gap-4">
+        <div class="min-w-0">
+            <p class="text-[10px] text-slate-500 font-bold uppercase tracking-widest truncate"><?php echo htmlspecialchars($product['name']); ?></p>
+            <p class="text-xl font-black text-blue-400"><?php echo format_price($final_payable); ?></p>
+        </div>
+        <a href="<?php echo BASE_URL; ?>index.php?module=shop&page=checkout&id=<?php echo $product['id']; ?>" class="liquid-glass-btn liquid-glass-buy px-5 py-3 text-sm shrink-0">
+            <i class="fas fa-bag-shopping"></i> <?php echo $user_has_bought ? 'Buy Again' : 'Buy Now'; ?>
+        </a>
+    </div>
+</div>
+<?php endif; ?>
 
 <script>
     window.switchTab = function(tabId) {
@@ -483,7 +573,51 @@ if ($avg_rating > 0) {
             setTimeout(() => { btnText.innerText = 'Share Link'; }, 2000);
         }
     };
+
+    (() => {
+        const current = {
+            id: <?php echo (int)$product['id']; ?>,
+            name: <?php echo json_encode($product['name']); ?>,
+            url: <?php echo json_encode($product_url); ?>,
+            image: <?php echo json_encode($schema_image); ?>,
+            price: <?php echo json_encode(format_price($final_payable)); ?>
+        };
+        const key = 'dm_recent_products';
+        const existing = JSON.parse(localStorage.getItem(key) || '[]').filter(item => item && item.id !== current.id);
+        const updated = [current, ...existing].slice(0, 8);
+        localStorage.setItem(key, JSON.stringify(updated));
+
+        const mount = document.getElementById('recentlyViewedGrid');
+        if (!mount) return;
+        const recent = updated.filter(item => item.id !== current.id).slice(0, 4);
+        if (!recent.length) return;
+
+        document.getElementById('recentlyViewedSection')?.classList.remove('hidden');
+        const escapeHtml = (value) => String(value ?? '').replace(/[&<>"']/g, (char) => ({
+            '&': '&amp;',
+            '<': '&lt;',
+            '>': '&gt;',
+            '"': '&quot;',
+            "'": '&#039;'
+        }[char]));
+        mount.innerHTML = recent.map(item => `
+            <a href="${escapeHtml(item.url)}" class="bg-slate-900/40 border border-white/5 rounded-2xl overflow-hidden flex items-center gap-4 p-3 hover:border-blue-500/40 transition">
+                <img src="${escapeHtml(item.image)}" alt="" class="w-16 h-16 rounded-xl object-cover bg-slate-800 shrink-0">
+                <div class="min-w-0">
+                    <h4 class="text-sm font-bold text-white truncate">${escapeHtml(item.name)}</h4>
+                    <p class="text-xs text-blue-400 font-bold mt-1">${escapeHtml(item.price)}</p>
+                </div>
+            </a>
+        `).join('');
+    })();
 </script>
+
+<div id="recentlyViewedSection" class="hidden max-w-7xl mx-auto px-4 pb-4 pt-8">
+    <div class="border-t border-white/5 pt-10">
+        <h3 class="text-xl font-bold text-white mb-6 tracking-tight">Recently Viewed</h3>
+        <div id="recentlyViewedGrid" class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4"></div>
+    </div>
+</div>
 
 <!-- Related Products Grid -->
 <?php if(!empty($related_items)): ?>
